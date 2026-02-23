@@ -1,0 +1,34 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-aluno-notas',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div class="page-container">
+      <h2>Minhas Notas</h2>
+      <div class="table-container">
+        <p style="color: #999; text-align: center; padding: 40px;">
+          Notas serão exibidas aqui assim que forem lançadas.
+        </p>
+      </div>
+    </div>
+  `,
+  styles: [`
+    .page-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .table-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+  `]
+})
+export class AlunoNotasComponent {}
