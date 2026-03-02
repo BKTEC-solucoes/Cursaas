@@ -1,0 +1,59 @@
+# Backend - Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/venv/
+backend/.env
+backend/.env.local
+backend/.python-version
+backend/*.egg-info/
+backend/dist/
+backend/build/
+
+# Frontend - Node/Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.angular/cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+Thumbs.db
+
+# Uploads (arquivos enviados pelo usuário)
+backend/uploads/videos/*
+!backend/uploads/videos/.gitkeep
+frontend/uploads/*
+!frontend/uploads/.gitkeep
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+.env.*.local
+
+# Sistema operacional
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Dependências do sistema
+.npm
+.yarn
+yarn-error.log
+
+# Arquivos de lock (opcional - descomente se não quiser fazer track)
+# package-lock.json
+# yarn.lock
