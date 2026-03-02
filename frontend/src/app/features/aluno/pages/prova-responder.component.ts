@@ -42,7 +42,7 @@ interface Opcao {
           <h1>{{ prova.titulo }}</h1>
           <div class="prova-detalhes">
             <span class="curso">📚 {{ prova.curso_nome }}</span>
-            <span class="questoes">❓ {{ prova.questoes?.length || 0 }} questões</span>
+            <span class="questoes">❓ {{ prova.questoes.length || 0 }} questões</span>
             <span class="tempo" *ngIf="tempoRestante > 0" [class.urgente]="tempoRestante < 300">
               ⏰ {{ formatTempo(tempoRestante) }}
             </span>
@@ -122,7 +122,7 @@ interface Opcao {
       <!-- Navegação -->
       <div class="navegacao">
         <div class="progresso">
-          <span>{{ getRespostasCount() }}/{{ prova.questoes?.length || 0 }} questões respondidas</span>
+          <span>{{ getRespostasCount() }}/{{ prova.questoes.length || 0 }} questões respondidas</span>
           <div class="progresso-bar">
             <div class="progresso-fill" [style.width.%]="getProgressoPercent()"></div>
           </div>
@@ -144,7 +144,7 @@ interface Opcao {
           <p><strong>Atenção:</strong> Após o envio, você não poderá mais alterar suas respostas.</p>
           
           <div class="modal-stats">
-            <p>{{ getRespostasCount() }} de {{ prova.questoes?.length || 0 }} questões respondidas</p>
+            <p>{{ getRespostasCount() }} de {{ prova.questoes.length || 0 }} questões respondidas</p>
           </div>
 
           <div class="modal-actions">
