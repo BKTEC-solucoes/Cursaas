@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
 interface Curso {
@@ -15,12 +16,39 @@ interface Curso {
 @Component({
   selector: 'app-admin-cursos',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-container">
       <div class="page-header">
         <h2>Gerenciar Cursos</h2>
         <button class="btn-primary" (click)="abrirFormulario()">+ Novo Curso</button>
+      </div>
+
+      <div class="form-card" *ngIf="formAberto">
+        <h3>Novo Curso</h3>
+        <form (ngSubmit)="criarCurso()">
+          <div class="form-row">
+            <label>Nome</label>
+            <input type="text" [(ngModel)]="form.nome" name="nome" required />
+          </div>
+
+          <div class="form-row">
+            <label>Descrição</label>
+            <textarea [(ngModel)]="form.descricao" name="descricao"></textarea>
+          </div>
+
+          <div class="form-row">
+            <label>Percentual presença mínima</label>
+            <input type="number" [(ngModel)]="form.percentual_presenca_minima" name="percentual_presenca_minima" min="0" max="100" />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Salvar</button>
+            <button type="button" class="btn-sm" (click)="cancelarFormulario()">Cancelar</button>
+          </div>
+
+          <div class="form-error" *ngIf="formErro">{{ formErro }}</div>
+        </form>
       </div>
 
       <div class="cursos-table" *ngIf="cursos.length > 0">
@@ -248,6 +276,47 @@ interface Curso {
       font-weight: 600;
     }
 
+    .form-card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+
+    .form-row label {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .form-row input, .form-row textarea {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .form-error {
+      margin-top: 10px;
+      color: #721c24;
+      background: #f8d7da;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #f5c6cb;
+    }
+
     @media (max-width: 768px) {
       .page-header {
         flex-direction: column;
@@ -272,6 +341,15 @@ export class AdminCursosComponent implements OnInit {
   cursos: Curso[] = [];
   carregando = false;
   erro = '';
+  formAberto = false;
+  formErro = '';
+  criando = false;
+  form = {
+    nome: '',
+    descricao: '',
+    percentual_presenca_minima: 75,
+    ativo: true
+  };
 
   constructor(private http: HttpClient) {}
 
@@ -297,6 +375,52 @@ export class AdminCursosComponent implements OnInit {
   }
 
   abrirFormulario(): void {
-    alert('Formulário de novo curso - a implementar');
+    this.formErro = '';
+    this.form = {
+      nome: '',
+      descricao: '',
+      percentual_presenca_minima: 75,
+      ativo: true
+    };
+    this.formAberto = true;
+  }
+
+  cancelarFormulario(): void {
+    this.formAberto = false;
+    this.formErro = '';
+  }
+
+  criarCurso(): void {
+    if (!this.form.nome || this.form.nome.trim() === '') {
+      this.formErro = 'O nome do curso é obrigatório.';
+      return;
+    }
+
+    this.criando = true;
+    this.formErro = '';
+
+    const payload = {
+      nome: this.form.nome,
+      descricao: this.form.descricao,
+      percentual_presenca_minima: this.form.percentual_presenca_minima,
+      ativo: this.form.ativo
+    };
+
+    this.http.post('http://localhost:8000/api/cursos', payload).subscribe({
+      next: (res: any) => {
+        this.criando = false;
+        this.formAberto = false;
+        this.carregarCursos();
+      },
+      error: (err: any) => {
+        console.error('Erro ao criar curso:', err);
+        this.criando = false;
+        if (err?.error?.detail) {
+          this.formErro = err.error.detail;
+        } else {
+          this.formErro = 'Erro ao criar curso. Tente novamente.';
+        }
+      }
+    });
   }
 }

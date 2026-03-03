@@ -58,9 +58,12 @@ interface Questao {
               <div class="form-group">
                 <label for="curso">Curso *</label>
                 <select id="curso" formControlName="curso_id">
-                  <option value="">Selecione um curso</option>
+                  <option [value]="null">Selecione um curso</option>
                   <option *ngFor="let curso of cursos" [value]="curso.id">{{ curso.nome }}</option>
                 </select>
+                <div class="error" *ngIf="provaForm.get('curso_id')?.invalid && provaForm.get('curso_id')?.touched">
+                  Curso é obrigatório
+                </div>
               </div>
             </div>
 
@@ -98,15 +101,14 @@ interface Questao {
                   type="number" 
                   id="tentativas" 
                   formControlName="tentativas_permitidas"
-                  min="1"
-                  max="10">
+                  min="1">
               </div>
 
               <div class="form-group">
                 <label for="status">Status *</label>
-                <select id="status" formControlName="ativa">
-                  <option [value]="true">Ativa</option>
-                  <option [value]="false">Inativa</option>
+                <select id="status" formControlName="ativo">
+                  <option [ngValue]="true">Ativa</option>
+                  <option [ngValue]="false">Inativa</option>
                 </select>
               </div>
             </div>
@@ -159,10 +161,9 @@ interface Questao {
                         [placeholder]="'Opção ' + getLetter(j)">
                       <label class="opcao-correta">
                         <input 
-                          type="radio" 
-                          [name]="'questao_' + i"
-                          [(ngModel)]="opcao.correta"
-                          (ngModelChange)="marcarCorreta(questao, j)">
+                          type="checkbox" 
+                          [checked]="opcao.correta"
+                          (change)="toggleCorreta(questao, j, $event)">
                         Correta
                       </label>
                     </div>
@@ -498,11 +499,11 @@ export class AdminProvaFormComponent implements OnInit {
     this.provaForm = this.fb.group({
       titulo: ['', Validators.required],
       descricao: [''],
-      curso_id: ['', Validators.required],
+      curso_id: [null, Validators.required],
       data_inicio: ['', Validators.required],
       data_fim: ['', Validators.required],
       tentativas_permitidas: [1, [Validators.required, Validators.min(1)]],
-      ativa: [true]
+      ativo: [true]
     });
   }
 
@@ -541,7 +542,7 @@ export class AdminProvaFormComponent implements OnInit {
           data_inicio: this.formatDateForInput(prova.data_inicio),
           data_fim: this.formatDateForInput(prova.data_fim),
           tentativas_permitidas: prova.tentativas_permitidas,
-          ativa: prova.ativa
+          ativo: prova.ativo
         });
 
         this.questoes = prova.questoes || [];
@@ -598,6 +599,20 @@ export class AdminProvaFormComponent implements OnInit {
     });
   }
 
+  toggleCorreta(questao: Questao, index: number, event: any): void {
+    const isChecked = event.target.checked;
+    
+    if (isChecked) {
+      // Marcar esta opção como correta e desmarcar as outras
+      questao.opcoes.forEach((opcao, i) => {
+        opcao.correta = i === index;
+      });
+    } else {
+      // Desmarcar esta opção
+      questao.opcoes[index].correta = false;
+    }
+  }
+
   getLetter(index: number): string {
     return String.fromCharCode(65 + index);
   }
@@ -643,6 +658,7 @@ export class AdminProvaFormComponent implements OnInit {
 
     const dadosProva = {
       ...this.provaForm.value,
+      ativo: this.provaForm.value.ativo === true || this.provaForm.value.ativo === 'true',
       questoes: this.questoes
     };
 

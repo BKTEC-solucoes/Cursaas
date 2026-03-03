@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime
 from decimal import Decimal
 from app.database import get_db
 from app.models import Prova, Questao, OpcaoResposta, Resposta, Nota, Usuario, Curso
 from app.schemas import (
     ProvaCreate, ProvaUpdate, ProvaResponse, ProvaDetailResponse,
-    QuestaoCreateRequest, QuestaoUpdate, QuestaoResponse, QuestaoDetailResponse,
-    OpcaoRespostaCreate, OpcaoRespostaDetailResponse,
+    QuestaoCreateRequest, QuestaoCreateWithOpcoes, QuestaoUpdate, QuestaoResponse, QuestaoDetailResponse,
+    OpcaoRespostaCreate, OpcaoRespostaDetailCreate, OpcaoRespostaDetailResponse,
     RespostaResponse, ProvaSubmitRequest, ProvaResultResponse
 )
 from app.routes.auth import get_current_user
@@ -26,7 +27,7 @@ async def list_provas(
     limit: int = Query(10, ge=1, le=100)
 ):
     """
-    Lista todas as provas ativas com paginação.
+    Lista todas as provas (ativas e inativas) com paginação.
     
     **Query Parameters:**
     - `curso_id`: Filtrar por ID do curso (opcional)
@@ -34,20 +35,51 @@ async def list_provas(
     - `limit`: Número máximo de registros a retornar (padrão: 10, máx: 100)
     
     **Returns:**
-    - Lista de provas
+    - Lista de provas com informações de curso e quantidade de questões
     
     **Status Codes:**
     - 200: Sucesso
     """
-    query = db.query(Prova).filter(Prova.ativo == True)
+    # Query com join para trazer informações do curso e contar questões
+    query = db.query(
+        Prova,
+        Curso.nome.label('curso_nome'),
+        func.count(Questao.id).label('total_questoes')
+    ).join(
+        Curso, Prova.curso_id == Curso.id
+    ).outerjoin(
+        Questao, Prova.id == Questao.prova_id
+    ).group_by(
+        Prova.id, Curso.id
+    )
     
     if curso_id:
         query = query.filter(Prova.curso_id == curso_id)
     
-    provas = query.offset(skip).limit(limit).all()
+    provas_raw = query.offset(skip).limit(limit).all()
+    
+    # Converter os resultados em ProvaResponse
+    provas = []
+    for prova, curso_nome, total_questoes in provas_raw:
+        prova_dict = {
+            'id': prova.id,
+            'titulo': prova.titulo,
+            'descricao': prova.descricao,
+            'data_inicio': prova.data_inicio,
+            'data_fim': prova.data_fim,
+            'tempo_limite_minutos': prova.tempo_limite_minutos,
+            'tentativas_permitidas': prova.tentativas_permitidas,
+            'curso_id': prova.curso_id,
+            'curso_nome': curso_nome,
+            'total_questoes': total_questoes or 0,
+            'ativo': prova.ativo,
+            'data_criacao': prova.data_criacao
+        }
+        provas.append(prova_dict)
+    
     return provas
 
-@router.post("/", response_model=ProvaResponse, status_code=201)
+@router.post("/", response_model=ProvaDetailResponse, status_code=201)
 async def create_prova(
     prova: ProvaCreate,
     db: Session = Depends(get_db),
@@ -95,10 +127,36 @@ async def create_prova(
     if not curso:
         raise HTTPException(status_code=404, detail=f"Curso {prova.curso_id} não encontrado")
     
-    # Criar nova prova
-    db_prova = Prova(**prova.model_dump())
+    # Criar nova prova (sem questões)
+    prova_data = prova.model_dump(exclude={'questoes'})
+    db_prova = Prova(**prova_data)
     db.add(db_prova)
     db.commit()
+    db.refresh(db_prova)
+    
+    # Criar questões se fornecidas
+    if prova.questoes:
+        for idx, questao_data in enumerate(prova.questoes):
+            opcoes_data = questao_data.opcoes or []
+            questao_dict = questao_data.model_dump(exclude={'opcoes'})
+            questao_dict['prova_id'] = db_prova.id
+            questao_dict['ordem'] = idx + 1
+            
+            db_questao = Questao(**questao_dict)
+            db.add(db_questao)
+            db.flush()  # Flush para obter o ID da questão
+            
+            # Criar opções
+            for op_idx, opcao_data in enumerate(opcoes_data):
+                opcao_dict = opcao_data.model_dump()
+                opcao_dict['questao_id'] = db_questao.id
+                opcao_dict['ordem'] = op_idx + 1
+                
+                db_opcao = OpcaoResposta(**opcao_dict)
+                db.add(db_opcao)
+        
+        db.commit()
+    
     db.refresh(db_prova)
     
     return db_prova
@@ -128,7 +186,7 @@ async def get_prova(
     
     return prova
 
-@router.put("/{prova_id}", response_model=ProvaResponse)
+@router.put("/{prova_id}", response_model=ProvaDetailResponse)
 async def update_prova(
     prova_id: int,
     prova_update: ProvaUpdate,
@@ -182,9 +240,44 @@ async def update_prova(
             detail="data_inicio deve ser menor que data_fim"
         )
     
-    # Atualizar campos
-    for field, value in prova_update.model_dump(exclude_unset=True).items():
+    # Atualizar campos da prova (excluindo questões)
+    update_data = prova_update.model_dump(exclude_unset=True, exclude={'questoes'})
+    
+    # Garantir que ativo é um booleano
+    if 'ativo' in update_data:
+        value = update_data['ativo']
+        if isinstance(value, str):
+            update_data['ativo'] = value.lower() in ('true', '1', 'yes')
+        else:
+            update_data['ativo'] = bool(value)
+    
+    for field, value in update_data.items():
         setattr(db_prova, field, value)
+    
+    # Processar questões se fornecidas
+    if prova_update.questoes is not None:
+        # Deletar questões antigas
+        db.query(Questao).filter(Questao.prova_id == prova_id).delete()
+        
+        # Criar novas questões
+        for idx, questao_data in enumerate(prova_update.questoes):
+            opcoes_data = questao_data.opcoes or []
+            questao_dict = questao_data.model_dump(exclude={'opcoes'})
+            questao_dict['prova_id'] = prova_id
+            questao_dict['ordem'] = idx + 1
+            
+            db_questao = Questao(**questao_dict)
+            db.add(db_questao)
+            db.flush()  # Flush para obter o ID da questão
+            
+            # Criar opções
+            for op_idx, opcao_data in enumerate(opcoes_data):
+                opcao_dict = opcao_data.model_dump()
+                opcao_dict['questao_id'] = db_questao.id
+                opcao_dict['ordem'] = op_idx + 1
+                
+                db_opcao = OpcaoResposta(**opcao_dict)
+                db.add(db_opcao)
     
     db_prova.data_atualizacao = datetime.utcnow()
     db.add(db_prova)

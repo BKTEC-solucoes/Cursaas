@@ -213,6 +213,7 @@ class ProvaBase(BaseModel):
 
 class ProvaCreate(ProvaBase):
     curso_id: int
+    questoes: Optional[List['QuestaoCreateWithOpcoes']] = None
 
 class ProvaUpdate(BaseModel):
     titulo: Optional[str] = None
@@ -222,10 +223,13 @@ class ProvaUpdate(BaseModel):
     tempo_limite_minutos: Optional[int] = None
     tentativas_permitidas: Optional[int] = None
     ativo: Optional[bool] = None
+    questoes: Optional[List['QuestaoCreateWithOpcoes']] = None
 
 class ProvaResponse(ProvaBase):
     id: int
     curso_id: int
+    curso_nome: Optional[str] = None
+    total_questoes: int = 0
     ativo: bool
     data_criacao: datetime
     
@@ -243,6 +247,11 @@ class OpcaoRespostaBase(BaseModel):
     ordem: Optional[int] = None
 
 class OpcaoRespostaCreate(OpcaoRespostaBase):
+    correta: bool = False
+
+class OpcaoRespostaDetailCreate(OpcaoRespostaBase):
+    """Schema para criar opção com a flag correta"""
+    texto: str
     correta: bool = False
 
 class OpcaoRespostaResponse(OpcaoRespostaBase):
@@ -265,6 +274,10 @@ class QuestaoBase(BaseModel):
 
 class QuestaoCreateRequest(QuestaoBase):
     pass  # prova_id vem da URL
+
+class QuestaoCreateWithOpcoes(QuestaoBase):
+    """Schema para criar questão com opções - usada ao criar prova com questões"""
+    opcoes: List[OpcaoRespostaDetailCreate] = []
 
 class QuestaoCreate(QuestaoBase):
     prova_id: int
@@ -393,5 +406,7 @@ class NotaCursoDetailResponse(NotaCursoResponse):
 AulaResponse.model_rebuild()
 AulaDetailResponse.model_rebuild()
 CursoDetailResponse.model_rebuild()
+ProvaCreate.model_rebuild()
+ProvaUpdate.model_rebuild()
 ProvaDetailResponse.model_rebuild()
 QuestaoDetailResponse.model_rebuild()

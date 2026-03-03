@@ -12,7 +12,7 @@ interface Prova {
   data_fim: string;
   curso_id: number;
   curso_nome: string;
-  ativa: boolean;
+  ativo: boolean;
   total_questoes?: number;
   tentativas_permitidas: number;
   data_criacao: string;
@@ -518,7 +518,7 @@ export class AdminProvasComponent implements OnInit {
     let statusLabel: string;
     let statusClass: string;
 
-    if (!prova.ativa) {
+    if (!prova.ativo) {
       status = 'inativa';
       statusLabel = 'Inativa';
       statusClass = 'inativa';

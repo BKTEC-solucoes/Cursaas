@@ -11,7 +11,7 @@ interface Prova {
   data_inicio: string;
   data_fim: string;
   curso_id: number;
-  ativa: boolean;
+  ativo: boolean;
 }
 
 @Component({
@@ -273,11 +273,11 @@ export class AlunoProvasComponent implements OnInit {
     const now = new Date();
     const inicio = new Date(prova.data_inicio);
     const fim = new Date(prova.data_fim);
-    return prova.ativa && now >= inicio && now <= fim;
+    return prova.ativo && now >= inicio && now <= fim;
   }
 
   getStatusLabel(prova: Prova): string {
-    if (!prova.ativa) return 'Inativa';
+    if (!prova.ativo) return 'Inativa';
     const now = new Date();
     const inicio = new Date(prova.data_inicio);
     const fim = new Date(prova.data_fim);
@@ -288,7 +288,7 @@ export class AlunoProvasComponent implements OnInit {
   }
 
   getStatusClass(prova: Prova): string {
-    if (!prova.ativa) return 'encerrada';
+    if (!prova.ativo) return 'encerrada';
     const now = new Date();
     const inicio = new Date(prova.data_inicio);
     const fim = new Date(prova.data_fim);
