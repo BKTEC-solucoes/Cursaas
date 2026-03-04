@@ -745,6 +745,7 @@ async def submit_respostas(
     )
     db.add(db_nota)
     db.commit()
+    db.refresh(db_nota)
     
     return ProvaResultResponse(
         prova_id=prova_id,
@@ -753,9 +754,169 @@ async def submit_respostas(
         total_acertos=total_acertos,
         nota_final=nota_final,
         percentual_acerto=percentual_acerto,
+        tentativa=db_nota.tentativa,
         respostas=[RespostaResponse.model_validate(r) for r in respostas_salvas],
-        data_submissao=datetime.utcnow()
+        data_submissao=db_nota.data_submissao
     )
+
+@router.get("/{prova_id}/meu-resultado")
+async def get_meu_resultado(
+    prova_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Obter o resultado mais recente da prova para o aluno atual.
+    
+    **Path Parameters:**
+    - `prova_id`: ID da prova
+    
+    **Returns:**
+    - Resultado com nota, total de questões, acertos, percentual e data
+    
+    **Status Codes:**
+    - 200: Sucesso
+    - 404: Resultado não encontrado
+    """
+    # Buscar a nota mais recente para esse aluno nessa prova
+    nota = db.query(Nota).filter(
+        Nota.prova_id == prova_id,
+        Nota.usuario_id == current_user.id
+    ).order_by(Nota.data_submissao.desc()).first()
+    
+    if not nota:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Resultado não encontrado para a prova {prova_id}"
+        )
+    
+    # Buscar informações da prova
+    prova = db.query(Prova).filter(Prova.id == prova_id).first()
+    if not prova:
+        raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+    
+    # Buscar informações do curso
+    curso = db.query(Curso).filter(Curso.id == prova.curso_id).first()
+    curso_nome = curso.nome if curso else "Curso desconhecido"
+    
+    # Buscar todas as questões da prova
+    questoes = db.query(Questao).filter(Questao.prova_id == prova_id).all()
+    total_questoes = len(questoes)
+    
+    # Contar respostas corretas do aluno APENAS o mais recente
+    # (agrupado por questão, pegando a mais recente de cada uma)
+    respostas_por_questao = db.query(Resposta).filter(
+        Resposta.usuario_id == current_user.id,
+        Resposta.prova_id == prova_id
+    ).order_by(
+        Resposta.questao_id,
+        Resposta.data_resposta.desc()
+    ).all()
+    
+    # Agrupar por questão e pegar a última resposta de cada uma
+    questoes_respondidas = {}
+    for resposta in respostas_por_questao:
+        if resposta.questao_id not in questoes_respondidas:
+            questoes_respondidas[resposta.questao_id] = resposta
+    
+    # Contar acertos apenas em questões de múltipla escolha (dissertativas = None)
+    total_acertos = sum(
+        1 for r in questoes_respondidas.values() 
+        if r.correta == True
+    )
+    
+    # Calcular percentual baseado APENAS em questões de múltipla escolha
+    multipla_escolha_count = sum(1 for q in questoes if q.tipo == "multipla_escolha")
+    if multipla_escolha_count > 0:
+        percentual_acerto = round((total_acertos / multipla_escolha_count) * 100, 2)
+    else:
+        percentual_acerto = 0.0
+    
+    return {
+        "id": nota.id,
+        "prova_id": prova_id,
+        "prova_titulo": prova.titulo,
+        "prova_curso_nome": curso_nome,
+        "usuario_id": current_user.id,
+        "nota_final": float(nota.nota_final) if nota.nota_final else 0.0,
+        "total_questoes": int(total_questoes),
+        "total_acertos": int(total_acertos),
+        "percentual_acerto": float(percentual_acerto),
+        "data_submissao": nota.data_submissao.isoformat() if nota.data_submissao else None,
+        "tentativa": int(nota.tentativa) if nota.tentativa else 1
+    }
+
+@router.get("/{prova_id}/minhas-respostas-detalhadas")
+async def get_minhas_respostas_detalhadas(
+    prova_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Obter as respostas detalhadas do aluno com análise de acertos/erros.
+    
+    **Path Parameters:**
+    - `prova_id`: ID da prova
+    
+    **Returns:**
+    - Lista de respostas com detalhes de questões e opções
+    
+    **Status Codes:**
+    - 200: Sucesso
+    - 404: Prova não encontrada
+    """
+    # Verificar se prova existe
+    prova = db.query(Prova).filter(Prova.id == prova_id).first()
+    if not prova:
+        raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+    
+    # Buscar questões da prova
+    questoes = db.query(Questao).filter(Questao.prova_id == prova_id).order_by(Questao.ordem).all()
+    
+    resultado_detalhado = []
+    
+    for questao in questoes:
+        # Buscar resposta do aluno para esta questão
+        resposta_aluno = db.query(Resposta).filter(
+            Resposta.usuario_id == current_user.id,
+            Resposta.questao_id == questao.id,
+            Resposta.prova_id == prova_id
+        ).order_by(Resposta.data_resposta.desc()).first()
+        
+        if questao.tipo == "multipla_escolha":
+            # Buscar opções de resposta
+            opcoes = db.query(OpcaoResposta).filter(
+                OpcaoResposta.questao_id == questao.id
+            ).order_by(OpcaoResposta.ordem).all()
+            
+            resultado_detalhado.append({
+                "id": questao.id,
+                "enunciado": questao.enunciado,
+                "tipo": questao.tipo,
+                "ordem": questao.ordem,
+                "opcoes": [
+                    {
+                        "id": opcao.id,
+                        "texto": opcao.texto,
+                        "ordem": opcao.ordem,
+                        "correta": opcao.correta
+                    }
+                    for opcao in opcoes
+                ],
+                "opcao_selecionada": resposta_aluno.opcao_id if resposta_aluno else None,
+                "correta": resposta_aluno.correta if resposta_aluno else None
+            })
+        else:  # dissertativa
+            resultado_detalhado.append({
+                "id": questao.id,
+                "enunciado": questao.enunciado,
+                "tipo": questao.tipo,
+                "ordem": questao.ordem,
+                "texto_resposta": resposta_aluno.texto_resposta if resposta_aluno else None,
+                "correta": None  # Dissertativas não são auto-avaliadas
+            })
+    
+    return resultado_detalhado
 
 @router.get("/{prova_id}/respostas", response_model=list[RespostaResponse])
 async def get_respostas(

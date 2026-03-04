@@ -50,7 +50,7 @@ interface Prova {
           <button
             class="btn-responder"
             [disabled]="!isProvaAvailable(prova)"
-            [routerLink]="['/aluno/provas', prova.id]"
+            [routerLink]="['/aluno/provas', prova.id, 'responder']"
           >
             {{ isProvaAvailable(prova) ? 'Responder Prova' : 'Indisponível' }}
           </button>

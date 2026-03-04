@@ -69,8 +69,16 @@ export class ApiService {
     return this.http.get<any>(`${this.apiUrl}/provas/${id}`);
   }
 
-  submitProva(id: number, respostas: any[]): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/provas/${id}/responder`, { respostas });
+  submitProva(provaId: number, respostas: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/provas/${provaId}/responder`, { respostas });
+  }
+
+  getMeuResultado(provaId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/provas/${provaId}/meu-resultado`);
+  }
+
+  getMinhasRespostasDetalhadas(provaId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/provas/${provaId}/minhas-respostas-detalhadas`);
   }
 
   // Notas
