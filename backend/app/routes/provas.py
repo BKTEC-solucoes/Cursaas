@@ -642,14 +642,16 @@ async def submit_respostas(
     if agora > prova.data_fim:
         raise HTTPException(status_code=400, detail="Prova expirou")
     
-    # Verificar tentativas
-    tentativas_feitas = db.query(Resposta).filter(
-        Resposta.usuario_id == current_user.id,
-        Resposta.prova_id == prova_id
-    ).count()
-    
-    if tentativas_feitas > 0 and prova.tentativas_permitidas == 1:
-        raise HTTPException(status_code=400, detail="Você já respondeu esta prova")
+    # Verificar tentativas usando MAX para tolerar dados históricos com tentativa=1 fixo
+    max_tentativa = db.query(func.max(Nota.tentativa)).filter(
+        Nota.usuario_id == current_user.id,
+        Nota.prova_id == prova_id
+    ).scalar()
+
+    if max_tentativa is not None and max_tentativa >= prova.tentativas_permitidas:
+        raise HTTPException(status_code=400, detail=f"Você já atingiu o limite de {prova.tentativas_permitidas} tentativa(s) para esta prova")
+
+    numero_tentativa = (max_tentativa or 0) + 1
     
     # Buscar questões da prova
     questoes = db.query(Questao).filter(Questao.prova_id == prova_id).all()
@@ -722,25 +724,45 @@ async def submit_respostas(
         db.flush()  # Flush para obter o ID
         respostas_salvas.append(db_resposta)
     
-    # Calcular nota final
+    # Calcular nota final baseada nos pontos de cada questão
     total_questoes = len(questoes)
-    
-    # Contar apenas questões de múltipla escolha
-    multipla_escolha_count = sum(1 for q in questoes if q.tipo == "multipla_escolha")
-    
-    if multipla_escolha_count > 0:
-        percentual_acerto = (total_acertos / multipla_escolha_count) * 100
-        nota_final = Decimal(str(round((total_acertos / multipla_escolha_count) * 10, 2)))
+
+    # Pontos totais possíveis por tipo
+    pontos_mc_total = sum(float(q.pontos or 1) for q in questoes if q.tipo == "multipla_escolha")
+    pontos_diss_total = sum(float(q.pontos or 1) for q in questoes if q.tipo == "dissertativa")
+    pontos_total = pontos_mc_total + pontos_diss_total
+
+    # Pontos obtidos nas questões de múltipla escolha
+    pontos_mc_obtidos = 0.0
+    for resposta in respostas_salvas:
+        if resposta.correta:
+            questao = questoes_dict[resposta.questao_id]
+            pontos_mc_obtidos += float(questao.pontos or 1)
+
+    has_mc = pontos_mc_total > 0
+    has_diss = pontos_diss_total > 0
+
+    if has_mc and not has_diss:
+        # Apenas múltipla escolha: nota calculada automaticamente (escala 0-10)
+        percentual_acerto = round((pontos_mc_obtidos / pontos_mc_total) * 100, 2)
+        nota_final = Decimal(str(round((pontos_mc_obtidos / pontos_mc_total) * 10, 2)))
+    elif not has_mc and has_diss:
+        # Apenas dissertativa: nota fica em branco até o professor corrigir
+        percentual_acerto = 0.0
+        nota_final = None
     else:
-        percentual_acerto = 100.0
-        nota_final = Decimal("10.00")
+        # Mista: calcula a parte MC automaticamente; parte dissertativa pendente
+        # Nota parcial = pontos_mc_obtidos / pontos_total * 10
+        # A parte dissertativa será adicionada pelo admin depois (via PUT /notas/{id})
+        percentual_acerto = round((pontos_mc_obtidos / pontos_total) * 100, 2)
+        nota_final = None  # Deixa pendente para o admin completar com a nota dissertativa
     
     # Criar registro de nota
     db_nota = Nota(
         usuario_id=current_user.id,
         prova_id=prova_id,
         nota_final=nota_final,
-        tentativa=1,  # TODO: implementar contador de tentativas
+        tentativa=numero_tentativa,
         data_submissao=datetime.utcnow()
     )
     db.add(db_nota)
@@ -778,7 +800,7 @@ async def get_meu_resultado(
     - 200: Sucesso
     - 404: Resultado não encontrado
     """
-    # Buscar a nota mais recente para esse aluno nessa prova
+    # Buscar a nota mais recente e o MAX de tentativa para esse aluno nessa prova
     nota = db.query(Nota).filter(
         Nota.prova_id == prova_id,
         Nota.usuario_id == current_user.id
@@ -789,6 +811,12 @@ async def get_meu_resultado(
             status_code=404,
             detail=f"Resultado não encontrado para a prova {prova_id}"
         )
+    
+    # Determinar o número real de tentativas feitas pelo max(tentativa)
+    max_tentativa_real = db.query(func.max(Nota.tentativa)).filter(
+        Nota.usuario_id == current_user.id,
+        Nota.prova_id == prova_id
+    ).scalar() or 1
     
     # Buscar informações da prova
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
@@ -838,12 +866,12 @@ async def get_meu_resultado(
         "prova_titulo": prova.titulo,
         "prova_curso_nome": curso_nome,
         "usuario_id": current_user.id,
-        "nota_final": float(nota.nota_final) if nota.nota_final else 0.0,
+        "nota_final": float(nota.nota_final) if nota.nota_final is not None else None,
         "total_questoes": int(total_questoes),
         "total_acertos": int(total_acertos),
         "percentual_acerto": float(percentual_acerto),
         "data_submissao": nota.data_submissao.isoformat() if nota.data_submissao else None,
-        "tentativa": int(nota.tentativa) if nota.tentativa else 1
+        "tentativa": max_tentativa_real
     }
 
 @router.get("/{prova_id}/minhas-respostas-detalhadas")
@@ -960,3 +988,76 @@ async def get_respostas(
     
     respostas = query.all()
     return respostas
+
+
+@router.get("/{prova_id}/respostas-aluno/{usuario_id}")
+async def get_respostas_aluno_admin(
+    prova_id: int,
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Obter respostas detalhadas de um aluno específico em uma prova (admin only).
+    """
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Apenas admin pode ver respostas de outros alunos")
+
+    prova = db.query(Prova).filter(Prova.id == prova_id).first()
+    if not prova:
+        raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    aluno = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    questoes = db.query(Questao).filter(Questao.prova_id == prova_id).order_by(Questao.ordem).all()
+
+    resultado = []
+    for questao in questoes:
+        resposta_aluno = db.query(Resposta).filter(
+            Resposta.usuario_id == usuario_id,
+            Resposta.questao_id == questao.id,
+            Resposta.prova_id == prova_id
+        ).order_by(Resposta.data_resposta.desc()).first()
+
+        if questao.tipo == "multipla_escolha":
+            opcoes = db.query(OpcaoResposta).filter(
+                OpcaoResposta.questao_id == questao.id
+            ).order_by(OpcaoResposta.ordem).all()
+
+            resultado.append({
+                "id": questao.id,
+                "enunciado": questao.enunciado,
+                "tipo": questao.tipo,
+                "pontos": float(questao.pontos or 1),
+                "ordem": questao.ordem,
+                "opcoes": [
+                    {
+                        "id": opcao.id,
+                        "texto": opcao.texto,
+                        "ordem": opcao.ordem,
+                        "correta": opcao.correta
+                    }
+                    for opcao in opcoes
+                ],
+                "opcao_selecionada": resposta_aluno.opcao_id if resposta_aluno else None,
+                "correta": resposta_aluno.correta if resposta_aluno else None
+            })
+        else:
+            resultado.append({
+                "id": questao.id,
+                "enunciado": questao.enunciado,
+                "tipo": questao.tipo,
+                "pontos": float(questao.pontos or 1),
+                "ordem": questao.ordem,
+                "texto_resposta": resposta_aluno.texto_resposta if resposta_aluno else None,
+                "correta": None
+            })
+
+    return {
+        "aluno_nome": aluno.nome,
+        "prova_titulo": prova.titulo,
+        "questoes": resultado
+    }
+

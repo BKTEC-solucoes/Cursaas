@@ -76,7 +76,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     
     # Criar token de acesso
     access_token = AuthService.create_access_token(
-        data={"sub": user.email, "role": user.role}
+        data={"sub": user.email, "role": user.role, "user_id": user.id, "nome": user.nome}
     )
     
     return {
@@ -110,7 +110,7 @@ def registro(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
     
     # Criar token de acesso
     access_token = AuthService.create_access_token(
-        data={"sub": user.email, "role": user.role}
+        data={"sub": user.email, "role": user.role, "user_id": user.id, "nome": user.nome}
     )
     
     return {
@@ -146,7 +146,7 @@ def admin_registro(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
     
     # Criar token de acesso
     access_token = AuthService.create_access_token(
-        data={"sub": user.email, "role": user.role}
+        data={"sub": user.email, "role": user.role, "user_id": user.id, "nome": user.nome}
     )
     
     return {

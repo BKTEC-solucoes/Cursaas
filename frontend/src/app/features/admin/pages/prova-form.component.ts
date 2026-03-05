@@ -17,6 +17,7 @@ interface Opcao {
 interface Questao {
   enunciado: string;
   tipo: string;
+  pontos: number;
   opcoes: Opcao[];
 }
 
@@ -118,7 +119,7 @@ interface Questao {
         <!-- Questões -->
         <div class="form-section">
           <div class="section-header">
-            <h3>❓ Questões ({{ questoes.length }})</h3>
+            <h3>❓ Questões ({{ questoes.length }}) — Total: {{ getTotalPontos() }} pts</h3>
             <button class="btn-primary" (click)="adicionarQuestao()">+ Nova Questão</button>
           </div>
 
@@ -129,6 +130,17 @@ interface Questao {
                 <span class="questao-tipo" [class.multipla]="questao.tipo === 'multipla_escolha'" [class.dissertativa]="questao.tipo === 'dissertativa'">
                   {{ questao.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
                 </span>
+                <label class="questao-pontos-badge" title="Valor da questão">
+                  <input
+                    class="pontos-inline-input"
+                    type="number"
+                    [(ngModel)]="questao.pontos"
+                    min="0.1"
+                    step="0.5"
+                    (click)="$event.stopPropagation()"
+                  />
+                  pts
+                </label>
                 <button class="btn-delete" (click)="removerQuestao(i)">🗑️</button>
               </div>
 
@@ -141,12 +153,14 @@ interface Questao {
                     placeholder="Digite o enunciado da questão"></textarea>
                 </div>
 
-                <div class="form-group">
-                  <label>Tipo de Questão</label>
-                  <select [(ngModel)]="questao.tipo" (ngModelChange)="ajustarOpcoes(questao)">
-                    <option value="multipla_escolha">Múltipla Escolha</option>
-                    <option value="dissertativa">Dissertativa</option>
-                  </select>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Tipo de Questão</label>
+                    <select [(ngModel)]="questao.tipo" (ngModelChange)="ajustarOpcoes(questao)">
+                      <option value="multipla_escolha">Múltipla Escolha</option>
+                      <option value="dissertativa">Dissertativa</option>
+                    </select>
+                  </div>
                 </div>
 
                 <!-- Opções para Múltipla Escolha -->
@@ -368,6 +382,41 @@ interface Questao {
       color: #7b1fa2;
     }
 
+    .questao-pontos-badge {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffc107;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: text;
+    }
+
+    .pontos-inline-input {
+      width: 44px;
+      border: none;
+      background: transparent;
+      color: #856404;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+      padding: 0;
+      -moz-appearance: textfield;
+    }
+    .pontos-inline-input::-webkit-outer-spin-button,
+    .pontos-inline-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .pontos-inline-input:focus {
+      outline: 1px solid #b8860b;
+      border-radius: 2px;
+    }
+
     .btn-delete {
       background: none;
       border: none;
@@ -545,7 +594,10 @@ export class AdminProvaFormComponent implements OnInit {
           ativo: prova.ativo
         });
 
-        this.questoes = prova.questoes || [];
+        this.questoes = (prova.questoes || []).map((q: any) => ({
+          ...q,
+          pontos: Number(q.pontos) || 1
+        }));
         this.carregando = false;
       },
       error: (error) => {
@@ -565,6 +617,7 @@ export class AdminProvaFormComponent implements OnInit {
     this.questoes.push({
       enunciado: '',
       tipo: 'multipla_escolha',
+      pontos: 1,
       opcoes: [
         { texto: '', correta: false },
         { texto: '', correta: false },
@@ -615,6 +668,10 @@ export class AdminProvaFormComponent implements OnInit {
 
   getLetter(index: number): string {
     return String.fromCharCode(65 + index);
+  }
+
+  getTotalPontos(): number {
+    return this.questoes.reduce((sum, q) => sum + (Number(q.pontos) || 1), 0);
   }
 
   salvar(): void {

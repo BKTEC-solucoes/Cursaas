@@ -8,7 +8,7 @@ interface ResultadoProva {
   id: number;
   prova_id: number;
   usuario_id: number;
-  nota_final: number;
+  nota_final: number | null;
   total_questoes: number;
   total_acertos: number;
   percentual_acerto: number;
@@ -26,7 +26,7 @@ interface ResultadoProva {
   template: `
     <div class="page-container" *ngIf="resultado; else noResult">
       <!-- Cabeçalho do Resultado -->
-      <div class="resultado-header" [class.aprovado]="resultado.nota_final >= 7" [class.reprovado]="resultado.nota_final < 7">
+      <div class="resultado-header" [class.aprovado]="resultado.nota_final != null && resultado.nota_final >= 7" [class.reprovado]="resultado.nota_final != null && resultado.nota_final < 7" [class.pendente]="resultado.nota_final == null">
         <div class="resultado-info">
           <h1>{{ resultado.prova_titulo || 'Resultado da Prova' }}</h1>
           <p class="curso">📚 {{ resultado.prova_curso_nome || 'Curso' }}</p>
@@ -34,9 +34,11 @@ interface ResultadoProva {
         </div>
         
         <div class="nota-final">
-          <div class="nota-valor">{{ formatarNumero(resultado.nota_final, 1) }}</div>
+          <div class="nota-valor" *ngIf="resultado.nota_final != null">{{ formatarNumero(resultado.nota_final, 1) }}</div>
+          <div class="nota-valor pendente" *ngIf="resultado.nota_final == null">—</div>
           <div class="nota-label">Nota Final</div>
-          <div class="status-badge" [class.aprovado]="toNumber(resultado.nota_final) >= 7" [class.reprovado]="toNumber(resultado.nota_final) < 7">
+          <div class="status-badge pendente" *ngIf="resultado.nota_final == null">⏳ Aguardando correção</div>
+          <div class="status-badge" [class.aprovado]="toNumber(resultado.nota_final) >= 7" [class.reprovado]="toNumber(resultado.nota_final) < 7" *ngIf="resultado.nota_final != null">
             {{ toNumber(resultado.nota_final) >= 7 ? '✅ Aprovado' : '❌ Reprovado' }}
           </div>
         </div>
@@ -177,6 +179,20 @@ interface ResultadoProva {
 
     .resultado-header.reprovado {
       background: linear-gradient(135deg, #dc3545 0%, #f86a2b 100%);
+    }
+
+    .resultado-header.pendente {
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    }
+
+    .nota-valor.pendente {
+      font-size: 36px;
+      opacity: 0.7;
+    }
+
+    .status-badge.pendente {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
     }
 
     .resultado-header::before {
@@ -738,7 +754,7 @@ export class AlunoProvaResultadoComponent implements OnInit {
         const tentativa = Number(resultado.tentativa);
         resultado.tentativa = tentativa > 0 ? tentativa : 1;
         
-        resultado.nota_final = Number(resultado.nota_final) || 0;
+        resultado.nota_final = resultado.nota_final != null ? Number(resultado.nota_final) : null;
         
         console.log('✅ Valores convertidos para Number:');
         console.log('   - total_acertos:', resultado.total_acertos, typeof resultado.total_acertos);
@@ -807,8 +823,8 @@ export class AlunoProvaResultadoComponent implements OnInit {
 
   getPerformanceClass(): string {
     if (!this.resultado) return '';
-    
     const nota = this.resultado.nota_final;
+    if (nota == null) return 'pendente';
     if (nota >= 9) return 'excelente';
     if (nota >= 7) return 'bom';
     if (nota >= 5) return 'regular';
@@ -817,8 +833,8 @@ export class AlunoProvaResultadoComponent implements OnInit {
 
   getPerformanceText(): string {
     if (!this.resultado) return '';
-    
     const nota = this.resultado.nota_final;
+    if (nota == null) return 'Aguardando correção do professor ⏳';
     if (nota >= 9) return 'Excelente desempenho! 🌟';
     if (nota >= 7) return 'Bom desempenho! 👍';
     if (nota >= 5) return 'Desempenho regular 📊';

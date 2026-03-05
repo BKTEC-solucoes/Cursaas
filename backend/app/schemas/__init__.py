@@ -334,8 +334,9 @@ class ProvaResultResponse(BaseModel):
     usuario_id: int
     total_questoes: int
     total_acertos: int
-    nota_final: Decimal
+    nota_final: Optional[Decimal] = None
     percentual_acerto: float
+    tentativa: int = 1
     respostas: List[RespostaResponse] = []
     data_submissao: datetime
 

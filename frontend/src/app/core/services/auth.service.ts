@@ -31,7 +31,9 @@ export class AuthService {
   private tokenSubject = new BehaviorSubject<string | null>(this.getToken());
   public token$ = this.tokenSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+    this.loadUserInfo();
+  }
 
   login(email: string, password: string): Observable<TokenResponse> {
     return this.http.post<TokenResponse>(`${this.apiUrl}/auth/login`, {
@@ -79,7 +81,13 @@ export class AuthService {
     const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
     }).join(''));
-    return JSON.parse(jsonPayload);
+    const payload = JSON.parse(jsonPayload);
+    return {
+      id: payload.user_id ?? payload.id,
+      nome: payload.nome ?? payload.sub,
+      email: payload.sub,
+      role: payload.role
+    };
   }
 
   getCurrentUser(): UserInfo | null {
