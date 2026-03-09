@@ -4,7 +4,7 @@ from app.database import get_db
 from app.models import Presenca, Usuario, Aula, Curso, Nota, Resposta, Questao
 from app.schemas import (
     PresencaResponse, PresencaDetailResponse, PresencaProgressRequest,
-    PresencaAlunoResponse, PresencaCursoResponse
+    PresencaAlunoResponse, PresencaCursoResponse, PresencaManualUpdate
 )
 from app.routes.auth import get_current_user
 from datetime import datetime
@@ -14,7 +14,7 @@ router = APIRouter()
 
 # ==================== PRESENÇA - ENDPOINTS ====================
 
-@router.get("", response_model=list[PresencaResponse], status_code=200)
+@router.get("", response_model=list[PresencaDetailResponse], status_code=200)
 async def listar_presencas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
@@ -27,7 +27,65 @@ async def listar_presencas(
         raise HTTPException(status_code=403, detail="Apenas admin pode listar presenças")
     
     presencas = db.query(Presenca).all()
-    return presencas
+    return [
+        PresencaDetailResponse(
+            id=p.id,
+            usuario_id=p.usuario_id,
+            aula_id=p.aula_id,
+            percentual_assistido=p.percentual_assistido,
+            registrada_automaticamente=p.registrada_automaticamente,
+            tempo_total_segundos=p.tempo_total_segundos,
+            data_acesso=p.data_acesso,
+            data_conclusao=p.data_conclusao,
+            usuario_nome=p.usuario.nome,
+            aula_titulo=p.aula.titulo,
+            aula_duracao_minutos=p.aula.duracao_minutos
+        )
+        for p in presencas
+    ]
+
+@router.put("/{presenca_id}", response_model=PresencaDetailResponse, status_code=200)
+async def editar_presenca_manual(
+    presenca_id: int,
+    dados: PresencaManualUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Edita manualmente um registro de presença (admin only)
+    """
+    if current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Apenas admin pode editar presenças manualmente")
+
+    presenca = db.query(Presenca).filter(Presenca.id == presenca_id).first()
+    if not presenca:
+        raise HTTPException(status_code=404, detail="Registro de presença não encontrado")
+
+    presenca.percentual_assistido = dados.percentual_assistido
+    presenca.registrada_automaticamente = False  # Marcado como edição manual
+
+    if dados.percentual_assistido >= 75 and not presenca.data_conclusao:
+        presenca.data_conclusao = datetime.utcnow()
+    elif dados.percentual_assistido < 75:
+        presenca.data_conclusao = None
+
+    db.commit()
+    db.refresh(presenca)
+
+    return PresencaDetailResponse(
+        id=presenca.id,
+        usuario_id=presenca.usuario_id,
+        aula_id=presenca.aula_id,
+        percentual_assistido=presenca.percentual_assistido,
+        registrada_automaticamente=presenca.registrada_automaticamente,
+        tempo_total_segundos=presenca.tempo_total_segundos,
+        data_acesso=presenca.data_acesso,
+        data_conclusao=presenca.data_conclusao,
+        usuario_nome=presenca.usuario.nome,
+        aula_titulo=presenca.aula.titulo,
+        aula_duracao_minutos=presenca.aula.duracao_minutos
+    )
+
 
 @router.get("/curso/{curso_id}", response_model=list[PresencaCursoResponse], status_code=200)
 async def get_presenca_curso(

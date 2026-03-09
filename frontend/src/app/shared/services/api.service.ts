@@ -12,7 +12,7 @@ export class ApiService {
 
   // Cursos
   getCursos(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/cursos`);
+    return this.http.get<any[]>(`${this.apiUrl}/cursos/`);
   }
 
   getCurso(id: number): Observable<any> {
@@ -20,7 +20,7 @@ export class ApiService {
   }
 
   createCurso(data: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/cursos`, data);
+    return this.http.post<any>(`${this.apiUrl}/cursos/`, data);
   }
 
   updateCurso(id: number, data: any): Observable<any> {
@@ -37,7 +37,7 @@ export class ApiService {
     if (cursoId) {
       params = params.set('curso_id', cursoId.toString());
     }
-    return this.http.get<any[]>(`${this.apiUrl}/aulas`, { params });
+    return this.http.get<any[]>(`${this.apiUrl}/aulas/`, { params });
   }
 
   getAula(id: number): Observable<any> {
@@ -45,7 +45,7 @@ export class ApiService {
   }
 
   createAula(data: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/aulas`, data);
+    return this.http.post<any>(`${this.apiUrl}/aulas/`, data);
   }
 
   updateAula(id: number, data: any): Observable<any> {
@@ -62,7 +62,7 @@ export class ApiService {
     if (cursoId) {
       params = params.set('curso_id', cursoId.toString());
     }
-    return this.http.get<any[]>(`${this.apiUrl}/provas`, { params });
+    return this.http.get<any[]>(`${this.apiUrl}/provas/`, { params });
   }
 
   getProva(id: number): Observable<any> {

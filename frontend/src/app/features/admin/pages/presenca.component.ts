@@ -1,13 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
 interface Presenca {
   id: number;
+  usuario_id: number;
+  aula_id: number;
   usuario_nome: string;
   aula_titulo: string;
   percentual_assistido: number;
   registrada_automaticamente: boolean;
+  tempo_total_segundos: number;
   data_acesso: string;
   data_conclusao: string;
 }
@@ -15,7 +19,7 @@ interface Presenca {
 @Component({
   selector: 'app-admin-presenca',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-container">
       <div class="page-header">
@@ -33,6 +37,7 @@ interface Presenca {
               <th>Tipo Registro</th>
               <th>Data Acesso</th>
               <th>Conclusão</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -53,6 +58,11 @@ interface Presenca {
               <td>{{ p.data_acesso | date:'dd/MM/yyyy HH:mm' }}</td>
               <td *ngIf="p.data_conclusao">{{ p.data_conclusao | date:'dd/MM/yyyy HH:mm' }}</td>
               <td *ngIf="!p.data_conclusao" style="color: #999;">-</td>
+              <td>
+                <button class="btn-editar" (click)="abrirEdicao(p)" title="Editar presença manualmente">
+                  ✏️ Editar
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -70,6 +80,49 @@ interface Presenca {
       <div class="error" *ngIf="erro">
         <p>{{ erro }}</p>
         <button (click)="carregarPresencas()">Tentar novamente</button>
+      </div>
+    </div>
+
+    <!-- Modal de Edição Manual de Presença -->
+    <div class="modal-overlay" *ngIf="presencaEmEdicao" (click)="fecharEdicao()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>✏️ Editar Presença Manualmente</h3>
+          <button class="btn-fechar" (click)="fecharEdicao()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="info-edicao">
+            <p><strong>Aluno:</strong> {{ presencaEmEdicao.usuario_nome }}</p>
+            <p><strong>Aula:</strong> {{ presencaEmEdicao.aula_titulo }}</p>
+          </div>
+          <div class="form-group">
+            <label for="percentual">Percentual Assistido (%)</label>
+            <input
+              id="percentual"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [(ngModel)]="percentualEdicao"
+              class="slider"
+            />
+            <div class="slider-value" [ngClass]="percentualEdicao >= 75 ? 'presente' : 'ausente'">
+              {{ percentualEdicao }}%
+              <span *ngIf="percentualEdicao >= 75"> — ✅ Presença registrada</span>
+              <span *ngIf="percentualEdicao < 75"> — ❌ Ausente (mín. 75%)</span>
+            </div>
+          </div>
+          <div class="aviso-manual">
+            ⚠️ Esta edição será registrada como <strong>manual</strong>.
+          </div>
+          <div class="error" *ngIf="erroEdicao">{{ erroEdicao }}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancelar" (click)="fecharEdicao()" [disabled]="salvandoEdicao">Cancelar</button>
+          <button class="btn-salvar" (click)="salvarEdicao()" [disabled]="salvandoEdicao">
+            {{ salvandoEdicao ? 'Salvando...' : '💾 Salvar' }}
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -258,12 +311,208 @@ interface Presenca {
       table { font-size: 12px; }
       th, td { padding: 10px; }
     }
+
+    .btn-editar {
+      background-color: #f39c12;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-editar:hover {
+      background-color: #d68910;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 10px;
+      width: 460px;
+      max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: #333;
+      font-size: 18px;
+    }
+
+    .btn-fechar {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #999;
+      padding: 4px 8px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    .btn-fechar:hover {
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .info-edicao {
+      background: #f8f9fa;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-edicao p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      appearance: none;
+      -webkit-appearance: none;
+      background: #ddd;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #3498db;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .slider-value {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .slider-value.presente {
+      color: #27ae60;
+    }
+
+    .slider-value.ausente {
+      color: #e74c3c;
+    }
+
+    .slider-value span {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .aviso-manual {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #856404;
+      margin-top: 16px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid #eee;
+    }
+
+    .btn-cancelar {
+      background: white;
+      color: #666;
+      border: 1px solid #ccc;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .btn-cancelar:hover:not(:disabled) {
+      background: #f5f5f5;
+    }
+
+    .btn-salvar {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .btn-salvar:hover:not(:disabled) {
+      background: #219a52;
+    }
+
+    .btn-salvar:disabled, .btn-cancelar:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   `]
 })
 export class AdminPresencaComponent implements OnInit {
   presencas: Presenca[] = [];
   carregando = false;
   erro = '';
+
+  presencaEmEdicao: Presenca | null = null;
+  percentualEdicao = 0;
+  salvandoEdicao = false;
+  erroEdicao = '';
 
   constructor(private http: HttpClient) {}
 
@@ -275,7 +524,7 @@ export class AdminPresencaComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Presenca[]>('http://localhost:8000/api/presenca').subscribe({
+    this.http.get<Presenca[]>('http://localhost:8000/api/presenca/').subscribe({
       next: (presencas) => {
         this.presencas = presencas || [];
         this.carregando = false;
@@ -290,5 +539,41 @@ export class AdminPresencaComponent implements OnInit {
 
   abrirFiltros(): void {
     alert('Filtros por curso - a implementar');
+  }
+
+  abrirEdicao(presenca: Presenca): void {
+    this.presencaEmEdicao = presenca;
+    this.percentualEdicao = presenca.percentual_assistido;
+    this.erroEdicao = '';
+  }
+
+  fecharEdicao(): void {
+    if (this.salvandoEdicao) return;
+    this.presencaEmEdicao = null;
+  }
+
+  salvarEdicao(): void {
+    if (!this.presencaEmEdicao) return;
+    this.salvandoEdicao = true;
+    this.erroEdicao = '';
+
+    this.http.put<Presenca>(
+      `http://localhost:8000/api/presenca/${this.presencaEmEdicao.id}`,
+      { percentual_assistido: this.percentualEdicao }
+    ).subscribe({
+      next: (atualizado) => {
+        const idx = this.presencas.findIndex(p => p.id === atualizado.id);
+        if (idx !== -1) {
+          this.presencas[idx] = { ...this.presencas[idx], ...atualizado };
+        }
+        this.salvandoEdicao = false;
+        this.presencaEmEdicao = null;
+      },
+      error: (error: any) => {
+        console.error('Erro ao editar presença:', error);
+        this.erroEdicao = error?.error?.detail || 'Erro ao salvar. Tente novamente.';
+        this.salvandoEdicao = false;
+      }
+    });
   }
 }

@@ -629,7 +629,7 @@ export class AdminNotasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Nota[]>('http://localhost:8000/api/notas').subscribe({
+    this.http.get<Nota[]>('http://localhost:8000/api/notas/').subscribe({
       next: (notas) => {
         // nota_final vem como string do backend (Decimal do Python)
         const normalizadas = (notas || []).map(n => ({

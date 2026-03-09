@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.database import get_db
-from app.models import Curso
-from app.schemas import CursoCreate, CursoUpdate, CursoResponse, CursoDetailResponse
+from app.models import Curso, InscricaoCurso, Usuario
+from app.schemas import CursoCreate, CursoUpdate, CursoResponse, CursoDetailResponse, InscricaoCursoResponse
+from app.routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -157,10 +159,28 @@ def delete_curso(curso_id: int, db: Session = Depends(get_db)):
     
     return None
 
-@router.post("/{curso_id}/inscrever")
-def inscrever_aluno(curso_id: int):
-    """Inscreve um aluno em um curso"""
-    return {"message": f"Inscrever em curso {curso_id} - TODO"}
+@router.post("/{curso_id}/inscrever", response_model=InscricaoCursoResponse, status_code=status.HTTP_201_CREATED)
+def inscrever_aluno(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Inscreve o usuário autenticado em um curso."""
+    curso = db.query(Curso).filter(Curso.id == curso_id, Curso.ativo == True).first()
+    if not curso:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado ou inativo")
+
+    inscricao = InscricaoCurso(usuario_id=current_user.id, curso_id=curso_id)
+    db.add(inscricao)
+    try:
+        db.commit()
+        db.refresh(inscricao)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Você já está inscrito neste curso")
+
+    return InscricaoCursoResponse.model_validate(inscricao)
+
 
 @router.get("/{curso_id}/alunos")
 def list_alunos_curso(curso_id: int):

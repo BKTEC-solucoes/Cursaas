@@ -13,6 +13,23 @@ interface Aula {
   videos?: any[];
 }
 
+interface Curso {
+  id: number;
+  nome: string;
+}
+
+interface Video {
+  id: number;
+  aula_id: number;
+  arquivo_nome: string;
+  caminho_arquivo: string;
+  duracao_segundos: number | null;
+  tamanho_bytes: number | null;
+  formato: string | null;
+  status: string;
+  data_upload: string;
+}
+
 @Component({
   selector: 'app-admin-aulas',
   standalone: true,
@@ -49,6 +66,7 @@ interface Aula {
                 </span>
               </td>
               <td class="actions">
+                <button class="btn-sm btn-view" title="Ver Aula" (click)="verAula(aula)">👁️</button>
                 <button class="btn-sm btn-edit" title="Editar" (click)="editarAula(aula)">✏️</button>
                 <button class="btn-sm btn-video" title="Upload de Vídeo" (click)="abrirUploadVideo(aula)">🎥</button>
                 <button class="btn-sm btn-delete" title="Deletar" (click)="deletarAula(aula)">🗑️</button>
@@ -70,6 +88,177 @@ interface Aula {
       <div class="error" *ngIf="erro">
         <p>{{ erro }}</p>
         <button (click)="carregarAulas()">Tentar novamente</button>
+      </div>
+
+      <!-- Modal Ver Aula -->
+      <div class="modal-overlay" *ngIf="modalVerAberto" (click)="fecharVerAula()">
+        <div class="modal-content modal-content-lg" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>👁️ Detalhes da Aula</h3>
+            <button class="btn-close" (click)="fecharVerAula()">✕</button>
+          </div>
+          <div class="modal-body" *ngIf="aulaDetalhes">
+            <div class="detalhe-info">
+              <div class="detalhe-row">
+                <span class="detalhe-label">Título</span>
+                <span class="detalhe-valor">{{ aulaDetalhes.titulo }}</span>
+              </div>
+              <div class="detalhe-row" *ngIf="aulaDetalhes.descricao">
+                <span class="detalhe-label">Descrição</span>
+                <span class="detalhe-valor">{{ aulaDetalhes.descricao }}</span>
+              </div>
+              <div class="detalhe-row">
+                <span class="detalhe-label">Data</span>
+                <span class="detalhe-valor">{{ aulaDetalhes.data_aula | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="detalhe-row" *ngIf="aulaDetalhes.duracao_minutos">
+                <span class="detalhe-label">Duração</span>
+                <span class="detalhe-valor">{{ aulaDetalhes.duracao_minutos }} minutos</span>
+              </div>
+              <div class="detalhe-row">
+                <span class="detalhe-label">Status</span>
+                <span class="detalhe-valor">
+                  <span class="badge" [ngClass]="aulaDetalhes.ativo ? 'badge-ativo' : 'badge-inativo'">
+                    {{ aulaDetalhes.ativo ? '✓ Ativa' : '✗ Inativa' }}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div class="videos-section">
+              <h4>🎥 Vídeos ({{ aulaDetalhes.videos?.length || 0 }})</h4>
+
+              <div class="sem-video" *ngIf="!aulaDetalhes.videos || aulaDetalhes.videos.length === 0">
+                <p>Nenhum vídeo enviado para esta aula.</p>
+                <button class="btn-primary" style="margin-top:8px;" (click)="abrirUploadVideo(aulaDetalhes!); fecharVerAula()">🎥 Enviar Vídeo</button>
+              </div>
+
+              <div class="video-item" *ngFor="let v of aulaDetalhes.videos">
+                <div class="video-player-wrap">
+                  <video controls [src]="getVideoUrl(v.caminho_arquivo)" class="video-player" preload="metadata">
+                    Seu navegador não suporta reprodução de vídeo.
+                  </video>
+                </div>
+                <div class="video-meta">
+                  <span><strong>Arquivo:</strong> {{ v.arquivo_nome }}</span>
+                  <span *ngIf="v.tamanho_bytes"><strong>Tamanho:</strong> {{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span>
+                  <span *ngIf="v.duracao_segundos"><strong>Duração:</strong> {{ formatarDuracao(v.duracao_segundos) }}</span>
+                  <span *ngIf="v.formato"><strong>Formato:</strong> {{ v.formato }}</span>
+                  <span><strong>Upload:</strong> {{ v.data_upload | date:'dd/MM/yyyy HH:mm' }}</span>
+                  <span class="badge" [ngClass]="v.status === 'ativo' ? 'badge-ativo' : 'badge-inativo'">{{ v.status }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="loading" *ngIf="carregandoDetalhes" style="padding: 40px;">
+            <div class="spinner"></div>
+            <p>Carregando detalhes...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Nova Aula -->
+      <div class="modal-overlay" *ngIf="modalNovaAulaAberto" (click)="fecharNovaAula()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>📚 Nova Aula</h3>
+            <button class="btn-close" (click)="fecharNovaAula()">✕</button>
+          </div>
+          <div class="modal-body">
+            <form (ngSubmit)="salvarNovaAula()">
+              <div class="form-row">
+                <label>Curso *</label>
+                <select [(ngModel)]="formNovaAula.curso_id" name="curso_id" required>
+                  <option [ngValue]="null" disabled>Selecione um curso...</option>
+                  <option *ngFor="let c of cursos" [ngValue]="c.id">{{ c.nome }}</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>Título *</label>
+                <input type="text" [(ngModel)]="formNovaAula.titulo" name="titulo" required placeholder="Ex: Aula 1 - Introdução" />
+              </div>
+              <div class="form-row">
+                <label>Descrição</label>
+                <textarea [(ngModel)]="formNovaAula.descricao" name="descricao" placeholder="Conteúdo da aula..."></textarea>
+              </div>
+              <div class="form-row">
+                <label>Data e Hora da Aula *</label>
+                <input type="datetime-local" [(ngModel)]="formNovaAula.data_aula" name="data_aula" required />
+              </div>
+              <div class="form-row">
+                <label>Duração (minutos)</label>
+                <input type="number" [(ngModel)]="formNovaAula.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+              </div>
+              <div class="form-error" *ngIf="erroNovaAula">{{ erroNovaAula }}</div>
+              <div class="modal-footer" style="padding: 16px 0 0 0; border-top: 1px solid #eee; margin-top: 16px;">
+                <button type="button" class="btn-cancelar" (click)="fecharNovaAula()" [disabled]="criandoNovaAula">Cancelar</button>
+                <button type="submit" class="btn-enviar" [disabled]="criandoNovaAula">{{ criandoNovaAula ? 'Salvando...' : '💾 Salvar Aula' }}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Editar Aula -->
+      <div class="modal-overlay" *ngIf="modalEditarAberto" (click)="fecharEdicaoAula()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>✏️ Editar Aula</h3>
+            <button class="btn-close" (click)="fecharEdicaoAula()">✕</button>
+          </div>
+          <div class="modal-body">
+
+            <!-- Seção de Vídeo Atual -->
+            <div class="video-atual-section" *ngIf="aulaEmEdicao && aulaEmEdicao.videos && aulaEmEdicao.videos.length > 0">
+              <h4>🎥 Vídeo Atual</h4>
+              <div class="video-atual-item" *ngFor="let v of aulaEmEdicao.videos">
+                <div class="video-atual-info">
+                  <span class="video-nome">📹 {{ v.arquivo_nome }}</span>
+                  <span class="video-tamanho" *ngIf="v.tamanho_bytes">{{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span>
+                </div>
+                <button class="btn-excluir-video"
+                  (click)="excluirVideo(aulaEmEdicao!, v)"
+                  [disabled]="excluindoVideoId === v.id"
+                  title="Excluir vídeo">
+                  {{ excluindoVideoId === v.id ? 'Excluindo...' : '🗑️ Excluir Vídeo' }}
+                </button>
+              </div>
+              <div class="form-error" *ngIf="erroExcluirVideo">{{ erroExcluirVideo }}</div>
+              <hr class="divisor" />
+            </div>
+
+            <form (ngSubmit)="salvarEdicaoAula()">
+              <div class="form-row">
+                <label>Título *</label>
+                <input type="text" [(ngModel)]="formEdicao.titulo" name="titulo" required placeholder="Título da aula" />
+              </div>
+              <div class="form-row">
+                <label>Descrição</label>
+                <textarea [(ngModel)]="formEdicao.descricao" name="descricao" placeholder="Conteúdo da aula..."></textarea>
+              </div>
+              <div class="form-row">
+                <label>Data e Hora da Aula *</label>
+                <input type="datetime-local" [(ngModel)]="formEdicao.data_aula" name="data_aula" required />
+              </div>
+              <div class="form-row">
+                <label>Duração (minutos)</label>
+                <input type="number" [(ngModel)]="formEdicao.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+              </div>
+              <div class="form-row">
+                <label>Status</label>
+                <select [(ngModel)]="formEdicao.ativo" name="ativo">
+                  <option [ngValue]="true">Ativa</option>
+                  <option [ngValue]="false">Inativa</option>
+                </select>
+              </div>
+              <div class="form-error" *ngIf="erroEdicaoAula">{{ erroEdicaoAula }}</div>
+              <div class="modal-footer" style="padding: 16px 0 0 0; border-top: 1px solid #eee; margin-top: 16px;">
+                <button type="button" class="btn-cancelar" (click)="fecharEdicaoAula()" [disabled]="salvandoEdicao">Cancelar</button>
+                <button type="submit" class="btn-enviar" [disabled]="salvandoEdicao">{{ salvandoEdicao ? 'Salvando...' : '💾 Salvar' }}</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
 
       <!-- Modal Upload Vídeo -->
@@ -250,6 +439,7 @@ interface Aula {
     .btn-edit { color: #3498db; }
     .btn-video { color: #e74c3c; }
     .btn-delete { color: #95a5a6; }
+    .btn-view { color: #8e44ad; }
 
     .no-data {
       background: white;
@@ -303,6 +493,44 @@ interface Aula {
       font-weight: 600;
     }
 
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 14px;
+    }
+
+    .form-row label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .form-row input,
+    .form-row textarea,
+    .form-row select {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-row textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .form-error {
+      margin-top: 4px;
+      color: #721c24;
+      background: #f8d7da;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #f5c6cb;
+      font-size: 13px;
+    }
+
     /* MODAL STYLES */
     .modal-overlay {
       position: fixed;
@@ -325,6 +553,10 @@ interface Aula {
       width: 90%;
       max-height: 90vh;
       overflow-y: auto;
+    }
+
+    .modal-content-lg {
+      max-width: 780px;
     }
 
     .modal-header {
@@ -367,6 +599,162 @@ interface Aula {
       margin: 0 0 20px 0;
       color: #666;
       font-size: 14px;
+    }
+
+    .detalhe-info {
+      background: #f8f9fa;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .detalhe-row {
+      display: flex;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    .detalhe-row:last-child {
+      border-bottom: none;
+    }
+
+    .detalhe-label {
+      font-weight: 600;
+      color: #555;
+      min-width: 90px;
+    }
+
+    .detalhe-valor {
+      color: #333;
+    }
+
+    .videos-section h4 {
+      margin: 0 0 14px 0;
+      color: #333;
+      font-size: 16px;
+    }
+
+    .sem-video {
+      background: #f8f9fa;
+      border-radius: 6px;
+      padding: 24px;
+      text-align: center;
+      color: #999;
+    }
+
+    .video-item {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .video-player-wrap {
+      background: #000;
+    }
+
+    .video-player {
+      width: 100%;
+      max-height: 360px;
+      display: block;
+    }
+
+    .video-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 24px;
+      padding: 12px 14px;
+      background: #f8f9fa;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-ativo {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .badge-inativo {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .video-atual-section {
+      margin-bottom: 20px;
+    }
+
+    .video-atual-section h4 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      color: #333;
+    }
+
+    .video-atual-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 10px 14px;
+      flex-wrap: wrap;
+    }
+
+    .video-atual-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .video-nome {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .video-tamanho {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .btn-excluir-video {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .btn-excluir-video:hover:not(:disabled) {
+      background: #c82333;
+    }
+
+    .btn-excluir-video:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .divisor {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 16px 0;
     }
 
     .upload-area {
@@ -554,8 +942,42 @@ interface Aula {
 })
 export class AdminAulasComponent implements OnInit {
   aulas: Aula[] = [];
+  cursos: Curso[] = [];
   carregando = false;
   erro = '';
+
+  // Modal Ver Aula
+  modalVerAberto = false;
+  aulaDetalhes: (Aula & { videos: Video[]; ativo: boolean; }) | null = null;
+  carregandoDetalhes = false;
+
+  // Modal Nova Aula
+  modalNovaAulaAberto = false;
+  criandoNovaAula = false;
+  erroNovaAula = '';
+  formNovaAula: { curso_id: number | null; titulo: string; descricao: string; data_aula: string; duracao_minutos: number | null } = {
+    curso_id: null,
+    titulo: '',
+    descricao: '',
+    data_aula: '',
+    duracao_minutos: null
+  };
+
+  excluindoVideoId: number | null = null;
+  erroExcluirVideo = '';
+
+  // Modal Editar Aula
+  modalEditarAberto = false;
+  aulaEmEdicao: Aula | null = null;
+  salvandoEdicao = false;
+  erroEdicaoAula = '';
+  formEdicao: { titulo: string; descricao: string; data_aula: string; duracao_minutos: number | null; ativo: boolean } = {
+    titulo: '',
+    descricao: '',
+    data_aula: '',
+    duracao_minutos: null,
+    ativo: true
+  };
 
   // Modal Upload
   modalUploadAberto = false;
@@ -571,13 +993,14 @@ export class AdminAulasComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregarAulas();
+    this.carregarCursos();
   }
 
   carregarAulas(): void {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Aula[]>('http://localhost:8000/api/aulas').subscribe({
+    this.http.get<Aula[]>('http://localhost:8000/api/aulas/').subscribe({
       next: (aulas) => {
         this.aulas = aulas || [];
         this.carregando = false;
@@ -590,12 +1013,177 @@ export class AdminAulasComponent implements OnInit {
     });
   }
 
+  verAula(aula: Aula): void {
+    this.aulaDetalhes = null;
+    this.carregandoDetalhes = true;
+    this.modalVerAberto = true;
+
+    this.http.get<any>(`http://localhost:8000/api/aulas/${aula.id}`).subscribe({
+      next: (detalhe) => {
+        this.aulaDetalhes = detalhe;
+        this.carregandoDetalhes = false;
+      },
+      error: () => {
+        this.carregandoDetalhes = false;
+      }
+    });
+  }
+
+  fecharVerAula(): void {
+    this.modalVerAberto = false;
+    this.aulaDetalhes = null;
+  }
+
+  getVideoUrl(caminhoArquivo: string): string {
+    // caminho_arquivo é o path completo no servidor (ex: uploads\videos\aula_1_video_123.mp4)
+    // Extrai só o nome do arquivo e serve pelo endpoint estático /uploads/videos/
+    const filename = caminhoArquivo.replace(/\\/g, '/').split('/').pop() || '';
+    return `http://localhost:8000/uploads/videos/${filename}`;
+  }
+
+  formatarDuracao(segundos: number): string {
+    const m = Math.floor(segundos / 60);
+    const s = segundos % 60;
+    return `${m}m ${s.toString().padStart(2, '0')}s`;
+  }
+
+  carregarCursos(): void {
+    this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
+      next: (cursos) => { this.cursos = cursos || []; },
+      error: () => {}
+    });
+  }
+
   abrirFormulario(): void {
-    alert('Formulário de nova aula - a implementar');
+    this.erroNovaAula = '';
+    this.formNovaAula = { curso_id: null, titulo: '', descricao: '', data_aula: '', duracao_minutos: null };
+    this.modalNovaAulaAberto = true;
+  }
+
+  fecharNovaAula(): void {
+    if (this.criandoNovaAula) return;
+    this.modalNovaAulaAberto = false;
+  }
+
+  salvarNovaAula(): void {
+    if (!this.formNovaAula.curso_id) {
+      this.erroNovaAula = 'Selecione um curso.';
+      return;
+    }
+    if (!this.formNovaAula.titulo.trim()) {
+      this.erroNovaAula = 'O título da aula é obrigatório.';
+      return;
+    }
+    if (!this.formNovaAula.data_aula) {
+      this.erroNovaAula = 'A data e hora da aula são obrigatórias.';
+      return;
+    }
+
+    this.criandoNovaAula = true;
+    this.erroNovaAula = '';
+
+    const payload = {
+      curso_id: this.formNovaAula.curso_id,
+      titulo: this.formNovaAula.titulo.trim(),
+      descricao: this.formNovaAula.descricao.trim() || null,
+      data_aula: new Date(this.formNovaAula.data_aula).toISOString(),
+      duracao_minutos: this.formNovaAula.duracao_minutos || null
+    };
+
+    this.http.post('http://localhost:8000/api/aulas/', payload).subscribe({
+      next: () => {
+        this.criandoNovaAula = false;
+        this.modalNovaAulaAberto = false;
+        this.carregarAulas();
+      },
+      error: (err: any) => {
+        console.error('Erro ao criar aula:', err);
+        this.criandoNovaAula = false;
+        this.erroNovaAula = err?.error?.detail || 'Erro ao criar aula. Tente novamente.';
+      }
+    });
+  }
+
+  excluirVideo(aula: Aula, video: any): void {
+    if (!confirm(`Excluir o vídeo "${video.arquivo_nome}"? Esta ação não pode ser desfeita.`)) return;
+
+    this.excluindoVideoId = video.id;
+    this.erroExcluirVideo = '';
+
+    this.http.delete(`http://localhost:8000/api/aulas/${aula.id}/video/${video.id}`).subscribe({
+      next: () => {
+        this.excluindoVideoId = null;
+        // Remover vídeo da lista local da aula em edição
+        if (this.aulaEmEdicao?.videos) {
+          this.aulaEmEdicao.videos = this.aulaEmEdicao.videos.filter((v: any) => v.id !== video.id);
+        }
+        // Atualizar tabela principal
+        this.carregarAulas();
+      },
+      error: (err: any) => {
+        this.excluindoVideoId = null;
+        this.erroExcluirVideo = err?.error?.detail || 'Erro ao excluir vídeo. Tente novamente.';
+      }
+    });
   }
 
   editarAula(aula: Aula): void {
-    alert('Editar aula: ' + aula.titulo + ' - a implementar');
+    this.aulaEmEdicao = aula;
+    this.erroEdicaoAula = '';
+    // Converter data ISO para formato datetime-local (YYYY-MM-DDTHH:mm)
+    const dataLocal = aula.data_aula
+      ? new Date(aula.data_aula).toISOString().slice(0, 16)
+      : '';
+    this.formEdicao = {
+      titulo: aula.titulo,
+      descricao: aula.descricao || '',
+      data_aula: dataLocal,
+      duracao_minutos: aula.duracao_minutos || null,
+      ativo: true
+    };
+    this.modalEditarAberto = true;
+  }
+
+  fecharEdicaoAula(): void {
+    if (this.salvandoEdicao) return;
+    this.modalEditarAberto = false;
+    this.aulaEmEdicao = null;
+  }
+
+  salvarEdicaoAula(): void {
+    if (!this.formEdicao.titulo.trim()) {
+      this.erroEdicaoAula = 'O título da aula é obrigatório.';
+      return;
+    }
+    if (!this.formEdicao.data_aula) {
+      this.erroEdicaoAula = 'A data e hora da aula são obrigatórias.';
+      return;
+    }
+
+    this.salvandoEdicao = true;
+    this.erroEdicaoAula = '';
+
+    const payload = {
+      titulo: this.formEdicao.titulo.trim(),
+      descricao: this.formEdicao.descricao.trim() || null,
+      data_aula: new Date(this.formEdicao.data_aula).toISOString(),
+      duracao_minutos: this.formEdicao.duracao_minutos || null,
+      ativo: this.formEdicao.ativo
+    };
+
+    this.http.put(`http://localhost:8000/api/aulas/${this.aulaEmEdicao!.id}`, payload).subscribe({
+      next: () => {
+        this.salvandoEdicao = false;
+        this.modalEditarAberto = false;
+        this.aulaEmEdicao = null;
+        this.carregarAulas();
+      },
+      error: (err: any) => {
+        console.error('Erro ao editar aula:', err);
+        this.salvandoEdicao = false;
+        this.erroEdicaoAula = err?.error?.detail || 'Erro ao salvar. Tente novamente.';
+      }
+    });
   }
 
   deletarAula(aula: Aula): void {

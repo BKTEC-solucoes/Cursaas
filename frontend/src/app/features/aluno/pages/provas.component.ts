@@ -256,7 +256,7 @@ export class AlunoProvasComponent implements OnInit {
 
     // Para aluno, mostrar todas as provas de seus cursos
     // Aqui simplificado para mostrar todas
-    this.http.get<Prova[]>('http://localhost:8000/api/provas').subscribe({
+    this.http.get<Prova[]>('http://localhost:8000/api/provas/').subscribe({
       next: (provas) => {
         this.provas = provas;
         this.carregando = false;

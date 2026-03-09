@@ -24,9 +24,23 @@ interface Curso {
         <button class="btn-primary" (click)="abrirFormulario()">+ Novo Curso</button>
       </div>
 
+      <!-- Modal de confirmação de exclusão -->
+      <div class="modal-overlay" *ngIf="cursoParaDeletar" (click)="cancelarDelecao()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <h3>⚠️ Confirmar Exclusão</h3>
+          <p>Tem certeza que deseja excluir o curso <strong>{{ cursoParaDeletar.nome }}</strong>?</p>
+          <p class="modal-aviso">Esta ação não pode ser desfeita. Todas as aulas, provas e inscrições associadas serão removidas.</p>
+          <div class="modal-actions">
+            <button class="btn-danger" (click)="confirmarDelecao()" [disabled]="deletando">{{ deletando ? 'Deletando...' : '🗑️ Sim, deletar' }}</button>
+            <button class="btn-sm" (click)="cancelarDelecao()" [disabled]="deletando">Cancelar</button>
+          </div>
+          <div class="form-error" *ngIf="deleteErro">{{ deleteErro }}</div>
+        </div>
+      </div>
+
       <div class="form-card" *ngIf="formAberto">
-        <h3>Novo Curso</h3>
-        <form (ngSubmit)="criarCurso()">
+        <h3>{{ editandoId ? '✏️ Editar Curso' : 'Novo Curso' }}</h3>
+        <form (ngSubmit)="salvarCurso()">
           <div class="form-row">
             <label>Nome</label>
             <input type="text" [(ngModel)]="form.nome" name="nome" required />
@@ -42,8 +56,16 @@ interface Curso {
             <input type="number" [(ngModel)]="form.percentual_presenca_minima" name="percentual_presenca_minima" min="0" max="100" />
           </div>
 
+          <div class="form-row" *ngIf="editandoId">
+            <label>Status</label>
+            <select [(ngModel)]="form.ativo" name="ativo">
+              <option [ngValue]="true">Ativo</option>
+              <option [ngValue]="false">Inativo</option>
+            </select>
+          </div>
+
           <div class="form-actions">
-            <button type="submit" class="btn-primary">Salvar</button>
+            <button type="submit" class="btn-primary" [disabled]="criando">{{ criando ? 'Salvando...' : 'Salvar' }}</button>
             <button type="button" class="btn-sm" (click)="cancelarFormulario()">Cancelar</button>
           </div>
 
@@ -75,12 +97,43 @@ interface Curso {
                 </span>
               </td>
               <td class="actions">
-                <button class="btn-sm btn-edit" title="Editar">✏️</button>
-                <button class="btn-sm btn-delete" title="Deletar">🗑️</button>
+                <button class="btn-sm btn-aula" title="Nova Aula" (click)="abrirNovaAula(curso)">📚 Nova Aula</button>
+                <button class="btn-sm btn-edit" title="Editar" (click)="editarCurso(curso)">✏️</button>
+                <button class="btn-sm btn-delete" title="Deletar" (click)="abrirDelecao(curso)">🗑️</button>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Modal Nova Aula -->
+      <div class="modal-overlay" *ngIf="modalAulaAberto" (click)="fecharNovaAula()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <h3>📚 Nova Aula — {{ cursoSelecionado?.nome }}</h3>
+          <form (ngSubmit)="salvarAula()">
+            <div class="form-row">
+              <label>Título *</label>
+              <input type="text" [(ngModel)]="formAula.titulo" name="titulo" required placeholder="Ex: Aula 1 - Introdução" />
+            </div>
+            <div class="form-row">
+              <label>Descrição</label>
+              <textarea [(ngModel)]="formAula.descricao" name="descricao" placeholder="Conteúdo da aula..."></textarea>
+            </div>
+            <div class="form-row">
+              <label>Data e Hora da Aula *</label>
+              <input type="datetime-local" [(ngModel)]="formAula.data_aula" name="data_aula" required />
+            </div>
+            <div class="form-row">
+              <label>Duração (minutos)</label>
+              <input type="number" [(ngModel)]="formAula.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+            </div>
+            <div class="form-error" *ngIf="erroAula">{{ erroAula }}</div>
+            <div class="modal-actions" style="margin-top: 16px;">
+              <button type="submit" class="btn-primary" [disabled]="criandoAula">{{ criandoAula ? 'Salvando...' : '💾 Salvar Aula' }}</button>
+              <button type="button" class="btn-sm" (click)="fecharNovaAula()" [disabled]="criandoAula">Cancelar</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div class="no-data" *ngIf="cursos.length === 0 && !carregando">
@@ -224,6 +277,24 @@ interface Curso {
       color: #e74c3c;
     }
 
+    .btn-aula {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.2s;
+    }
+
+    .btn-aula:hover {
+      background-color: #219a52;
+      transform: none;
+    }
+
     .no-data {
       background: white;
       padding: 60px 20px;
@@ -308,6 +379,13 @@ interface Curso {
       align-items: center;
     }
 
+    .form-row select {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
     .form-error {
       margin-top: 10px;
       color: #721c24;
@@ -315,6 +393,65 @@ interface Curso {
       padding: 8px;
       border-radius: 4px;
       border: 1px solid #f5c6cb;
+    }
+
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background-color: #c82333;
+    }
+
+    .btn-danger:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .modal-card h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .modal-aviso {
+      font-size: 13px;
+      color: #721c24;
+      background: #f8d7da;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
     }
 
     @media (max-width: 768px) {
@@ -344,11 +481,26 @@ export class AdminCursosComponent implements OnInit {
   formAberto = false;
   formErro = '';
   criando = false;
+  editandoId: number | null = null;
+  cursoParaDeletar: Curso | null = null;
+  deletando = false;
+  deleteErro = '';
   form = {
     nome: '',
     descricao: '',
     percentual_presenca_minima: 75,
     ativo: true
+  };
+
+  modalAulaAberto = false;
+  cursoSelecionado: Curso | null = null;
+  criandoAula = false;
+  erroAula = '';
+  formAula = {
+    titulo: '',
+    descricao: '',
+    data_aula: '',
+    duracao_minutos: null as number | null
   };
 
   constructor(private http: HttpClient) {}
@@ -361,7 +513,7 @@ export class AdminCursosComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Curso[]>('http://localhost:8000/api/cursos').subscribe({
+    this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
         this.carregando = false;
@@ -376,6 +528,7 @@ export class AdminCursosComponent implements OnInit {
 
   abrirFormulario(): void {
     this.formErro = '';
+    this.editandoId = null;
     this.form = {
       nome: '',
       descricao: '',
@@ -385,12 +538,26 @@ export class AdminCursosComponent implements OnInit {
     this.formAberto = true;
   }
 
+  editarCurso(curso: Curso): void {
+    this.formErro = '';
+    this.editandoId = curso.id;
+    this.form = {
+      nome: curso.nome,
+      descricao: curso.descricao || '',
+      percentual_presenca_minima: 75,
+      ativo: curso.ativo
+    };
+    this.formAberto = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   cancelarFormulario(): void {
     this.formAberto = false;
     this.formErro = '';
+    this.editandoId = null;
   }
 
-  criarCurso(): void {
+  salvarCurso(): void {
     if (!this.form.nome || this.form.nome.trim() === '') {
       this.formErro = 'O nome do curso é obrigatório.';
       return;
@@ -406,20 +573,110 @@ export class AdminCursosComponent implements OnInit {
       ativo: this.form.ativo
     };
 
-    this.http.post('http://localhost:8000/api/cursos', payload).subscribe({
-      next: (res: any) => {
-        this.criando = false;
-        this.formAberto = false;
+    if (this.editandoId) {
+      this.http.put(`http://localhost:8000/api/cursos/${this.editandoId}`, payload).subscribe({
+        next: () => {
+          this.criando = false;
+          this.formAberto = false;
+          this.editandoId = null;
+          this.carregarCursos();
+        },
+        error: (err: any) => {
+          console.error('Erro ao editar curso:', err);
+          this.criando = false;
+          this.formErro = err?.error?.detail || 'Erro ao editar curso. Tente novamente.';
+        }
+      });
+    } else {
+      this.http.post('http://localhost:8000/api/cursos/', payload).subscribe({
+        next: () => {
+          this.criando = false;
+          this.formAberto = false;
+          this.carregarCursos();
+        },
+        error: (err: any) => {
+          console.error('Erro ao criar curso:', err);
+          this.criando = false;
+          this.formErro = err?.error?.detail || 'Erro ao criar curso. Tente novamente.';
+        }
+      });
+    }
+  }
+
+  abrirNovaAula(curso: Curso): void {
+    this.cursoSelecionado = curso;
+    this.erroAula = '';
+    this.formAula = { titulo: '', descricao: '', data_aula: '', duracao_minutos: null };
+    this.modalAulaAberto = true;
+  }
+
+  fecharNovaAula(): void {
+    if (this.criandoAula) return;
+    this.modalAulaAberto = false;
+    this.cursoSelecionado = null;
+  }
+
+  salvarAula(): void {
+    if (!this.formAula.titulo.trim()) {
+      this.erroAula = 'O título da aula é obrigatório.';
+      return;
+    }
+    if (!this.formAula.data_aula) {
+      this.erroAula = 'A data e hora da aula são obrigatórias.';
+      return;
+    }
+
+    this.criandoAula = true;
+    this.erroAula = '';
+
+    const payload: any = {
+      curso_id: this.cursoSelecionado!.id,
+      titulo: this.formAula.titulo.trim(),
+      descricao: this.formAula.descricao.trim() || null,
+      data_aula: new Date(this.formAula.data_aula).toISOString(),
+      duracao_minutos: this.formAula.duracao_minutos || null
+    };
+
+    this.http.post('http://localhost:8000/api/aulas/', payload).subscribe({
+      next: () => {
+        this.criandoAula = false;
+        this.modalAulaAberto = false;
+        this.cursoSelecionado = null;
+      },
+      error: (err: any) => {
+        console.error('Erro ao criar aula:', err);
+        this.criandoAula = false;
+        this.erroAula = err?.error?.detail || 'Erro ao criar aula. Tente novamente.';
+      }
+    });
+  }
+
+  abrirDelecao(curso: Curso): void {
+    this.deleteErro = '';
+    this.cursoParaDeletar = curso;
+  }
+
+  cancelarDelecao(): void {
+    if (this.deletando) return;
+    this.cursoParaDeletar = null;
+    this.deleteErro = '';
+  }
+
+  confirmarDelecao(): void {
+    if (!this.cursoParaDeletar) return;
+    this.deletando = true;
+    this.deleteErro = '';
+
+    this.http.delete(`http://localhost:8000/api/cursos/${this.cursoParaDeletar.id}`).subscribe({
+      next: () => {
+        this.deletando = false;
+        this.cursoParaDeletar = null;
         this.carregarCursos();
       },
       error: (err: any) => {
-        console.error('Erro ao criar curso:', err);
-        this.criando = false;
-        if (err?.error?.detail) {
-          this.formErro = err.error.detail;
-        } else {
-          this.formErro = 'Erro ao criar curso. Tente novamente.';
-        }
+        console.error('Erro ao deletar curso:', err);
+        this.deletando = false;
+        this.deleteErro = err?.error?.detail || 'Erro ao deletar curso. Tente novamente.';
       }
     });
   }

@@ -154,6 +154,9 @@ class PresencaUpdate(BaseModel):
     percentual_assistido: int = Field(ge=0, le=100)
     tempo_total_segundos: int = Field(ge=0)
 
+class PresencaManualUpdate(BaseModel):
+    percentual_assistido: int = Field(ge=0, le=100, description="Percentual de presença a definir manualmente (0-100)")
+
 class PresencaResponse(BaseModel):
     id: int
     usuario_id: int
