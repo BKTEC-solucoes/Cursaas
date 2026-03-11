@@ -1,7 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+
+interface CursoEnrollado {
+  id: number;
+  nome: string;
+}
 
 interface Aula {
   id: number;
@@ -10,6 +17,7 @@ interface Aula {
   data_aula: string;
   duracao_minutos: number;
   curso_id: number;
+  curso_nome?: string;
   videos?: any[];
 }
 
@@ -30,6 +38,8 @@ interface Aula {
             <h3>{{ aula.titulo }}</h3>
             <span class="duration">⏱ {{ aula.duracao_minutos }}min</span>
           </div>
+
+          <div class="curso-tag" *ngIf="aula.curso_nome">📚 {{ aula.curso_nome }}</div>
 
           <p class="aula-description">{{ aula.descricao }}</p>
 
@@ -54,8 +64,8 @@ interface Aula {
         </div>
       </div>
 
-      <div class="no-aulas" *ngIf="aulas.length === 0 && !carregando">
-        <p>Nenhuma aula disponível no momento.</p>
+      <div class="no-aulas" *ngIf="aulas.length === 0 && !carregando && !erro">
+        <p>Nenhuma aula encontrada para os cursos em que você está inscrito.</p>
       </div>
 
       <div class="loading" *ngIf="carregando">
@@ -136,6 +146,13 @@ interface Aula {
       font-size: 12px;
       color: #666;
       white-space: nowrap;
+    }
+
+    .curso-tag {
+      font-size: 11px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 10px;
     }
 
     .aula-description {
@@ -265,24 +282,72 @@ export class AulasListaComponent implements OnInit {
   carregando = false;
   erro = '';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private auth: AuthService) {}
 
   ngOnInit(): void {
     this.carregarAulas();
   }
 
+  private getHeaders(): HttpHeaders {
+    const token = this.auth.getToken();
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
   carregarAulas(): void {
+    const user = this.auth.getCurrentUser();
+    if (!user) {
+      this.erro = 'Usuário não autenticado.';
+      return;
+    }
+
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Aula[]>('http://localhost:8000/api/aulas/').subscribe({
-      next: (aulas) => {
-        this.aulas = aulas || [];
-        this.carregando = false;
+    // 1. Buscar cursos em que o aluno está inscrito
+    this.http.get<CursoEnrollado[]>(
+      `http://localhost:8000/api/alunos/${user.id}/cursos`,
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: (cursos) => {
+        if (cursos.length === 0) {
+          this.aulas = [];
+          this.carregando = false;
+          return;
+        }
+
+        // 2. Buscar aulas de cada curso em paralelo
+        const requests = cursos.map(curso =>
+          this.http.get<Aula[]>(
+            `http://localhost:8000/api/aulas/?curso_id=${curso.id}&limit=200`,
+            { headers: this.getHeaders() }
+          )
+        );
+
+        forkJoin(requests).subscribe({
+          next: (resultados) => {
+            // Mesclar, atribuir nome do curso e ordenar por data
+            const todas: Aula[] = [];
+            resultados.forEach((aulasDosCurso, idx) => {
+              aulasDosCurso.forEach(a => {
+                a.curso_nome = cursos[idx].nome;
+                todas.push(a);
+              });
+            });
+            // Remover duplicatas por id
+            const mapa = new Map<number, Aula>();
+            todas.forEach(a => mapa.set(a.id, a));
+            this.aulas = Array.from(mapa.values())
+              .sort((a, b) => new Date(a.data_aula).getTime() - new Date(b.data_aula).getTime());
+            this.carregando = false;
+          },
+          error: () => {
+            this.erro = 'Erro ao carregar aulas. Tente novamente.';
+            this.carregando = false;
+          }
+        });
       },
-      error: (error: any) => {
-        console.error('Erro ao carregar aulas:', error);
-        this.erro = 'Erro ao carregar aulas. Tente novamente.';
+      error: () => {
+        this.erro = 'Erro ao carregar cursos inscritos.';
         this.carregando = false;
       }
     });

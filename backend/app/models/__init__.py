@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Enum, ForeignKey, DECIMAL, BigInteger, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Text, Enum, ForeignKey, DECIMAL, BigInteger, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -29,6 +29,20 @@ class Usuario(Base):
     ativo = Column(Boolean, default=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Dados pessoais
+    data_nascimento = Column(Date, nullable=True)
+    sexo = Column(String(20), nullable=True)
+    cpf_rg = Column(String(30), nullable=True, unique=True, index=True)
+    # Endereço e contato
+    endereco = Column(String(500), nullable=True)
+    cep = Column(String(10), nullable=True)
+    telefone = Column(String(20), nullable=True)
+    # Responsável
+    nome_responsavel = Column(String(255), nullable=True)
+    # Dados escolares
+    numero_matricula = Column(String(50), nullable=True, unique=True, index=True)
+    turma = Column(String(100), nullable=True)
+    historico_escolar = Column(Text, nullable=True)
     
     # Relacionamentos
     inscricoes = relationship("InscricaoCurso", back_populates="usuario", cascade="all, delete-orphan")

@@ -8,6 +8,7 @@ import { AdminProvaFormComponent } from './pages/prova-form.component';
 import { AdminProvaResultadosComponent } from './pages/prova-resultados.component';
 import { AdminNotasComponent } from './pages/notas.component';
 import { AdminPresencaComponent } from './pages/presenca.component';
+import { AdminAlunosComponent } from './pages/alunos.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -49,6 +50,10 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'presenca',
         component: AdminPresencaComponent
+      },
+      {
+        path: 'alunos',
+        component: AdminAlunosComponent
       },
       {
         path: '',

@@ -37,6 +37,9 @@ import { AuthService } from '../../../core/services/auth.service';
             <a routerLink="/admin/presenca" routerLinkActive="active">
               <span class="icon">✓</span>Presença
             </a>
+            <a routerLink="/admin/alunos" routerLinkActive="active">
+              <span class="icon">👤</span>Alunos
+            </a>
           </nav>
         </div>
       </header>

@@ -1,8 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { ApiService } from '../../../shared/services/api.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+
+interface CursoEnrollado {
+  id: number;
+  nome: string;
+}
 
 interface Prova {
   id: number;
@@ -11,6 +17,8 @@ interface Prova {
   data_inicio: string;
   data_fim: string;
   curso_id: number;
+  curso_nome?: string;
+  total_questoes?: number;
   ativo: boolean;
 }
 
@@ -22,10 +30,18 @@ interface Prova {
     <div class="page-container">
       <div class="page-header">
         <h2>Minhas Provas</h2>
-        <p class="page-subtitle">Responda as provas do seu curso</p>
+        <p class="page-subtitle">Provas dos cursos em que você está inscrito</p>
       </div>
 
-      <div class="provas-grid" *ngIf="provas.length > 0">
+      <div class="loading" *ngIf="carregando">
+        <p>Carregando provas...</p>
+      </div>
+
+      <div class="error" *ngIf="erro">
+        <p>{{ erro }}</p>
+      </div>
+
+      <div class="provas-grid" *ngIf="!carregando && provas.length > 0">
         <div class="prova-card" *ngFor="let prova of provas" [class.disabled]="!isProvaAvailable(prova)">
           <div class="prova-header">
             <h3>{{ prova.titulo }}</h3>
@@ -33,6 +49,8 @@ interface Prova {
               {{ getStatusLabel(prova) }}
             </span>
           </div>
+
+          <div class="curso-tag" *ngIf="prova.curso_nome">📚 {{ prova.curso_nome }}</div>
 
           <p class="prova-description">{{ prova.descricao }}</p>
 
@@ -44,6 +62,10 @@ interface Prova {
             <div class="date-item">
               <label>Fim:</label>
               <span>{{ prova.data_fim | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="date-item" *ngIf="prova.total_questoes">
+              <label>Questões:</label>
+              <span>{{ prova.total_questoes }}</span>
             </div>
           </div>
 
@@ -57,16 +79,8 @@ interface Prova {
         </div>
       </div>
 
-      <div class="no-provas" *ngIf="provas.length === 0">
-        <p>Nenhuma prova disponível no momento.</p>
-      </div>
-
-      <div class="loading" *ngIf="carregando">
-        <p>Carregando provas...</p>
-      </div>
-
-      <div class="error" *ngIf="erro">
-        <p>{{ erro }}</p>
+      <div class="no-provas" *ngIf="!carregando && !erro && provas.length === 0">
+        <p>Nenhuma prova encontrada para os cursos em que você está inscrito.</p>
       </div>
     </div>
   `,
@@ -214,6 +228,13 @@ interface Prova {
       cursor: not-allowed;
     }
 
+    .curso-tag {
+      font-size: 11px;
+      color: #667eea;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
     .no-provas {
       text-align: center;
       padding: 40px;
@@ -244,26 +265,65 @@ export class AlunoProvasComponent implements OnInit {
   carregando = false;
   erro = '';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private auth: AuthService) {}
 
   ngOnInit(): void {
     this.carregarProvas();
   }
 
+  private getHeaders(): HttpHeaders {
+    const token = this.auth.getToken();
+    return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
   carregarProvas(): void {
+    const user = this.auth.getCurrentUser();
+    if (!user) {
+      this.erro = 'Usuário não autenticado.';
+      return;
+    }
+
     this.carregando = true;
     this.erro = '';
 
-    // Para aluno, mostrar todas as provas de seus cursos
-    // Aqui simplificado para mostrar todas
-    this.http.get<Prova[]>('http://localhost:8000/api/provas/').subscribe({
-      next: (provas) => {
-        this.provas = provas;
-        this.carregando = false;
+    // 1. Buscar cursos em que o aluno está inscrito
+    this.http.get<CursoEnrollado[]>(
+      `http://localhost:8000/api/alunos/${user.id}/cursos`,
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: (cursos) => {
+        if (cursos.length === 0) {
+          this.provas = [];
+          this.carregando = false;
+          return;
+        }
+
+        // 2. Para cada curso, buscar as provas em paralelo
+        const requests = cursos.map(curso =>
+          this.http.get<Prova[]>(
+            `http://localhost:8000/api/provas/?curso_id=${curso.id}&limit=100`,
+            { headers: this.getHeaders() }
+          )
+        );
+
+        forkJoin(requests).subscribe({
+          next: (resultados) => {
+            // Mesclar e remover duplicatas por id
+            const todas = resultados.flat();
+            const mapa = new Map<number, Prova>();
+            todas.forEach(p => mapa.set(p.id, p));
+            this.provas = Array.from(mapa.values())
+              .sort((a, b) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime());
+            this.carregando = false;
+          },
+          error: () => {
+            this.erro = 'Erro ao carregar provas. Tente novamente.';
+            this.carregando = false;
+          }
+        });
       },
-      error: (error: any) => {
-        console.error('Erro ao carregar provas:', error);
-        this.erro = 'Erro ao carregar provas. Tente novamente.';
+      error: () => {
+        this.erro = 'Erro ao carregar cursos inscritos.';
         this.carregando = false;
       }
     });

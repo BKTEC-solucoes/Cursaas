@@ -8,16 +8,16 @@ from app.routes.auth import get_current_user
 
 router = APIRouter()
 
-@router.get("/", response_model=list[CursoResponse])
+@router.get("/", response_model=list[CursoDetailResponse])
 def list_cursos(db: Session = Depends(get_db)):
     """
     Lista todos os cursos ativos.
     
     **Retorna:**
-    - Lista de cursos com ID, nome, descrição, percentual mínimo de presença e data de criação
+    - Lista de cursos com ID, nome, descrição, percentual mínimo de presença, aulas e provas
     """
     cursos = db.query(Curso).filter(Curso.ativo == True).all()
-    return [CursoResponse.model_validate(c) for c in cursos]
+    return [CursoDetailResponse.model_validate(c) for c in cursos]
 
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)
 def create_curso(curso_data: CursoCreate, db: Session = Depends(get_db)):

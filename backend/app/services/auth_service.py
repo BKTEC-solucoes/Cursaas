@@ -76,7 +76,23 @@ class AuthService:
         return user
     
     @staticmethod
-    def create_user(db: Session, email: str, nome: str, senha: str, role: str = "aluno") -> Usuario:
+    def create_user(
+        db: Session,
+        email: str,
+        nome: str,
+        senha: str,
+        role: str = "aluno",
+        data_nascimento=None,
+        sexo: str = None,
+        cpf_rg: str = None,
+        endereco: str = None,
+        cep: str = None,
+        telefone: str = None,
+        nome_responsavel: str = None,
+        numero_matricula: str = None,
+        turma: str = None,
+        historico_escolar: str = None,
+    ) -> Usuario:
         """Cria um novo usuário"""
         hashed_password = AuthService.hash_password(senha)
         
@@ -89,7 +105,17 @@ class AuthService:
             nome=nome,
             senha=hashed_password,
             role=role,
-            ativo=True
+            ativo=True,
+            data_nascimento=data_nascimento,
+            sexo=sexo,
+            cpf_rg=cpf_rg,
+            endereco=endereco,
+            cep=cep,
+            telefone=telefone,
+            nome_responsavel=nome_responsavel,
+            numero_matricula=numero_matricula,
+            turma=turma,
+            historico_escolar=historico_escolar,
         )
         
         db.add(db_user)

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum as PyEnum
 
@@ -15,14 +15,48 @@ class RoleEnum(str, PyEnum):
 class UsuarioBase(BaseModel):
     nome: str
     email: EmailStr
+    # Dados pessoais
+    data_nascimento: Optional[date] = None
+    sexo: Optional[str] = None
+    cpf_rg: Optional[str] = None
+    # Endereço e contato
+    endereco: Optional[str] = None
+    cep: Optional[str] = None
+    telefone: Optional[str] = None
+    # Responsável
+    nome_responsavel: Optional[str] = None
+    # Dados escolares
+    numero_matricula: Optional[str] = None
+    turma: Optional[str] = None
+    historico_escolar: Optional[str] = None
 
 class UsuarioCreate(UsuarioBase):
     senha: str = Field(..., min_length=6)
+    data_nascimento: date
+    sexo: str
+    cpf_rg: str
+    endereco: str
+    cep: str
+    telefone: str
+    nome_responsavel: str
+    numero_matricula: str
+    turma: str
+    historico_escolar: str
 
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
     ativo: Optional[bool] = None
+    data_nascimento: Optional[date] = None
+    sexo: Optional[str] = None
+    cpf_rg: Optional[str] = None
+    endereco: Optional[str] = None
+    cep: Optional[str] = None
+    telefone: Optional[str] = None
+    nome_responsavel: Optional[str] = None
+    numero_matricula: Optional[str] = None
+    turma: Optional[str] = None
+    historico_escolar: Optional[str] = None
 
 class UsuarioResponse(UsuarioBase):
     id: int
