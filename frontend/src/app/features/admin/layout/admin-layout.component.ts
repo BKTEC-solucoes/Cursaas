@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
+import { PermissionsService } from '../../../core/services/permissions.service';
 
 @Component({
   selector: 'app-admin-layout',
@@ -14,7 +15,10 @@ import { AuthService } from '../../../core/services/auth.service';
           <div class="header-top">
             <h1>🔐 Painel Administrativo</h1>
             <div class="user-menu">
-              <span class="user-greeting">{{ usuarioNome }}</span>
+              <div class="user-info">
+                <span class="user-greeting">{{ usuarioNome }}</span>
+                <span class="user-role-badge" *ngIf="roleLabel">{{ roleLabel }}</span>
+              </div>
               <button class="btn-logout" (click)="logout()">Sair</button>
             </div>
           </div>
@@ -22,23 +26,26 @@ import { AuthService } from '../../../core/services/auth.service';
             <a routerLink="/admin" routerLinkActive="active">
               <span class="icon">📊</span>Dashboard
             </a>
-            <a routerLink="/admin/cursos" routerLinkActive="active">
+            <a routerLink="/admin/cursos" routerLinkActive="active" *ngIf="p.can('cursos:read')">
               <span class="icon">📚</span>Cursos
             </a>
-            <a routerLink="/admin/aulas" routerLinkActive="active">
+            <a routerLink="/admin/aulas" routerLinkActive="active" *ngIf="p.can('aulas:read')">
               <span class="icon">🎥</span>Aulas
             </a>
-            <a routerLink="/admin/provas" routerLinkActive="active">
+            <a routerLink="/admin/provas" routerLinkActive="active" *ngIf="p.can('provas:read')">
               <span class="icon">📝</span>Provas
             </a>
-            <a routerLink="/admin/notas" routerLinkActive="active">
+            <a routerLink="/admin/notas" routerLinkActive="active" *ngIf="p.can('notas:read')">
               <span class="icon">📊</span>Notas
             </a>
-            <a routerLink="/admin/presenca" routerLinkActive="active">
+            <a routerLink="/admin/presenca" routerLinkActive="active" *ngIf="p.can('presenca:read')">
               <span class="icon">✓</span>Presença
             </a>
-            <a routerLink="/admin/alunos" routerLinkActive="active">
+            <a routerLink="/admin/alunos" routerLinkActive="active" *ngIf="p.can('alunos:read')">
               <span class="icon">👤</span>Alunos
+            </a>
+            <a routerLink="/admin/administradores" routerLinkActive="active" *ngIf="p.can('administradores:read')">
+              <span class="icon">🔐</span>Administradores
             </a>
           </nav>
         </div>
@@ -91,9 +98,26 @@ import { AuthService } from '../../../core/services/auth.service';
       gap: 15px;
     }
 
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
     .user-greeting {
       font-size: 14px;
       opacity: 0.95;
+    }
+
+    .user-role-badge {
+      font-size: 11px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
     }
 
     .btn-logout {
@@ -197,11 +221,16 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class AdminLayoutComponent {
   usuarioNome = '';
+  roleLabel   = '';
 
-  constructor(private authService: AuthService) {
+  constructor(
+    private authService: AuthService,
+    public p: PermissionsService,
+  ) {
     const usuario = this.authService.getCurrentUser();
     if (usuario) {
       this.usuarioNome = usuario.nome;
+      this.roleLabel   = this.p.getRoleLabel();
     }
   }
 

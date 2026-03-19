@@ -5,6 +5,7 @@ from app.models import InscricaoCurso, Usuario, Curso, Aula, Prova, RoleEnum
 from app.schemas import CursoDetailResponse, UsuarioResponse, UsuarioDetailResponse, UsuarioCreate, UsuarioUpdate
 from app.routes.auth import get_current_user
 from app.services.auth_service import AuthService
+from app.services.admin_course_access import get_allowed_course_ids
 
 router = APIRouter()
 
@@ -18,10 +19,19 @@ def _require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario
 @router.get("/", response_model=list[UsuarioDetailResponse])
 def list_alunos(
     db: Session = Depends(get_db),
-    _: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
     """Lista todos os alunos (admin)"""
-    return db.query(Usuario).filter(Usuario.role == RoleEnum.aluno).order_by(Usuario.nome).all()
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
+
+    allowed = get_allowed_course_ids(db, current_user)
+    if allowed is None:
+        return db.query(Usuario).filter(Usuario.role == RoleEnum.aluno).order_by(Usuario.nome).all()
+    if not allowed:
+        return []
+    aluno_ids = {aid for (aid,) in db.query(InscricaoCurso.usuario_id).filter(InscricaoCurso.curso_id.in_(allowed)).distinct().all()}
+    return db.query(Usuario).filter(Usuario.role == RoleEnum.aluno, Usuario.id.in_(aluno_ids)).order_by(Usuario.nome).all()
 
 
 @router.post("/", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
@@ -69,12 +79,26 @@ def create_aluno(
 def get_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
     """Obtém detalhes de um aluno (admin)"""
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
+
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id, Usuario.role == RoleEnum.aluno).first()
     if not aluno:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    allowed = get_allowed_course_ids(db, current_user)
+    if allowed is not None:
+        if not allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não possui permissão para acessar este aluno")
+        enrolled = db.query(InscricaoCurso).filter(
+            InscricaoCurso.usuario_id == aluno_id,
+            InscricaoCurso.curso_id.in_(allowed)
+        ).first()
+        if not enrolled:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não possui permissão para acessar este aluno")
     return aluno
 
 

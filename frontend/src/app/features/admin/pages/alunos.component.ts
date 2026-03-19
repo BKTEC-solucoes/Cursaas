@@ -134,7 +134,12 @@ function formVazio(): AlunoForm {
             </div>
             <div class="form-row" *ngIf="!editandoId">
               <label>Senha *</label>
-              <input type="password" [(ngModel)]="form.senha" name="senha" required minlength="6" placeholder="Mínimo 6 caracteres" />
+              <div class="password-field">
+                <input [type]="mostrarSenha ? 'text' : 'password'" [(ngModel)]="form.senha" name="senha" required minlength="6" placeholder="Mínimo 6 caracteres" />
+                <button type="button" class="toggle-password" (click)="mostrarSenha = !mostrarSenha">
+                  {{ mostrarSenha ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -339,6 +344,31 @@ function formVazio(): AlunoForm {
 
     .form-actions { display: flex; gap: 10px; margin-top: 22px; }
 
+    .password-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .password-field input {
+      flex: 1;
+    }
+
+    .toggle-password {
+      padding: 8px 10px;
+      border: 1px solid #bdc3c7;
+      background: #f8f9fa;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #2c3e50;
+      white-space: nowrap;
+    }
+
+    .toggle-password:hover {
+      background: #ecf0f1;
+    }
+
     .form-error {
       margin-top: 12px;
       padding: 10px 14px;
@@ -410,6 +440,7 @@ export class AdminAlunosComponent implements OnInit {
   alunos: Aluno[] = [];
   carregando = false;
   formAberto = false;
+  mostrarSenha = false;
   editandoId: number | null = null;
   salvando = false;
   formErro = '';
@@ -441,17 +472,20 @@ export class AdminAlunosComponent implements OnInit {
   abrirFormulario() {
     this.editandoId = null;
     this.form = formVazio();
+    this.mostrarSenha = false;
     this.formErro = '';
     this.formAberto = true;
   }
 
   cancelarFormulario() {
     this.formAberto = false;
+    this.mostrarSenha = false;
     this.formErro = '';
   }
 
   editarAluno(aluno: Aluno) {
     this.editandoId = aluno.id;
+    this.mostrarSenha = false;
     this.form = {
       email: aluno.email,
       senha: '',
@@ -564,6 +598,7 @@ export class AdminAlunosComponent implements OnInit {
         next: (novo) => {
           this.alunos.push(novo);
           this.salvando = false;
+          this.mostrarSenha = false;
           this.formAberto = false;
         },
         error: (err) => {

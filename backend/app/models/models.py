@@ -1,6 +1,7 @@
 # Models para importação
 from app.models import (
     Usuario,
+    AdminCurso,
     Curso,
     InscricaoCurso,
     Aula,
@@ -11,11 +12,14 @@ from app.models import (
     OpcaoResposta,
     Resposta,
     Nota,
-    NotaCurso
+    NotaCurso,
+    RoleEnum,
+    AdminRoleEnum,
 )
 
 __all__ = [
     "Usuario",
+    "AdminCurso",
     "Curso",
     "InscricaoCurso",
     "Aula",
@@ -26,5 +30,7 @@ __all__ = [
     "OpcaoResposta",
     "Resposta",
     "Nota",
-    "NotaCurso"
+    "NotaCurso",
+    "RoleEnum",
+    "AdminRoleEnum",
 ]

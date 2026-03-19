@@ -18,19 +18,24 @@
 
       <div class="form-group">
         <label for="password">Senha</label>
-        <input
-          type="password"
-          id="password"
-          [(ngModel)]="password"
-          name="password"
-          placeholder="Sua senha"
-          required
-        />
+        <div class="password-field">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            id="password"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="Sua senha"
+            required
+          />
+          <button type="button" class="toggle-password" (click)="showPassword = !showPassword">
+            {{ showPassword ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
       </div>
 
       <div *ngIf="error" class="error-message">{{ error }}</div>
 
-      <button type="submit" [disabled]="loading">
+      <button type="submit" class="submit-button" [disabled]="loading">
         {{ loading ? 'Entrando...' : 'Entrar' }}
       </button>
     </form>

@@ -12,11 +12,14 @@ CREATE TABLE usuarios (
     email VARCHAR(255) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
     role ENUM('admin', 'aluno') NOT NULL DEFAULT 'aluno',
+    admin_role ENUM('super_admin', 'instrutor', 'financeiro', 'suporte') NULL DEFAULT NULL,
+    foto_perfil LONGTEXT NULL,
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
-    INDEX idx_role (role)
+    INDEX idx_role (role),
+    INDEX idx_admin_role (admin_role)
 );
 
 -- Tabela de Cursos
@@ -29,6 +32,19 @@ CREATE TABLE cursos (
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_ativo (ativo)
+);
+
+-- Tabela de Vínculo Admin-Curso (controle de permissões por curso)
+CREATE TABLE admin_cursos (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT NOT NULL,
+    curso_id INT NOT NULL,
+    data_vinculo TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_admin_curso (admin_id, curso_id),
+    INDEX idx_admin_id (admin_id),
+    INDEX idx_curso_id (curso_id)
 );
 
 -- Tabela de Inscrições em Cursos

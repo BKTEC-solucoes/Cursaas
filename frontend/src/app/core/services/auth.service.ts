@@ -18,6 +18,7 @@ export interface UserInfo {
   nome: string;
   email: string;
   role: 'admin' | 'aluno';
+  admin_role?: string | null;
 }
 
 @Injectable({
@@ -86,7 +87,8 @@ export class AuthService {
       id: payload.user_id ?? payload.id,
       nome: payload.nome ?? payload.sub,
       email: payload.sub,
-      role: payload.role
+      role: payload.role,
+      admin_role: payload.admin_role ?? null,
     };
   }
 

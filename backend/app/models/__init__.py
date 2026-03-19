@@ -8,6 +8,12 @@ class RoleEnum(str, enum.Enum):
     admin = "admin"
     aluno = "aluno"
 
+class AdminRoleEnum(str, enum.Enum):
+    super_admin  = "super_admin"
+    instrutor    = "instrutor"
+    financeiro   = "financeiro"
+    suporte      = "suporte"
+
 class StatusVideoEnum(str, enum.Enum):
     processando = "processando"
     disponivel = "disponivel"
@@ -26,6 +32,8 @@ class Usuario(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     senha = Column(String(255), nullable=False)
     role = Column(Enum(RoleEnum), default=RoleEnum.aluno, nullable=False, index=True)
+    admin_role = Column(Enum(AdminRoleEnum), nullable=True, index=True)
+    foto_perfil = Column(Text, nullable=True)
     ativo = Column(Boolean, default=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -46,6 +54,7 @@ class Usuario(Base):
     
     # Relacionamentos
     inscricoes = relationship("InscricaoCurso", back_populates="usuario", cascade="all, delete-orphan")
+    admin_cursos = relationship("AdminCurso", back_populates="admin", cascade="all, delete-orphan")
     presencas = relationship("Presenca", back_populates="usuario", cascade="all, delete-orphan")
     respostas = relationship("Resposta", back_populates="usuario", cascade="all, delete-orphan")
     notas = relationship("Nota", back_populates="usuario", cascade="all, delete-orphan")
@@ -65,9 +74,24 @@ class Curso(Base):
     
     # Relacionamentos
     inscricoes = relationship("InscricaoCurso", back_populates="curso", cascade="all, delete-orphan")
+    admins_vinculados = relationship("AdminCurso", back_populates="curso", cascade="all, delete-orphan")
     aulas = relationship("Aula", back_populates="curso", cascade="all, delete-orphan")
     provas = relationship("Prova", back_populates="curso", cascade="all, delete-orphan")
     notas_cursos = relationship("NotaCurso", back_populates="curso", cascade="all, delete-orphan")
+
+
+class AdminCurso(Base):
+    __tablename__ = "admin_cursos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    curso_id = Column(Integer, ForeignKey("cursos.id", ondelete="CASCADE"), nullable=False, index=True)
+    data_vinculo = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('admin_id', 'curso_id', name='unique_admin_curso'),)
+
+    admin = relationship("Usuario", back_populates="admin_cursos")
+    curso = relationship("Curso", back_populates="admins_vinculados")
 
 # Tabela de Inscrições em Cursos
 class InscricaoCurso(Base):

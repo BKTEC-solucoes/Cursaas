@@ -7,6 +7,7 @@ from app.schemas import (
     NotaCursoResponse, NotaCursoDetailResponse, NotaCursoCreate, NotaCursoUpdate
 )
 from app.routes.auth import get_current_user
+from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import and_
@@ -26,7 +27,14 @@ async def listar_notas(
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode listar todas as notas")
     
-    notas = db.query(Nota).all()
+    allowed = get_allowed_course_ids(db, current_user)
+    if allowed is not None:
+        if not allowed:
+            return []
+        prova_ids_allowed = {pid for (pid,) in db.query(Prova.id).filter(Prova.curso_id.in_(allowed)).all()}
+        notas = db.query(Nota).filter(Nota.prova_id.in_(prova_ids_allowed)).all()
+    else:
+        notas = db.query(Nota).all()
     
     result = []
     for n in notas:
@@ -65,8 +73,16 @@ async def get_notas_aluno(
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
     
-    # Buscar todas as notas do aluno
-    notas = db.query(Nota).filter(Nota.usuario_id == aluno_id).all()
+    # Buscar notas do aluno (filtrando por cursos permitidos para admins restritos)
+    query = db.query(Nota).filter(Nota.usuario_id == aluno_id)
+    if current_user.role.value == "admin":
+        allowed = get_allowed_course_ids(db, current_user)
+        if allowed is not None:
+            if not allowed:
+                return []
+            prova_ids_allowed = {pid for (pid,) in db.query(Prova.id).filter(Prova.curso_id.in_(allowed)).all()}
+            query = query.filter(Nota.prova_id.in_(prova_ids_allowed))
+    notas = query.all()
     
     result = []
     for n in notas:
@@ -145,6 +161,9 @@ async def atualizar_nota(
     if not nota:
         raise HTTPException(status_code=404, detail="Nota não encontrada")
     
+    if nota.prova:
+        ensure_admin_can_access_course(db, current_user, nota.prova.curso_id)
+    
     # Atualizar campos
     if nota_update.nota_final is not None:
         nota.nota_final = nota_update.nota_final
@@ -185,6 +204,8 @@ async def get_notas_curso(
     # Verificar se é admin
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode acessar relatórios de notas")
+    
+    ensure_admin_can_access_course(db, current_user, curso_id)
     
     # Validar que o curso existe
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
@@ -253,6 +274,8 @@ async def calcular_media_curso(
     # Verificar se é admin
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode calcular médias")
+    
+    ensure_admin_can_access_course(db, current_user, curso_id)
     
     # Validar que o aluno existe
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
@@ -356,6 +379,9 @@ async def get_nota_curso_aluno(
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
+    
+    if current_user.role.value == "admin":
+        ensure_admin_can_access_course(db, current_user, curso_id)
     
     # Buscar NotaCurso
     nota_curso = db.query(NotaCurso).filter(

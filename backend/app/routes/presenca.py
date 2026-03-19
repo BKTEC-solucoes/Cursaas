@@ -7,6 +7,7 @@ from app.schemas import (
     PresencaAlunoResponse, PresencaCursoResponse, PresencaManualUpdate
 )
 from app.routes.auth import get_current_user
+from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 from datetime import datetime
 from sqlalchemy import func, and_
 
@@ -26,7 +27,14 @@ async def listar_presencas(
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode listar presenças")
     
-    presencas = db.query(Presenca).all()
+    allowed = get_allowed_course_ids(db, current_user)
+    if allowed is not None:
+        if not allowed:
+            return []
+        aula_ids_allowed = {aid for (aid,) in db.query(Aula.id).filter(Aula.curso_id.in_(allowed)).all()}
+        presencas = db.query(Presenca).filter(Presenca.aula_id.in_(aula_ids_allowed)).all()
+    else:
+        presencas = db.query(Presenca).all()
     return [
         PresencaDetailResponse(
             id=p.id,
@@ -60,6 +68,8 @@ async def editar_presenca_manual(
     presenca = db.query(Presenca).filter(Presenca.id == presenca_id).first()
     if not presenca:
         raise HTTPException(status_code=404, detail="Registro de presença não encontrado")
+
+    ensure_admin_can_access_course(db, current_user, presenca.aula.curso_id)
 
     presenca.percentual_assistido = dados.percentual_assistido
     presenca.registrada_automaticamente = False  # Marcado como edição manual
@@ -100,6 +110,8 @@ async def get_presenca_curso(
     # Verificar se é admin
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode acessar relatórios de presença")
+    
+    ensure_admin_can_access_course(db, current_user, curso_id)
     
     # Validar que o curso existe
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
@@ -282,8 +294,16 @@ async def get_presenca_aluno(
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
     
-    # Buscar presenças com detalhes da aula
-    presencas = db.query(Presenca).filter(Presenca.usuario_id == aluno_id).all()
+    # Buscar presenças com detalhes da aula (filtrando por cursos permitidos para admins restritos)
+    query = db.query(Presenca).filter(Presenca.usuario_id == aluno_id)
+    if current_user.role.value == "admin":
+        allowed = get_allowed_course_ids(db, current_user)
+        if allowed is not None:
+            if not allowed:
+                return []
+            aula_ids_allowed = {aid for (aid,) in db.query(Aula.id).filter(Aula.curso_id.in_(allowed)).all()}
+            query = query.filter(Presenca.aula_id.in_(aula_ids_allowed))
+    presencas = query.all()
     
     if not presencas:
         return []

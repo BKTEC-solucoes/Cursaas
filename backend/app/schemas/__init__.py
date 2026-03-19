@@ -10,6 +10,12 @@ class RoleEnum(str, PyEnum):
     admin = "admin"
     aluno = "aluno"
 
+class AdminRoleEnum(str, PyEnum):
+    super_admin = "super_admin"
+    instrutor   = "instrutor"
+    financeiro  = "financeiro"
+    suporte     = "suporte"
+
 # ==================== SCHEMAS DE USUÁRIO ====================
 
 class UsuarioBase(BaseModel):
@@ -43,6 +49,31 @@ class UsuarioCreate(UsuarioBase):
     turma: str
     historico_escolar: str
 
+
+class AdminCreate(BaseModel):
+    nome: str
+    email: EmailStr
+    senha: str = Field(..., min_length=6)
+    admin_role: AdminRoleEnum = AdminRoleEnum.super_admin
+    foto_perfil: Optional[str] = None  # URL da foto ou avatar
+    curso_ids: List[int] = []
+
+class AdminUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    admin_role: Optional[AdminRoleEnum] = None
+    foto_perfil: Optional[str] = None
+    curso_ids: Optional[List[int]] = None
+
+
+class AdminManageResponse(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    admin_role: Optional[AdminRoleEnum] = None
+    foto_perfil: Optional[str] = None
+    curso_ids: List[int] = []
+
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -61,6 +92,8 @@ class UsuarioUpdate(BaseModel):
 class UsuarioResponse(UsuarioBase):
     id: int
     role: RoleEnum
+    admin_role: Optional[AdminRoleEnum] = None
+    foto_perfil: Optional[str] = None
     ativo: bool
     data_criacao: datetime
     

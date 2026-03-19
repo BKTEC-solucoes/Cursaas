@@ -2,17 +2,23 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Aula, Curso, Video
+from app.models import Aula, Curso, Video, Usuario
 from app.schemas import AulaCreate, AulaUpdate, AulaResponse, AulaDetailResponse, VideoResponse
 import os
 import shutil
 from pathlib import Path
 from app.config import settings
+from app.routes.auth import get_current_user
+from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
 
 @router.get("/", response_model=list[AulaDetailResponse])
-def list_aulas(curso_id: int = None, db: Session = Depends(get_db)):
+def list_aulas(
+    curso_id: int = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
     """
     Lista todas as aulas ativas.
     
@@ -26,28 +32,26 @@ def list_aulas(curso_id: int = None, db: Session = Depends(get_db)):
     
     if curso_id:
         query = query.filter(Aula.curso_id == curso_id)
+
+    if current_user.role == "admin":
+        allowed = get_allowed_course_ids(db, current_user)
+        if allowed is not None:
+            if not allowed:
+                return []
+            query = query.filter(Aula.curso_id.in_(allowed))
     
     aulas = query.order_by(Aula.data_aula).all()
     return [AulaDetailResponse.model_validate(a) for a in aulas]
 
 @router.post("/", response_model=AulaResponse, status_code=status.HTTP_201_CREATED)
-def create_aula(aula_data: AulaCreate, db: Session = Depends(get_db)):
-    """
-    Cria uma nova aula (apenas admin).
-    
-    **Parâmetros:**
-    - `curso_id` (int, obrigatório): ID do curso
-    - `titulo` (str, obrigatório): Título da aula
-    - `descricao` (str, opcional): Descrição/conteúdo da aula
-    - `data_aula` (datetime, obrigatório): Data e hora da aula
-    - `duracao_minutos` (int, opcional): Duração em minutos
-    
-    **Retorna:**
-    - Dados da aula criada incluindo ID e timestamps
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
+def create_aula(
+    aula_data: AulaCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar aulas")
+
     # Verificar se curso existe
     curso = db.query(Curso).filter(Curso.id == aula_data.curso_id).first()
     if not curso:
@@ -55,7 +59,9 @@ def create_aula(aula_data: AulaCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Curso {aula_data.curso_id} não encontrado"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, aula_data.curso_id)
+
     # Criar nova aula
     db_aula = Aula(
         curso_id=aula_data.curso_id,
@@ -73,7 +79,11 @@ def create_aula(aula_data: AulaCreate, db: Session = Depends(get_db)):
     return AulaResponse.model_validate(db_aula)
 
 @router.get("/{aula_id}", response_model=AulaDetailResponse)
-def get_aula(aula_id: int, db: Session = Depends(get_db)):
+def get_aula(
+    aula_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
     """
     Obtém detalhes completos de uma aula incluindo vídeos.
     
@@ -94,39 +104,32 @@ def get_aula(aula_id: int, db: Session = Depends(get_db)):
             detail=f"Aula {aula_id} não encontrada"
         )
     
+
+    if current_user.role == "admin":
+        ensure_admin_can_access_course(db, current_user, aula.curso_id)
+
     return AulaDetailResponse.model_validate(aula)
 
 @router.put("/{aula_id}", response_model=AulaResponse)
 def update_aula(
     aula_id: int,
     aula_data: AulaUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Atualiza uma aula existente (apenas admin).
-    
-    **Parâmetros:**
-    - `aula_id` (int): ID da aula a atualizar
-    - `titulo` (str, opcional): Novo título
-    - `descricao` (str, opcional): Nova descrição
-    - `data_aula` (datetime, opcional): Nova data/hora
-    - `duracao_minutos` (int, opcional): Nova duração
-    - `ativo` (bool, opcional): Ativar/desativar aula
-    
-    **Retorna:**
-    - Dados atualizados da aula
-    
-    **Erros:**
-    - 404: Aula não encontrada
-    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem atualizar aulas")
+
     aula = db.query(Aula).filter(Aula.id == aula_id).first()
-    
+
     if not aula:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aula {aula_id} não encontrada"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, aula.curso_id)
+
     # Atualizar apenas os campos fornecidos
     update_data = aula_data.model_dump(exclude_unset=True)
     for campo, valor in update_data.items():
@@ -138,58 +141,39 @@ def update_aula(
     return AulaResponse.model_validate(aula)
 
 @router.delete("/{aula_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_aula(aula_id: int, db: Session = Depends(get_db)):
-    """
-    Deleta uma aula (apenas admin).
-    
-    ⚠️ **Cuidado:** Ao deletar, todos os vídeos e registros de presença associados também serão deletados.
-    
-    **Parâmetros:**
-    - `aula_id` (int): ID da aula a deletar
-    
-    **Retorna:**
-    - 204 No Content (sem corpo)
-    
-    **Erros:**
-    - 404: Aula não encontrada
-    """
+def delete_aula(
+    aula_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem deletar aulas")
+
     aula = db.query(Aula).filter(Aula.id == aula_id).first()
-    
+
     if not aula:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aula {aula_id} não encontrada"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, aula.curso_id)
+
     db.delete(aula)
     db.commit()
-    
+
     return None
 
 @router.post("/{aula_id}/upload-video", response_model=VideoResponse, status_code=status.HTTP_201_CREATED)
-def upload_video(aula_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    Faz upload de um vídeo para uma aula (apenas admin).
-    
-    ⚠️ **Nota:** Apenas um vídeo por aula é permitido. Se já houver um vídeo, ele será substituído.
-    
-    **Parâmetros:**
-    - `aula_id` (int): ID da aula
-    - `file` (UploadFile): Arquivo de vídeo (MP4, WebM, AVI, MOV)
-    
-    **Formatos suportados:**
-    - mp4, webm, avi, mov
-    
-    **Tamanho máximo:**
-    - 500 MB
-    
-    **Retorna:**
-    - Dados do vídeo criado incluindo caminho, tamanho e formato
-    
-    **Erros:**
-    - 404: Aula não encontrada
-    - 400: Formato de vídeo não suportado ou arquivo muito grande
-    """
+def upload_video(
+    aula_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem fazer upload de vídeo")
+
     # Verificar se aula existe
     aula = db.query(Aula).filter(Aula.id == aula_id).first()
     if not aula:
@@ -197,7 +181,9 @@ def upload_video(aula_id: int, file: UploadFile = File(...), db: Session = Depen
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aula {aula_id} não encontrada"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, aula.curso_id)
+
     # Validar extensão do arquivo
     allowed_formats = settings.ALLOWED_VIDEO_FORMATS
     file_extension = file.filename.split(".")[-1].lower()

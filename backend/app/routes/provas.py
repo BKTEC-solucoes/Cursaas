@@ -12,6 +12,7 @@ from app.schemas import (
     RespostaResponse, ProvaSubmitRequest, ProvaResultResponse
 )
 from app.routes.auth import get_current_user
+from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ router = APIRouter()
 
 @router.get("/", response_model=list[ProvaResponse])
 async def list_provas(
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
     curso_id: int = Query(None, description="Filtrar por ID do curso"),
     skip: int = Query(0, ge=0),
@@ -55,6 +57,13 @@ async def list_provas(
     
     if curso_id:
         query = query.filter(Prova.curso_id == curso_id)
+
+    if current_user.role == "admin":
+        allowed = get_allowed_course_ids(db, current_user)
+        if allowed is not None:
+            if not allowed:
+                return []
+            query = query.filter(Prova.curso_id.in_(allowed))
     
     provas_raw = query.offset(skip).limit(limit).all()
     
@@ -126,6 +135,8 @@ async def create_prova(
     curso = db.query(Curso).filter(Curso.id == prova.curso_id).first()
     if not curso:
         raise HTTPException(status_code=404, detail=f"Curso {prova.curso_id} não encontrado")
+
+    ensure_admin_can_access_course(db, current_user, prova.curso_id)
     
     # Criar nova prova (sem questões)
     prova_data = prova.model_dump(exclude={'questoes'})
@@ -164,7 +175,8 @@ async def create_prova(
 @router.get("/{prova_id}", response_model=ProvaDetailResponse)
 async def get_prova(
     prova_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
 ):
     """
     Obter detalhes de uma prova específica com todas as questões e opções.
@@ -183,6 +195,9 @@ async def get_prova(
     
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    if current_user.role == "admin":
+        ensure_admin_can_access_course(db, current_user, prova.curso_id)
     
     return prova
 
@@ -229,6 +244,8 @@ async def update_prova(
     db_prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not db_prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    ensure_admin_can_access_course(db, current_user, db_prova.curso_id)
     
     # Validar datas se fornecidas
     data_inicio = prova_update.data_inicio or db_prova.data_inicio
@@ -317,6 +334,8 @@ async def delete_prova(
     db_prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not db_prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    ensure_admin_can_access_course(db, current_user, db_prova.curso_id)
     
     # Deletar (cascade delete remove questões, opções e respostas)
     db.delete(db_prova)

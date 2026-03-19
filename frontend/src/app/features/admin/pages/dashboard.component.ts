@@ -47,6 +47,12 @@ import { AuthService } from '../../../core/services/auth.service';
             <div class="action-title">Presença</div>
             <div class="action-desc">Ver frequência automática</div>
           </a>
+
+          <a routerLink="/admin/administradores" class="action-btn action-administradores">
+            <div class="action-icon">🔐</div>
+            <div class="action-title">Administradores</div>
+            <div class="action-desc">Cadastrar novos admins</div>
+          </a>
         </div>
       </div>
 
@@ -163,6 +169,11 @@ import { AuthService } from '../../../core/services/auth.service';
     .action-btn.action-presenca:hover {
       border-color: #3498db;
       background: #e8f4ff;
+    }
+
+    .action-btn.action-administradores:hover {
+      border-color: #2c3e50;
+      background: #eef2f5;
     }
 
     .action-icon {

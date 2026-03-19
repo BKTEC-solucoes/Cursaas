@@ -2,36 +2,46 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.database import get_db
-from app.models import Curso, InscricaoCurso, Usuario
+from app.models import Curso, InscricaoCurso, Usuario, AdminCurso, AdminRoleEnum
 from app.schemas import CursoCreate, CursoUpdate, CursoResponse, CursoDetailResponse, InscricaoCursoResponse
 from app.routes.auth import get_current_user
+from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
 
 @router.get("/", response_model=list[CursoDetailResponse])
-def list_cursos(db: Session = Depends(get_db)):
+def list_cursos(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
     """
     Lista todos os cursos ativos.
     
     **Retorna:**
     - Lista de cursos com ID, nome, descrição, percentual mínimo de presença, aulas e provas
     """
-    cursos = db.query(Curso).filter(Curso.ativo == True).all()
+    query = db.query(Curso).filter(Curso.ativo == True)
+
+    # Admin não-super/legado enxerga apenas cursos vinculados
+    allowed = get_allowed_course_ids(db, current_user)
+    if allowed is not None:
+        if not allowed:
+            return []
+        query = query.filter(Curso.id.in_(allowed))
+
+    cursos = query.all()
     return [CursoDetailResponse.model_validate(c) for c in cursos]
 
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)
-def create_curso(curso_data: CursoCreate, db: Session = Depends(get_db)):
-    """
-    Cria um novo curso (apenas admin).
-    
-    **Parâmetros:**
-    - `nome` (str, obrigatório): Nome do curso
-    - `descricao` (str, opcional): Descrição do curso
-    - `percentual_presenca_minima` (int, padrão 75): Percentual mínimo de presença (0-100)
-    
-    **Retorna:**
-    - Dados do curso criado incluindo ID e timestamp
-    """
+def create_curso(
+    curso_data: CursoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar cursos")
+
+    # Criar novo curso
     # Verificar se já existe curso com esse nome
     existing = db.query(Curso).filter(Curso.nome == curso_data.nome).first()
     if existing:
@@ -51,11 +61,20 @@ def create_curso(curso_data: CursoCreate, db: Session = Depends(get_db)):
     db.add(db_curso)
     db.commit()
     db.refresh(db_curso)
-    
+
+    # Instrutor recebe acesso automático ao curso que criou
+    if current_user.admin_role == AdminRoleEnum.instrutor:
+        db.add(AdminCurso(admin_id=current_user.id, curso_id=db_curso.id))
+        db.commit()
+
     return CursoResponse.model_validate(db_curso)
 
 @router.get("/{curso_id}", response_model=CursoDetailResponse)
-def get_curso(curso_id: int, db: Session = Depends(get_db)):
+def get_curso(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
     """
     Obtém detalhes completos de um curso incluindo aulas e provas.
     
@@ -76,38 +95,31 @@ def get_curso(curso_id: int, db: Session = Depends(get_db)):
             detail=f"Curso {curso_id} não encontrado"
         )
     
+
+    if current_user.role == "admin":
+        ensure_admin_can_access_course(db, current_user, curso_id)
+
     return CursoDetailResponse.model_validate(curso)
 
 @router.put("/{curso_id}", response_model=CursoResponse)
 def update_curso(
     curso_id: int,
     curso_data: CursoUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
 ):
-    """
-    Atualiza um curso existente (apenas admin).
-    
-    **Parâmetros:**
-    - `curso_id` (int): ID do curso a atualizar
-    - `nome` (str, opcional): Novo nome
-    - `descricao` (str, opcional): Nova descrição
-    - `percentual_presenca_minima` (int, opcional): Novo percentual mínimo
-    - `ativo` (bool, opcional): Ativar/desativar curso
-    
-    **Retorna:**
-    - Dados atualizados do curso
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem atualizar cursos")
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
-    
+
     if not curso:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Curso {curso_id} não encontrado"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, curso_id)
+
     # Verificar duplicação de nome se estiver sendo alterado
     if curso_data.nome and curso_data.nome != curso.nome:
         existing = db.query(Curso).filter(
@@ -131,32 +143,27 @@ def update_curso(
     return CursoResponse.model_validate(curso)
 
 @router.delete("/{curso_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_curso(curso_id: int, db: Session = Depends(get_db)):
-    """
-    Deleta um curso (apenas admin).
-    
-    ⚠️ **Cuidado:** Ao deletar, todas as inscrições, aulas, provas e notas associadas também serão deletadas.
-    
-    **Parâmetros:**
-    - `curso_id` (int): ID do curso a deletar
-    
-    **Retorna:**
-    - 204 No Content (sem corpo)
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
+def delete_curso(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem deletar cursos")
+
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
-    
+
     if not curso:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Curso {curso_id} não encontrado"
         )
-    
+
+    ensure_admin_can_access_course(db, current_user, curso_id)
+
     db.delete(curso)
     db.commit()
-    
+
     return None
 
 @router.post("/{curso_id}/inscrever", response_model=InscricaoCursoResponse, status_code=status.HTTP_201_CREATED)

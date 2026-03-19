@@ -3,7 +3,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from app.models import Usuario, RoleEnum
+from app.models import Usuario, RoleEnum, AdminRoleEnum
 from app.config import settings
 
 # Contexto para criptografia de senha
@@ -82,6 +82,8 @@ class AuthService:
         nome: str,
         senha: str,
         role: str = "aluno",
+        admin_role: Optional[str] = None,
+        foto_perfil: Optional[str] = None,
         data_nascimento=None,
         sexo: str = None,
         cpf_rg: str = None,
@@ -99,12 +101,22 @@ class AuthService:
         # Converter role string para RoleEnum
         if isinstance(role, str):
             role = RoleEnum(role)
+
+        # Converter admin_role string para AdminRoleEnum
+        parsed_admin_role = None
+        if admin_role is not None:
+            if isinstance(admin_role, AdminRoleEnum):
+                parsed_admin_role = admin_role
+            else:
+                parsed_admin_role = AdminRoleEnum(admin_role)
         
         db_user = Usuario(
             email=email,
             nome=nome,
             senha=hashed_password,
             role=role,
+            admin_role=parsed_admin_role,
+            foto_perfil=foto_perfil,
             ativo=True,
             data_nascimento=data_nascimento,
             sexo=sexo,

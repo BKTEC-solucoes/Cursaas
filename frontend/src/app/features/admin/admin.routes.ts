@@ -9,6 +9,8 @@ import { AdminProvaResultadosComponent } from './pages/prova-resultados.componen
 import { AdminNotasComponent } from './pages/notas.component';
 import { AdminPresencaComponent } from './pages/presenca.component';
 import { AdminAlunosComponent } from './pages/alunos.component';
+import { AdminAdministradoresComponent } from './pages/administradores.component';
+import { permissionGuard } from '../../core/guards/permission.guard';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -21,39 +23,63 @@ export const ADMIN_ROUTES: Routes = [
       },
       {
         path: 'cursos',
-        component: AdminCursosComponent
+        component: AdminCursosComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['cursos:read'] }
       },
       {
         path: 'aulas',
-        component: AdminAulasComponent
+        component: AdminAulasComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['aulas:read'] }
       },
       {
         path: 'provas',
-        component: AdminProvasComponent
+        component: AdminProvasComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['provas:read'] }
       },
       {
         path: 'provas/nova',
-        component: AdminProvaFormComponent
+        component: AdminProvaFormComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['provas:write'] }
       },
       {
         path: 'provas/:id/editar',
-        component: AdminProvaFormComponent
+        component: AdminProvaFormComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['provas:write'] }
       },
       {
         path: 'provas/:id/resultados',
-        component: AdminProvaResultadosComponent
+        component: AdminProvaResultadosComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['provas:read'] }
       },
       {
         path: 'notas',
-        component: AdminNotasComponent
+        component: AdminNotasComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['notas:read'] }
       },
       {
         path: 'presenca',
-        component: AdminPresencaComponent
+        component: AdminPresencaComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['presenca:read'] }
       },
       {
         path: 'alunos',
-        component: AdminAlunosComponent
+        component: AdminAlunosComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['alunos:read'] }
+      },
+      {
+        path: 'administradores',
+        component: AdminAdministradoresComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['administradores:read'] }
       },
       {
         path: '',
