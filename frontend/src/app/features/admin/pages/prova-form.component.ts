@@ -194,6 +194,13 @@ interface Questao {
         </div>
       </div>
 
+      <div class="footer-actions" *ngIf="!carregando">
+        <button class="btn-secondary" [routerLink]="['/admin/provas']">← Voltar</button>
+        <button class="btn-primary" (click)="salvar()" [disabled]="salvando || !provaForm.valid">
+          {{ salvando ? 'Salvando...' : 'Salvar Prova' }}
+        </button>
+      </div>
+
       <!-- Loading/Error States -->
       <div class="loading" *ngIf="carregando">
         <p>Carregando...</p>
@@ -271,6 +278,13 @@ interface Questao {
       display: flex;
       flex-direction: column;
       gap: 30px;
+    }
+
+    .footer-actions {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
     }
 
     .form-section {
@@ -522,6 +536,11 @@ interface Questao {
       }
 
       .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .footer-actions {
         width: 100%;
         justify-content: space-between;
       }

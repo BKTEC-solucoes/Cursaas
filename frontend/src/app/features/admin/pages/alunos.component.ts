@@ -109,7 +109,7 @@ function formVazio(): AlunoForm {
             </div>
             <div class="form-row">
               <label>CPF / RG *</label>
-              <input type="text" [(ngModel)]="form.cpf_rg" name="cpf_rg" required placeholder="000.000.000-00" />
+              <input type="text" [(ngModel)]="form.cpf_rg" name="cpf_rg" required placeholder="000.000.000-00" maxlength="14" (input)="formatarCpf()" />
             </div>
           </div>
 
@@ -122,11 +122,11 @@ function formVazio(): AlunoForm {
             </div>
             <div class="form-row">
               <label>CEP *</label>
-              <input type="text" [(ngModel)]="form.cep" name="cep" required placeholder="00000-000" maxlength="9" />
+              <input type="text" [(ngModel)]="form.cep" name="cep" required placeholder="00000-000" maxlength="9" (input)="formatarCep()" />
             </div>
             <div class="form-row">
-              <label>Telefone *</label>
-              <input type="text" [(ngModel)]="form.telefone" name="telefone" required placeholder="(00) 00000-0000" />
+              <label>Celular *</label>
+              <input type="text" [(ngModel)]="form.telefone" name="telefone" required placeholder="+55 (21) 91234-5678" maxlength="19" (input)="formatarCelular()" />
             </div>
             <div class="form-row">
               <label>E-mail *</label>
@@ -199,7 +199,7 @@ function formVazio(): AlunoForm {
               <th>CPF/RG</th>
               <th>Turma</th>
               <th>E-mail</th>
-              <th>Telefone</th>
+              <th>Celular</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -459,10 +459,10 @@ export class AdminAlunosComponent implements OnInit {
       nome: aluno.nome,
       data_nascimento: aluno.data_nascimento?.slice(0, 10) ?? '',
       sexo: aluno.sexo ?? '',
-      cpf_rg: aluno.cpf_rg ?? '',
+      cpf_rg: this.formatarCpfValor(aluno.cpf_rg ?? ''),
       endereco: aluno.endereco ?? '',
-      cep: aluno.cep ?? '',
-      telefone: aluno.telefone ?? '',
+      cep: this.formatarCepValor(aluno.cep ?? ''),
+      telefone: this.formatarCelularValor(aluno.telefone ?? ''),
       nome_responsavel: aluno.nome_responsavel ?? '',
       numero_matricula: aluno.numero_matricula ?? '',
       turma: aluno.turma ?? '',
@@ -472,8 +472,60 @@ export class AdminAlunosComponent implements OnInit {
     this.formAberto = true;
   }
 
+  formatarCpf() {
+    this.form.cpf_rg = this.formatarCpfValor(this.form.cpf_rg || '');
+  }
+
+  private formatarCpfValor(valor: string): string {
+    const digits = valor.replace(/\D/g, '').slice(0, 11);
+    const p1 = digits.slice(0, 3);
+    const p2 = digits.slice(3, 6);
+    const p3 = digits.slice(6, 9);
+    const p4 = digits.slice(9, 11);
+
+    if (digits.length <= 3) return p1;
+    if (digits.length <= 6) return `${p1}.${p2}`;
+    if (digits.length <= 9) return `${p1}.${p2}.${p3}`;
+    return `${p1}.${p2}.${p3}-${p4}`;
+  }
+
+  formatarCep() {
+    this.form.cep = this.formatarCepValor(this.form.cep || '');
+  }
+
+  private formatarCepValor(valor: string): string {
+    const digits = valor.replace(/\D/g, '').slice(0, 8);
+    const p1 = digits.slice(0, 5);
+    const p2 = digits.slice(5, 8);
+
+    if (digits.length <= 5) return p1;
+    return `${p1}-${p2}`;
+  }
+
+  formatarCelular() {
+    this.form.telefone = this.formatarCelularValor(this.form.telefone || '');
+  }
+
+  private formatarCelularValor(valor: string): string {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    const semCodigoPais = apenasNumeros.startsWith('55') ? apenasNumeros.slice(2) : apenasNumeros;
+    const limitado = semCodigoPais.slice(0, 11);
+
+    const ddd = limitado.slice(0, 2);
+    const parte1 = limitado.slice(2, 7);
+    const parte2 = limitado.slice(7, 11);
+
+    if (!ddd) return '+55';
+    if (!parte1) return `+55 (${ddd}`;
+    if (!parte2) return `+55 (${ddd}) ${parte1}`;
+    return `+55 (${ddd}) ${parte1}-${parte2}`;
+  }
+
   salvarAluno() {
     this.formErro = '';
+    this.form.cpf_rg = this.formatarCpfValor(this.form.cpf_rg || '');
+    this.form.cep = this.formatarCepValor(this.form.cep || '');
+    this.form.telefone = this.formatarCelularValor(this.form.telefone || '').slice(0, 19);
     const obrigatorios: (keyof AlunoForm)[] = [
       'nome', 'data_nascimento', 'sexo', 'cpf_rg',
       'endereco', 'cep', 'telefone', 'email',
