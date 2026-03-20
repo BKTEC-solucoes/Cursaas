@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
 
 from app.config import settings
@@ -73,6 +74,19 @@ app.include_router(requests.router, prefix="/api/requests", tags=["Solicitacoes"
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/api/health", tags=["Health"])
+async def api_health_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "online", "database": "connected"}
+    except Exception as error:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(error)},
+        )
 
 
 @app.get("/", tags=["Root"])

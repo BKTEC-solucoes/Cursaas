@@ -419,7 +419,11 @@ export class AdminCursosComponent implements OnInit {
 
     this.apiService.getAdminCursos().subscribe({
       next: (cursos) => {
-        this.cursos = cursos || [];
+        this.cursos = (cursos || []).map((curso) => ({
+          ...curso,
+          descricao: curso.descricao ?? null
+        }));
+        console.log('Cursos do admin recebidos:', this.cursos);
         this.carregando = false;
       },
       error: (error) => {

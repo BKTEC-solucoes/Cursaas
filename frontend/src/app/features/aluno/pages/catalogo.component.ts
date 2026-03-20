@@ -6,21 +6,9 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { AuthService } from '../../../core/services/auth.service';
-import { ApiService, CourseRequest, CourseRequestStatus } from '../../../shared/services/api.service';
+import { ApiService, CourseRequest, CourseRequestStatus, CursoResumo } from '../../../shared/services/api.service';
 
-interface Curso {
-  id: number;
-  nome: string;
-  descricao: string | null;
-  pago: boolean;
-  valor?: number;
-  status?: string;
-  percentual_presenca_minima: number;
-  ativo: boolean;
-  data_criacao: string;
-  aulas?: any[];
-  provas?: any[];
-}
+type Curso = CursoResumo;
 
 const GRADIENTS = [
   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -632,31 +620,41 @@ export class AlunoCatalogoComponent implements OnInit {
 
   carregarDados(): void {
     this.carregando = true;
+    this.cursosTodos = [];
+    this.cursosFiltrados = [];
     const usuario = this.authService.getCurrentUser();
 
     this.apiService.getCursos().subscribe({
       next: (cursos) => {
-        this.cursosTodos = (cursos || []) as Curso[];
+        this.cursosTodos = (Array.isArray(cursos) ? cursos : []).map((curso) => ({
+          ...curso,
+          descricao: curso.descricao ?? null
+        }));
+        console.log('Catalogo recebido:', this.cursosTodos);
         this.carregarSolicitacoesCursosPagos();
 
         if (usuario) {
           this.apiService.getCursosAluno(usuario.id).subscribe({
             next: (inscritos) => {
-              this.cursosInscritos = new Set((inscritos || []).map((curso) => curso.id));
+              this.cursosInscritos = new Set((Array.isArray(inscritos) ? inscritos : []).map((curso) => curso.id));
               this.carregando = false;
               this.aplicarFiltro();
             },
             error: () => {
+              this.cursosInscritos = new Set();
               this.carregando = false;
               this.aplicarFiltro();
             }
           });
         } else {
+          this.cursosInscritos = new Set();
           this.carregando = false;
           this.aplicarFiltro();
         }
       },
       error: () => {
+        this.cursosTodos = [];
+        this.cursosFiltrados = [];
         this.carregando = false;
       }
     });
@@ -762,12 +760,13 @@ export class AlunoCatalogoComponent implements OnInit {
       );
     }
 
-    this.cursosFiltrados = base;
+    this.cursosFiltrados = base || [];
   }
 
   private carregarSolicitacoesCursosPagos(): void {
     const cursosPagos = this.cursosTodos.filter((curso) => curso.pago);
     if (!cursosPagos.length) {
+      this.solicitacoesCurso = {};
       return;
     }
 

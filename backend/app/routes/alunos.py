@@ -48,4 +48,11 @@ def get_cursos_aluno(aluno_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    return [CursoDetailResponse.model_validate(i.curso) for i in inscricoes]
+    cursos = []
+    for inscricao in inscricoes:
+        if not inscricao.curso:
+            continue
+        cursos.append(CursoDetailResponse.model_validate(inscricao.curso))
+
+    print(f"[alunos] get_cursos_aluno aluno_id={aluno_id} retornou {len(cursos)} curso(s)")
+    return cursos

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { AdminCourse, ApiService } from '../../../shared/services/api.service';
+import { ApiService, CourseRequest, CourseRequestStatus } from '../../../shared/services/api.service';
 
 @Component({
   selector: 'app-admin-solicitacoes',
@@ -11,8 +11,8 @@ import { AdminCourse, ApiService } from '../../../shared/services/api.service';
     <div class="page-container">
       <div class="page-header">
         <div>
-          <h2>Solicitacoes de Cursos</h2>
-          <p>Analise os cursos pagos pendentes antes de publica-los no catalogo.</p>
+          <h2>Solicitacoes de Acesso</h2>
+          <p>Analise os pedidos dos alunos para liberar cursos pagos.</p>
         </div>
 
         <button class="btn-refresh" (click)="carregarSolicitacoes()" [disabled]="carregando">
@@ -27,33 +27,35 @@ import { AdminCourse, ApiService } from '../../../shared/services/api.service';
         <table>
           <thead>
             <tr>
+              <th>Aluno</th>
+              <th>E-mail</th>
               <th>Curso</th>
-              <th>Descricao</th>
-              <th>Valor</th>
               <th>Status</th>
-              <th>Criado em</th>
+              <th>Solicitado em</th>
               <th>Acoes</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let curso of solicitacoes">
-              <td class="strong">{{ curso.nome }}</td>
-              <td>{{ curso.descricao || 'Sem descricao.' }}</td>
-              <td>{{ formatarValor(curso.valor) }}</td>
-              <td><span class="status pendente">Pendente</span></td>
-              <td>{{ curso.data_criacao | date:'dd/MM/yyyy HH:mm' }}</td>
+            <tr *ngFor="let solicitacao of solicitacoes">
+              <td class="strong">{{ solicitacao.usuario_nome || 'Aluno sem nome' }}</td>
+              <td>{{ solicitacao.usuario_email || 'Sem e-mail' }}</td>
+              <td>{{ solicitacao.curso_nome || ('Curso #' + solicitacao.curso_id) }}</td>
+              <td>
+                <span class="status pendente">{{ getStatusLabel(solicitacao.status) }}</span>
+              </td>
+              <td>{{ solicitacao.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
               <td class="actions">
                 <button
                   class="btn-approve"
-                  (click)="aprovar(curso)"
-                  [disabled]="processandoId === curso.id"
+                  (click)="atualizarStatus(solicitacao, 'approved')"
+                  [disabled]="processandoId === solicitacao.id"
                 >
-                  Aprovar
+                  Aceitar
                 </button>
                 <button
                   class="btn-reject"
-                  (click)="recusar(curso)"
-                  [disabled]="processandoId === curso.id"
+                  (click)="atualizarStatus(solicitacao, 'rejected')"
+                  [disabled]="processandoId === solicitacao.id"
                 >
                   Recusar
                 </button>
@@ -64,7 +66,7 @@ import { AdminCourse, ApiService } from '../../../shared/services/api.service';
       </div>
 
       <div class="empty-state" *ngIf="!carregando && solicitacoes.length === 0">
-        Nenhum curso pago pendente no momento.
+        Nenhuma solicitacao pendente no momento.
       </div>
     </div>
   `,
@@ -216,7 +218,7 @@ import { AdminCourse, ApiService } from '../../../shared/services/api.service';
   `]
 })
 export class AdminSolicitacoesComponent implements OnInit {
-  solicitacoes: AdminCourse[] = [];
+  solicitacoes: CourseRequest[] = [];
   carregando = false;
   erro = '';
   mensagemSucesso = '';
@@ -231,10 +233,11 @@ export class AdminSolicitacoesComponent implements OnInit {
   carregarSolicitacoes(): void {
     this.carregando = true;
     this.erro = '';
+    this.mensagemSucesso = '';
 
-    this.apiService.getAdminCourseApprovals().subscribe({
-      next: (cursos) => {
-        this.solicitacoes = cursos;
+    this.apiService.getCourseRequests('pending').subscribe({
+      next: (solicitacoes) => {
+        this.solicitacoes = solicitacoes;
         this.carregando = false;
       },
       error: (error) => {
@@ -244,50 +247,33 @@ export class AdminSolicitacoesComponent implements OnInit {
     });
   }
 
-  aprovar(curso: AdminCourse): void {
-    this.processandoId = curso.id;
+  atualizarStatus(solicitacao: CourseRequest, status: CourseRequestStatus): void {
+    this.processandoId = solicitacao.id;
     this.erro = '';
     this.mensagemSucesso = '';
 
-    this.apiService.approveAdminCourse(curso.id).subscribe({
+    this.apiService.updateCourseRequestStatus(solicitacao.id, status).subscribe({
       next: () => {
         this.processandoId = null;
-        this.solicitacoes = this.solicitacoes.filter((item) => item.id !== curso.id);
-        this.mensagemSucesso = `Curso "${curso.nome}" aprovado e publicado no catalogo.`;
+        this.solicitacoes = this.solicitacoes.filter((item) => item.id !== solicitacao.id);
+        this.mensagemSucesso = status === 'approved'
+          ? `Acesso liberado para ${solicitacao.usuario_nome || 'o aluno'}.`
+          : `Solicitacao recusada para ${solicitacao.usuario_nome || 'o aluno'}.`;
       },
       error: (error) => {
         this.processandoId = null;
-        this.erro = error?.error?.detail || 'Erro ao aprovar curso.';
+        this.erro = error?.error?.detail || 'Erro ao atualizar solicitacao.';
       }
     });
   }
 
-  recusar(curso: AdminCourse): void {
-    this.processandoId = curso.id;
-    this.erro = '';
-    this.mensagemSucesso = '';
-
-    this.apiService.rejectAdminCourse(curso.id).subscribe({
-      next: () => {
-        this.processandoId = null;
-        this.solicitacoes = this.solicitacoes.filter((item) => item.id !== curso.id);
-        this.mensagemSucesso = `Curso "${curso.nome}" recusado.`;
-      },
-      error: (error) => {
-        this.processandoId = null;
-        this.erro = error?.error?.detail || 'Erro ao recusar curso.';
-      }
-    });
-  }
-
-  formatarValor(valor?: number | null): string {
-    if (valor == null || Number(valor) <= 0) {
-      return 'Nao informado';
+  getStatusLabel(status: CourseRequestStatus): string {
+    if (status === 'approved') {
+      return 'Aprovada';
     }
-
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(Number(valor));
+    if (status === 'rejected') {
+      return 'Recusada';
+    }
+    return 'Pendente';
   }
 }

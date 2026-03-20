@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 export type CourseRequestStatus = 'pending' | 'approved' | 'rejected';
 
@@ -9,9 +9,12 @@ export interface CourseRequest {
   id: number;
   usuario_id: number;
   curso_id: number;
+  userId?: number;
+  cursoId?: number;
   status: CourseRequestStatus;
   created_at: string;
   updated_at: string;
+  data?: string;
   usuario_nome?: string | null;
   usuario_email?: string | null;
   curso_nome?: string | null;
@@ -23,12 +26,31 @@ export interface AdminCourse {
   nome: string;
   descricao?: string | null;
   pago: boolean;
+  isPago?: boolean;
   valor?: number | null;
+  preco?: number | null;
   status: 'pendente' | 'aprovado' | 'recusado';
   percentual_presenca_minima: number;
   ativo: boolean;
   data_criacao: string;
   data_atualizacao?: string;
+}
+
+export interface CursoResumo {
+  id: number;
+  nome: string;
+  descricao?: string | null;
+  pago: boolean;
+  isPago?: boolean;
+  valor?: number | null;
+  preco?: number | null;
+  status?: string;
+  percentual_presenca_minima: number;
+  ativo: boolean;
+  data_criacao: string;
+  data_atualizacao?: string;
+  aulas?: any[];
+  provas?: any[];
 }
 
 @Injectable({
@@ -39,9 +61,32 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
+  private normalizeCurso(curso: any): CursoResumo {
+    const pago = Boolean(curso?.pago ?? curso?.isPago ?? false);
+    const valor = Number(curso?.valor ?? curso?.preco ?? 0);
+
+    return {
+      id: Number(curso?.id ?? 0),
+      nome: curso?.nome ?? '',
+      descricao: curso?.descricao ?? null,
+      pago,
+      isPago: pago,
+      valor,
+      preco: valor,
+      status: curso?.status,
+      percentual_presenca_minima: Number(curso?.percentual_presenca_minima ?? 75),
+      ativo: Boolean(curso?.ativo ?? true),
+      data_criacao: curso?.data_criacao ?? '',
+      data_atualizacao: curso?.data_atualizacao,
+      aulas: Array.isArray(curso?.aulas) ? curso.aulas : [],
+      provas: Array.isArray(curso?.provas) ? curso.provas : []
+    };
+  }
+
   // Cursos
-  getCursos(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/cursos/`).pipe(
+  getCursos(): Observable<CursoResumo[]> {
+    return this.http.get<CursoResumo[] | null>(`${this.apiUrl}/cursos/catalogo`).pipe(
+      map((cursos) => Array.isArray(cursos) ? cursos.map((curso) => this.normalizeCurso(curso)) : []),
       catchError((error) => {
         console.error('Erro ao buscar cursos:', error);
         return of([]);
@@ -63,7 +108,13 @@ export class ApiService {
   }
 
   getAdminCursos(): Observable<AdminCourse[]> {
-    return this.http.get<AdminCourse[]>(`${this.apiUrl}/admin/cursos`);
+    return this.http.get<AdminCourse[] | null>(`${this.apiUrl}/admin/cursos`).pipe(
+      map((cursos) => Array.isArray(cursos) ? cursos.map((curso) => this.normalizeCurso(curso) as AdminCourse) : []),
+      catchError((error) => {
+        console.error('Erro ao buscar cursos do admin:', error);
+        return of([]);
+      })
+    );
   }
 
   updateCurso(id: number, data: any): Observable<any> {
@@ -78,8 +129,9 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/cursos/${cursoId}/inscrever`, {});
   }
 
-  getCursosAluno(alunoId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/alunos/${alunoId}/cursos/`).pipe(
+  getCursosAluno(alunoId: number): Observable<CursoResumo[]> {
+    return this.http.get<CursoResumo[] | null>(`${this.apiUrl}/alunos/${alunoId}/cursos/`).pipe(
+      map((cursos) => Array.isArray(cursos) ? cursos.map((curso) => this.normalizeCurso(curso)) : []),
       catchError((error) => {
         console.error(`Erro ao buscar cursos do aluno ${alunoId}:`, error);
         return of([]);

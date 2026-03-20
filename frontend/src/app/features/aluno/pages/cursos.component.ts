@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
-import { ApiService } from '../../../shared/services/api.service';
+import { ApiService, CursoResumo } from '../../../shared/services/api.service';
 
 interface Aula {
   id: number;
@@ -24,13 +24,7 @@ interface Prova {
   ativo: boolean;
 }
 
-interface Curso {
-  id: number;
-  nome: string;
-  descricao: string | null;
-  percentual_presenca_minima: number;
-  ativo: boolean;
-  data_criacao: string;
+interface Curso extends CursoResumo {
   aulas: Aula[];
   provas: Prova[];
 }
@@ -510,7 +504,13 @@ export class AlunoCursosComponent implements OnInit {
 
     this.apiService.getCursosAluno(usuario.id).subscribe({
       next: (cursos) => {
-        this.cursos = Array.isArray(cursos) ? cursos : [];
+        this.cursos = (Array.isArray(cursos) ? cursos : []).map((curso) => ({
+          ...curso,
+          descricao: curso.descricao ?? null,
+          aulas: Array.isArray(curso.aulas) ? curso.aulas : [],
+          provas: Array.isArray(curso.provas) ? curso.provas : []
+        })) as Curso[];
+        console.log('Cursos do aluno recebidos:', this.cursos);
         this.carregando = false;
         this.erro = '';
       },

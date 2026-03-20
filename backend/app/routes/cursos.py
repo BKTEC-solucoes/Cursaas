@@ -42,15 +42,51 @@ def _resolve_course_status_for_update(curso: Curso, pago_final: bool) -> StatusC
     return curso.status
 
 
-@router.get("/", response_model=list[CursoResponse])
-def list_cursos(db: Session = Depends(get_db)):
-    cursos = (
+def _list_public_courses(db: Session) -> list[Curso]:
+    return (
         db.query(Curso)
         .filter(Curso.ativo == True, Curso.status == StatusCursoEnum.aprovado)
         .order_by(Curso.data_criacao.desc())
         .all()
     )
-    return [CursoResponse.model_validate(curso) for curso in cursos]
+
+
+@router.get("/", response_model=list[CursoResponse])
+def list_cursos(db: Session = Depends(get_db)):
+    try:
+        cursos = _list_public_courses(db)
+        print(f"[cursos] list_cursos retornou {len(cursos)} curso(s)")
+        result = []
+        for curso in cursos:
+            try:
+                result.append(CursoResponse.model_validate(curso))
+            except Exception as e:
+                print(f"⚠️  Erro ao validar curso ID {curso.id}: {e}")
+                # Skip cursos com problemas de validação
+                continue
+        return result
+    except Exception as e:
+        print(f"❌ Erro ao listar cursos: {e}")
+        return []
+
+
+@router.get("/catalogo", response_model=list[CursoResponse])
+def list_catalogo(db: Session = Depends(get_db)):
+    try:
+        cursos = _list_public_courses(db)
+        print(f"[cursos] list_catalogo retornou {len(cursos)} curso(s)")
+        result = []
+        for curso in cursos:
+            try:
+                result.append(CursoResponse.model_validate(curso))
+            except Exception as e:
+                print(f"⚠️  Erro ao validar curso ID {curso.id}: {e}")
+                # Skip cursos com problemas de validação
+                continue
+        return result
+    except Exception as e:
+        print(f"❌ Erro ao listar catálogo: {e}")
+        return []
 
 
 @router.get("/admin/all", response_model=list[CursoAdminResponse])
@@ -58,8 +94,20 @@ def list_all_courses_for_admin(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_admin),
 ):
-    cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
-    return [CursoAdminResponse.model_validate(curso) for curso in cursos]
+    try:
+        cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+        result = []
+        for curso in cursos:
+            try:
+                result.append(CursoAdminResponse.model_validate(curso))
+            except Exception as e:
+                print(f"⚠️  Erro ao validar curso ID {curso.id}: {e}")
+                # Skip cursos com problemas de validação
+                continue
+        return result
+    except Exception as e:
+        print(f"❌ Erro ao listar cursos do admin: {e}")
+        return []
 
 
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)

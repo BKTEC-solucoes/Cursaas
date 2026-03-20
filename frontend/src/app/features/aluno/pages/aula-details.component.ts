@@ -40,12 +40,14 @@ import { VideoPlayerComponent } from '../../../shared/components';
           <p>Sua solicitação foi aprovada. O vídeo está liberado.</p>
         </div>
 
-        <div class="video-section" *ngIf="videoUrl && acessoLiberado">
+        <div class="video-section" *ngIf="videoUrl">
           <app-video-player
             [aulaId]="aulaId || 0"
             [videoUrl]="videoUrl"
             [titulo]="aula.titulo"
             [descricao]="aula.descricao"
+            [liberado]="acessoLiberado"
+            [mensagemBloqueio]="mensagemAcesso || 'Aguardando aprovaÃ§Ã£o do administrador.'"
           ></app-video-player>
         </div>
 
@@ -238,7 +240,7 @@ import { VideoPlayerComponent } from '../../../shared/components';
   `]
 })
 export class AulaDetailsComponent implements OnInit {
-  aulaId: number | null = null;
+  aulaId?: number;
   aula: any;
   curso: any;
   solicitacao: CourseRequest | null = null;
@@ -257,15 +259,15 @@ export class AulaDetailsComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe((params) => {
       const id = Number(params['id']);
-      this.aulaId = Number.isNaN(id) ? null : id;
-      if (this.aulaId) {
+      this.aulaId = Number.isNaN(id) ? undefined : id;
+      if (this.aulaId !== undefined) {
         this.carregarAula();
       }
     });
   }
 
   carregarAula(): void {
-    if (!this.aulaId) {
+    if (this.aulaId === undefined) {
       return;
     }
 

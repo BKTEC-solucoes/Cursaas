@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
@@ -70,6 +70,7 @@ class CursoBase(BaseModel):
     valor: Optional[Decimal] = None
     percentual_presenca_minima: int = Field(default=75, ge=0, le=100)
 
+class CursoCreate(CursoBase):
     @model_validator(mode="after")
     def validate_paid_course_rules(self):
         if self.pago:
@@ -78,9 +79,6 @@ class CursoBase(BaseModel):
         else:
             self.valor = None
         return self
-
-class CursoCreate(CursoBase):
-    pass
 
 class CursoUpdate(BaseModel):
     nome: Optional[str] = None
@@ -98,11 +96,26 @@ class CursoUpdate(BaseModel):
             self.valor = None
         return self
 
-class CursoResponse(CursoBase):
+class CursoResponse(BaseModel):
     id: int
+    nome: str
+    descricao: Optional[str] = None
+    pago: bool = False
+    valor: Optional[Decimal] = None
+    percentual_presenca_minima: int = Field(default=75, ge=0, le=100)
     status: StatusCursoEnum
     ativo: bool
     data_criacao: datetime
+
+    @computed_field
+    @property
+    def isPago(self) -> bool:
+        return self.pago
+
+    @computed_field
+    @property
+    def preco(self) -> Decimal:
+        return self.valor or Decimal("0")
     
     class Config:
         from_attributes = True
@@ -114,7 +127,6 @@ class CursoDetailResponse(CursoResponse):
 
 class CursoAdminResponse(CursoResponse):
     """Schema para admin listar cursos com status completo"""
-    status: StatusCursoEnum
     data_atualizacao: datetime
 
 # ==================== SCHEMAS DE INSCRIÇÃO EM CURSO ====================
@@ -151,6 +163,21 @@ class CourseRequestResponse(BaseModel):
     usuario_email: Optional[str] = None
     curso_nome: Optional[str] = None
     curso_pago: Optional[bool] = None
+
+    @computed_field
+    @property
+    def userId(self) -> int:
+        return self.usuario_id
+
+    @computed_field
+    @property
+    def cursoId(self) -> int:
+        return self.curso_id
+
+    @computed_field
+    @property
+    def data(self) -> datetime:
+        return self.created_at
 
     class Config:
         from_attributes = True
