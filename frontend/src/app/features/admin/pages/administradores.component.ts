@@ -14,6 +14,13 @@ interface AdminForm {
   admin_role: AdminRole;
   foto_perfil: string | null;  // URL relativa ou data URI
   curso_ids: number[];
+  // Dados pessoais
+  telefone: string;
+  sexo: string;
+  data_nascimento: string;
+  cpf_rg: string;
+  cep: string;
+  endereco: string;
 }
 
 interface AdminResumo {
@@ -23,6 +30,13 @@ interface AdminResumo {
   admin_role: AdminRole | null;
   foto_perfil: string | null;
   curso_ids: number[];
+  // Dados pessoais
+  telefone: string | null;
+  sexo: string | null;
+  data_nascimento: string | null;
+  cpf_rg: string | null;
+  cep: string | null;
+  endereco: string | null;
 }
 
 interface CursoOption {
@@ -40,6 +54,12 @@ function adminFormVazio(): AdminForm {
     admin_role: 'super_admin',
     foto_perfil: null,
     curso_ids: [],
+    telefone: '',
+    sexo: '',
+    data_nascimento: '',
+    cpf_rg: '',
+    cep: '',
+    endereco: '',
   };
 }
 
@@ -136,7 +156,7 @@ function adminFormVazio(): AdminForm {
                 [(ngModel)]="adminForm.confirmarEmail"
                 name="admin_confirmar_email"
                 required
-                placeholder="Repita o e-mail"
+                placeholder="Confirme o e-mail"
               />
             </div>
             <div class="form-row">
@@ -164,12 +184,72 @@ function adminFormVazio(): AdminForm {
                   name="admin_confirmar_senha"
                   required
                   minlength="6"
-                  placeholder="Repita a senha"
+                  placeholder="Confirme a senha"
                 />
                 <button type="button" class="toggle-password" (click)="mostrarConfirmarSenha = !mostrarConfirmarSenha">
                   {{ mostrarConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
+            </div>
+            <div class="form-row">
+              <label>Celular</label>
+              <input
+                type="text"
+                [(ngModel)]="adminForm.telefone"
+                name="admin_telefone"
+                placeholder="+55 (21) 91234-5678"
+                maxlength="19"
+                (input)="formatarAdminCelular()"
+              />
+            </div>
+            <div class="form-row">
+              <label>Gênero</label>
+              <select [(ngModel)]="adminForm.sexo" name="admin_sexo" class="role-select">
+                <option value="">Selecione...</option>
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+                <option value="outro">Outro</option>
+                <option value="nao_informado">Prefiro não informar</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>CPF/RG</label>
+              <input
+                type="text"
+                [(ngModel)]="adminForm.cpf_rg"
+                name="admin_cpf_rg"
+                placeholder="000.000.000-00"
+                maxlength="14"
+                (input)="formatarAdminCpf()"
+              />
+            </div>
+            <div class="form-row">
+              <label>Data de Nascimento</label>
+              <input
+                type="date"
+                [(ngModel)]="adminForm.data_nascimento"
+                name="admin_data_nascimento"
+              />
+            </div>
+            <div class="form-row">
+              <label>CEP</label>
+              <input
+                type="text"
+                [(ngModel)]="adminForm.cep"
+                name="admin_cep"
+                placeholder="00000-000"
+                maxlength="9"
+                (input)="formatarAdminCep()"
+              />
+            </div>
+            <div class="form-row span2">
+              <label>Endereço</label>
+              <input
+                type="text"
+                [(ngModel)]="adminForm.endereco"
+                name="admin_endereco"
+                placeholder="Rua, número, bairro, cidade"
+              />
             </div>
           </div>
 
@@ -1028,6 +1108,12 @@ export class AdminAdministradoresComponent implements OnInit {
       admin_role: admin.admin_role ?? 'super_admin',
       foto_perfil: admin.foto_perfil,
       curso_ids: admin.curso_ids ?? [],
+      telefone: this.formatarCelularValor(admin.telefone ?? ''),
+      sexo: admin.sexo ?? '',
+      data_nascimento: admin.data_nascimento ?? '',
+      cpf_rg: this.formatarCpfValor(admin.cpf_rg ?? ''),
+      cep: this.formatarCepValor(admin.cep ?? ''),
+      endereco: admin.endereco ?? '',
     };
     this.adminFormErro = '';
     this.adminFormSucesso = '';
@@ -1082,6 +1168,12 @@ export class AdminAdministradoresComponent implements OnInit {
         admin_role: this.adminForm.admin_role,
         foto_perfil: this.adminForm.foto_perfil,
         curso_ids: this.adminForm.curso_ids,
+        telefone: this.adminForm.telefone || null,
+        sexo: this.adminForm.sexo || null,
+        data_nascimento: this.adminForm.data_nascimento || null,
+        cpf_rg: this.adminForm.cpf_rg || null,
+        cep: this.adminForm.cep || null,
+        endereco: this.adminForm.endereco || null,
       };
 
       this.http
@@ -1114,6 +1206,12 @@ export class AdminAdministradoresComponent implements OnInit {
         admin_role: this.adminForm.admin_role,
         foto_perfil: this.adminForm.foto_perfil,
         curso_ids: this.adminForm.curso_ids,
+        telefone: this.adminForm.telefone || null,
+        sexo: this.adminForm.sexo || null,
+        data_nascimento: this.adminForm.data_nascimento || null,
+        cpf_rg: this.adminForm.cpf_rg || null,
+        cep: this.adminForm.cep || null,
+        endereco: this.adminForm.endereco || null,
       };
 
       this.http.post<any>(this.adminApiUrl, payload, { headers: this.getHeaders() }).subscribe({
@@ -1167,5 +1265,52 @@ export class AdminAdministradoresComponent implements OnInit {
         this.erroLista = err?.error?.detail ?? 'Erro ao carregar administradores.';
       }
     });
+  }
+
+  // ── Máscaras ──────────────────────────────────────────────────────────────
+
+  formatarAdminCpf() {
+    this.adminForm.cpf_rg = this.formatarCpfValor(this.adminForm.cpf_rg || '');
+  }
+
+  private formatarCpfValor(valor: string): string {
+    const digits = valor.replace(/\D/g, '').slice(0, 11);
+    const p1 = digits.slice(0, 3);
+    const p2 = digits.slice(3, 6);
+    const p3 = digits.slice(6, 9);
+    const p4 = digits.slice(9, 11);
+    if (digits.length <= 3) return p1;
+    if (digits.length <= 6) return `${p1}.${p2}`;
+    if (digits.length <= 9) return `${p1}.${p2}.${p3}`;
+    return `${p1}.${p2}.${p3}-${p4}`;
+  }
+
+  formatarAdminCep() {
+    this.adminForm.cep = this.formatarCepValor(this.adminForm.cep || '');
+  }
+
+  private formatarCepValor(valor: string): string {
+    const digits = valor.replace(/\D/g, '').slice(0, 8);
+    const p1 = digits.slice(0, 5);
+    const p2 = digits.slice(5, 8);
+    if (digits.length <= 5) return p1;
+    return `${p1}-${p2}`;
+  }
+
+  formatarAdminCelular() {
+    this.adminForm.telefone = this.formatarCelularValor(this.adminForm.telefone || '');
+  }
+
+  private formatarCelularValor(valor: string): string {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    const semCodigoPais = apenasNumeros.startsWith('55') ? apenasNumeros.slice(2) : apenasNumeros;
+    const limitado = semCodigoPais.slice(0, 11);
+    const ddd = limitado.slice(0, 2);
+    const parte1 = limitado.slice(2, 7);
+    const parte2 = limitado.slice(7, 11);
+    if (!ddd) return '+55';
+    if (!parte1) return `+55 (${ddd}`;
+    if (!parte2) return `+55 (${ddd}) ${parte1}`;
+    return `+55 (${ddd}) ${parte1}-${parte2}`;
   }
 }

@@ -57,6 +57,13 @@ class AdminCreate(BaseModel):
     admin_role: AdminRoleEnum = AdminRoleEnum.super_admin
     foto_perfil: Optional[str] = None  # URL da foto ou avatar
     curso_ids: List[int] = []
+    # Dados pessoais opcionais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
 
 class AdminUpdate(BaseModel):
     nome: Optional[str] = None
@@ -64,6 +71,13 @@ class AdminUpdate(BaseModel):
     admin_role: Optional[AdminRoleEnum] = None
     foto_perfil: Optional[str] = None
     curso_ids: Optional[List[int]] = None
+    # Dados pessoais opcionais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
 
 
 class AdminManageResponse(BaseModel):
@@ -73,6 +87,13 @@ class AdminManageResponse(BaseModel):
     admin_role: Optional[AdminRoleEnum] = None
     foto_perfil: Optional[str] = None
     curso_ids: List[int] = []
+    # Dados pessoais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
 
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None

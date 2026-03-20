@@ -214,6 +214,12 @@ def admin_registro(
         role="admin",
         admin_role=usuario_data.admin_role,
         foto_perfil=usuario_data.foto_perfil,
+        telefone=usuario_data.telefone,
+        sexo=usuario_data.sexo,
+        data_nascimento=usuario_data.data_nascimento,
+        cpf_rg=usuario_data.cpf_rg,
+        cep=usuario_data.cep,
+        endereco=usuario_data.endereco,
     )
 
     # Política de acesso por role:
@@ -274,6 +280,12 @@ def listar_admins(
             admin_role=a.admin_role,
             foto_perfil=a.foto_perfil,
             curso_ids=cursos_por_admin.get(a.id, []),
+            telefone=a.telefone,
+            sexo=a.sexo,
+            data_nascimento=a.data_nascimento,
+            cpf_rg=a.cpf_rg,
+            cep=a.cep,
+            endereco=a.endereco,
         )
         for a in admins
     ]
@@ -335,6 +347,18 @@ def editar_admin(
         admin.admin_role = dados.admin_role
     if dados.foto_perfil is not None:
         admin.foto_perfil = dados.foto_perfil
+    if dados.telefone is not None:
+        admin.telefone = dados.telefone
+    if dados.sexo is not None:
+        admin.sexo = dados.sexo
+    if dados.data_nascimento is not None:
+        admin.data_nascimento = dados.data_nascimento
+    if dados.cpf_rg is not None:
+        admin.cpf_rg = dados.cpf_rg
+    if dados.cep is not None:
+        admin.cep = dados.cep
+    if dados.endereco is not None:
+        admin.endereco = dados.endereco
 
     # Atualizar vínculos de cursos (quando enviado)
     if dados.curso_ids is not None:
