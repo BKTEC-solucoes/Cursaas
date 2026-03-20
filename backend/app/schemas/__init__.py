@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
@@ -9,6 +9,16 @@ from enum import Enum as PyEnum
 class RoleEnum(str, PyEnum):
     admin = "admin"
     aluno = "aluno"
+
+class CourseRequestStatusEnum(str, PyEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+class StatusCursoEnum(str, PyEnum):
+    pendente = "pendente"
+    aprovado = "aprovado"
+    recusado = "recusado"
 
 # ==================== SCHEMAS DE USUÁRIO ====================
 
@@ -56,7 +66,18 @@ class TokenData(BaseModel):
 class CursoBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
+    pago: bool = False
+    valor: Optional[Decimal] = None
     percentual_presenca_minima: int = Field(default=75, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_paid_course_rules(self):
+        if self.pago:
+            if self.valor is None or self.valor <= 0:
+                raise ValueError("Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago")
+        else:
+            self.valor = None
+        return self
 
 class CursoCreate(CursoBase):
     pass
@@ -64,11 +85,22 @@ class CursoCreate(CursoBase):
 class CursoUpdate(BaseModel):
     nome: Optional[str] = None
     descricao: Optional[str] = None
+    pago: Optional[bool] = None
+    valor: Optional[Decimal] = None
     percentual_presenca_minima: Optional[int] = None
     ativo: Optional[bool] = None
 
+    @model_validator(mode="after")
+    def validate_paid_course_rules(self):
+        if self.pago is True and (self.valor is None or self.valor <= 0):
+            raise ValueError("Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago")
+        if self.pago is False:
+            self.valor = None
+        return self
+
 class CursoResponse(CursoBase):
     id: int
+    status: StatusCursoEnum
     ativo: bool
     data_criacao: datetime
     
@@ -79,6 +111,11 @@ class CursoDetailResponse(CursoResponse):
     data_atualizacao: datetime
     aulas: List['AulaResponse'] = []
     provas: List['ProvaResponse'] = []
+
+class CursoAdminResponse(CursoResponse):
+    """Schema para admin listar cursos com status completo"""
+    status: StatusCursoEnum
+    data_atualizacao: datetime
 
 # ==================== SCHEMAS DE INSCRIÇÃO EM CURSO ====================
 
@@ -92,6 +129,29 @@ class InscricaoCursoResponse(BaseModel):
     curso_id: int
     data_inscricao: datetime
     
+    class Config:
+        from_attributes = True
+
+# ==================== SCHEMAS DE SOLICITAÇÃO DE CURSO ====================
+
+class CourseRequestCreate(BaseModel):
+    curso_id: int
+
+class CourseRequestUpdate(BaseModel):
+    status: CourseRequestStatusEnum
+
+class CourseRequestResponse(BaseModel):
+    id: int
+    usuario_id: int
+    curso_id: int
+    status: CourseRequestStatusEnum
+    created_at: datetime
+    updated_at: datetime
+    usuario_nome: Optional[str] = None
+    usuario_email: Optional[str] = None
+    curso_nome: Optional[str] = None
+    curso_pago: Optional[bool] = None
+
     class Config:
         from_attributes = True
 
@@ -153,6 +213,9 @@ class PresencaBase(BaseModel):
 class PresencaUpdate(BaseModel):
     percentual_assistido: int = Field(ge=0, le=100)
     tempo_total_segundos: int = Field(ge=0)
+
+class PresencaManualUpdate(BaseModel):
+    percentual_assistido: int = Field(ge=0, le=100, description="Percentual de presença a definir manualmente (0-100)")
 
 class PresencaResponse(BaseModel):
     id: int

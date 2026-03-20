@@ -275,7 +275,7 @@ export class AulasListaComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Aula[]>('http://localhost:8000/api/aulas').subscribe({
+    this.http.get<Aula[]>('http://localhost:8000/api/aulas/').subscribe({
       next: (aulas) => {
         this.aulas = aulas || [];
         this.carregando = false;

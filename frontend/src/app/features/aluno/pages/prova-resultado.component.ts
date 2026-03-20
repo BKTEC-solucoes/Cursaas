@@ -78,8 +78,11 @@ interface ResultadoProva {
         <div class="questao-resultado" *ngFor="let resposta of resultado.respostas_detalhes; let i = index">
           <div class="questao-header">
             <span class="questao-numero">Questão {{ i + 1 }}</span>
-            <span class="questao-status" [class.correta]="resposta.correta" [class.incorreta]="!resposta.correta">
-              {{ resposta.correta ? '✓ Correta' : '✗ Incorreta' }}
+            <span class="questao-status"
+              [class.correta]="resposta.correta"
+              [class.incorreta]="!resposta.correta && resposta.tipo !== 'dissertativa'"
+              [class.pendente]="resposta.tipo === 'dissertativa' && !resposta.correta">
+              {{ resposta.correta ? '✓ Correta' : (resposta.tipo === 'dissertativa' ? '⏳ Aguardando correção' : '✗ Incorreta') }}
             </span>
           </div>
           
@@ -508,6 +511,11 @@ interface ResultadoProva {
     .questao-status.incorreta {
       background: #f8d7da;
       color: #721c24;
+    }
+
+    .questao-status.pendente {
+      background: #fff3cd;
+      color: #856404;
     }
 
     .questao-content {

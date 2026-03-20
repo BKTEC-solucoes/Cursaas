@@ -462,7 +462,7 @@ export class AdminProvasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
     
-    this.http.get<Prova[]>('http://localhost:8000/api/provas').subscribe({
+    this.http.get<Prova[]>('http://localhost:8000/api/provas/').subscribe({
       next: (provas) => {
         this.provas = provas || [];
         this.aplicarFiltros();
@@ -477,7 +477,7 @@ export class AdminProvasComponent implements OnInit {
   }
 
   carregarCursos(): void {
-    this.http.get<any[]>('http://localhost:8000/api/cursos').subscribe({
+    this.http.get<any[]>('http://localhost:8000/api/cursos/').subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
       },

@@ -1,168 +1,218 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models import Curso
-from app.schemas import CursoCreate, CursoUpdate, CursoResponse, CursoDetailResponse
+from app.models import Curso, InscricaoCurso, StatusCursoEnum, Usuario
+from app.routes.auth import get_current_admin, get_current_user
+from app.schemas import (
+    CursoAdminResponse,
+    CursoCreate,
+    CursoDetailResponse,
+    CursoResponse,
+    CursoUpdate,
+    InscricaoCursoResponse,
+)
 
 router = APIRouter()
 
+
+def _normalize_course_price(pago: bool, valor: Decimal | None) -> Decimal | None:
+    if not pago:
+        return None
+
+    if valor is None or valor <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago",
+        )
+
+    return valor
+
+
+def _resolve_course_status_for_update(curso: Curso, pago_final: bool) -> StatusCursoEnum:
+    if not pago_final:
+        return StatusCursoEnum.aprovado
+
+    if not curso.pago or curso.status == StatusCursoEnum.recusado:
+        return StatusCursoEnum.pendente
+
+    return curso.status
+
+
 @router.get("/", response_model=list[CursoResponse])
 def list_cursos(db: Session = Depends(get_db)):
-    """
-    Lista todos os cursos ativos.
-    
-    **Retorna:**
-    - Lista de cursos com ID, nome, descrição, percentual mínimo de presença e data de criação
-    """
-    cursos = db.query(Curso).filter(Curso.ativo == True).all()
-    return [CursoResponse.model_validate(c) for c in cursos]
+    cursos = (
+        db.query(Curso)
+        .filter(Curso.ativo == True, Curso.status == StatusCursoEnum.aprovado)
+        .order_by(Curso.data_criacao.desc())
+        .all()
+    )
+    return [CursoResponse.model_validate(curso) for curso in cursos]
+
+
+@router.get("/admin/all", response_model=list[CursoAdminResponse])
+def list_all_courses_for_admin(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin),
+):
+    cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+    return [CursoAdminResponse.model_validate(curso) for curso in cursos]
+
 
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)
-def create_curso(curso_data: CursoCreate, db: Session = Depends(get_db)):
-    """
-    Cria um novo curso (apenas admin).
-    
-    **Parâmetros:**
-    - `nome` (str, obrigatório): Nome do curso
-    - `descricao` (str, opcional): Descrição do curso
-    - `percentual_presenca_minima` (int, padrão 75): Percentual mínimo de presença (0-100)
-    
-    **Retorna:**
-    - Dados do curso criado incluindo ID e timestamp
-    """
-    # Verificar se já existe curso com esse nome
+def create_curso(
+    curso_data: CursoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin),
+):
     existing = db.query(Curso).filter(Curso.nome == curso_data.nome).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Já existe um curso com o nome '{curso_data.nome}'"
+            detail=f"Ja existe um curso com o nome '{curso_data.nome}'",
         )
-    
-    # Criar novo curso
+
+    valor = _normalize_course_price(curso_data.pago, curso_data.valor)
+    initial_status = StatusCursoEnum.pendente if curso_data.pago else StatusCursoEnum.aprovado
+
     db_curso = Curso(
         nome=curso_data.nome,
         descricao=curso_data.descricao,
+        pago=curso_data.pago,
+        valor=valor,
+        status=initial_status,
         percentual_presenca_minima=curso_data.percentual_presenca_minima,
-        ativo=True
+        ativo=True,
     )
-    
+
     db.add(db_curso)
     db.commit()
     db.refresh(db_curso)
-    
+
     return CursoResponse.model_validate(db_curso)
+
 
 @router.get("/{curso_id}", response_model=CursoDetailResponse)
 def get_curso(curso_id: int, db: Session = Depends(get_db)):
-    """
-    Obtém detalhes completos de um curso incluindo aulas e provas.
-    
-    **Parâmetros:**
-    - `curso_id` (int): ID do curso
-    
-    **Retorna:**
-    - Dados do curso com aulas e provas relacionadas
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
-    
     if not curso:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Curso {curso_id} não encontrado"
+            detail=f"Curso {curso_id} nao encontrado",
         )
-    
+
+    if not curso.ativo or curso.status != StatusCursoEnum.aprovado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Curso {curso_id} nao encontrado",
+        )
+
     return CursoDetailResponse.model_validate(curso)
+
 
 @router.put("/{curso_id}", response_model=CursoResponse)
 def update_curso(
     curso_id: int,
     curso_data: CursoUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin),
 ):
-    """
-    Atualiza um curso existente (apenas admin).
-    
-    **Parâmetros:**
-    - `curso_id` (int): ID do curso a atualizar
-    - `nome` (str, opcional): Novo nome
-    - `descricao` (str, opcional): Nova descrição
-    - `percentual_presenca_minima` (int, opcional): Novo percentual mínimo
-    - `ativo` (bool, opcional): Ativar/desativar curso
-    
-    **Retorna:**
-    - Dados atualizados do curso
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
-    
     if not curso:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Curso {curso_id} não encontrado"
+            detail=f"Curso {curso_id} nao encontrado",
         )
-    
-    # Verificar duplicação de nome se estiver sendo alterado
+
     if curso_data.nome and curso_data.nome != curso.nome:
-        existing = db.query(Curso).filter(
-            Curso.nome == curso_data.nome,
-            Curso.id != curso_id
-        ).first()
+        existing = db.query(Curso).filter(Curso.nome == curso_data.nome, Curso.id != curso_id).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Já existe outro curso com o nome '{curso_data.nome}'"
+                detail=f"Ja existe outro curso com o nome '{curso_data.nome}'",
             )
-    
-    # Atualizar apenas os campos fornecidos
+
     update_data = curso_data.model_dump(exclude_unset=True)
+    pago_final = update_data.get("pago", curso.pago)
+    valor_final = update_data.get("valor", curso.valor)
+    update_data["valor"] = _normalize_course_price(pago_final, valor_final)
+    update_data["status"] = _resolve_course_status_for_update(curso, pago_final)
+
     for campo, valor in update_data.items():
         setattr(curso, campo, valor)
-    
+
     db.commit()
     db.refresh(curso)
-    
+
     return CursoResponse.model_validate(curso)
 
+
 @router.delete("/{curso_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_curso(curso_id: int, db: Session = Depends(get_db)):
-    """
-    Deleta um curso (apenas admin).
-    
-    ⚠️ **Cuidado:** Ao deletar, todas as inscrições, aulas, provas e notas associadas também serão deletadas.
-    
-    **Parâmetros:**
-    - `curso_id` (int): ID do curso a deletar
-    
-    **Retorna:**
-    - 204 No Content (sem corpo)
-    
-    **Erros:**
-    - 404: Curso não encontrado
-    """
+def delete_curso(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin),
+):
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
-    
     if not curso:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Curso {curso_id} não encontrado"
+            detail=f"Curso {curso_id} nao encontrado",
         )
-    
+
     db.delete(curso)
     db.commit()
-    
     return None
 
-@router.post("/{curso_id}/inscrever")
-def inscrever_aluno(curso_id: int):
-    """Inscreve um aluno em um curso"""
-    return {"message": f"Inscrever em curso {curso_id} - TODO"}
+
+@router.post("/{curso_id}/inscrever", response_model=InscricaoCursoResponse, status_code=status.HTTP_201_CREATED)
+def inscrever_aluno(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    curso = (
+        db.query(Curso)
+        .filter(
+            Curso.id == curso_id,
+            Curso.ativo == True,
+            Curso.status == StatusCursoEnum.aprovado,
+        )
+        .first()
+    )
+    if not curso:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Curso nao encontrado ou indisponivel",
+        )
+
+    if curso.pago:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Este curso e pago e exige aprovacao do administrador",
+        )
+
+    inscricao = InscricaoCurso(usuario_id=current_user.id, curso_id=curso_id)
+    db.add(inscricao)
+    try:
+        db.commit()
+        db.refresh(inscricao)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Voce ja esta inscrito neste curso",
+        )
+
+    return InscricaoCursoResponse.model_validate(inscricao)
+
 
 @router.get("/{curso_id}/alunos")
-def list_alunos_curso(curso_id: int):
-    """Lista alunos inscritos em um curso (admin)"""
+def list_alunos_curso(
+    curso_id: int,
+    current_user: Usuario = Depends(get_current_admin),
+):
     return {"message": f"Listar alunos do curso {curso_id} - TODO"}

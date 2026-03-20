@@ -9,6 +9,7 @@ import { AlunoProvaResponderComponent } from './pages/prova-responder.component'
 import { AlunoProvaResultadoComponent } from './pages/prova-resultado.component';
 import { AlunoNotasComponent } from './pages/notas.component';
 import { AlunoPresencaComponent } from './pages/presenca.component';
+import { AlunoCatalogoComponent } from './pages/catalogo.component';
 
 export const ALUNO_ROUTES: Routes = [
   {
@@ -50,6 +51,10 @@ export const ALUNO_ROUTES: Routes = [
       {
         path: 'presenca',
         component: AlunoPresencaComponent
+      },
+      {
+        path: 'catalogo',
+        component: AlunoCatalogoComponent
       },
       {
         path: '',

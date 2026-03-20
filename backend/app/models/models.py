@@ -3,6 +3,7 @@ from app.models import (
     Usuario,
     Curso,
     InscricaoCurso,
+    CourseRequest,
     Aula,
     Video,
     Presenca,
@@ -11,13 +12,15 @@ from app.models import (
     OpcaoResposta,
     Resposta,
     Nota,
-    NotaCurso
+    NotaCurso,
+    StatusSolicitacaoEnum
 )
 
 __all__ = [
     "Usuario",
     "Curso",
     "InscricaoCurso",
+    "CourseRequest",
     "Aula",
     "Video",
     "Presenca",
@@ -26,5 +29,6 @@ __all__ = [
     "OpcaoResposta",
     "Resposta",
     "Nota",
-    "NotaCurso"
+    "NotaCurso",
+    "StatusSolicitacaoEnum"
 ]

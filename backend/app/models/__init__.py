@@ -17,6 +17,16 @@ class TipoQuestaoEnum(str, enum.Enum):
     multipla_escolha = "multipla_escolha"
     dissertativa = "dissertativa"
 
+class StatusSolicitacaoEnum(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+class StatusCursoEnum(str, enum.Enum):
+    pendente = "pendente"
+    aprovado = "aprovado"
+    recusado = "recusado"
+
 # Tabela de Usuários
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -32,6 +42,7 @@ class Usuario(Base):
     
     # Relacionamentos
     inscricoes = relationship("InscricaoCurso", back_populates="usuario", cascade="all, delete-orphan")
+    solicitacoes_cursos = relationship("CourseRequest", back_populates="usuario", cascade="all, delete-orphan")
     presencas = relationship("Presenca", back_populates="usuario", cascade="all, delete-orphan")
     respostas = relationship("Resposta", back_populates="usuario", cascade="all, delete-orphan")
     notas = relationship("Nota", back_populates="usuario", cascade="all, delete-orphan")
@@ -44,6 +55,9 @@ class Curso(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
     descricao = Column(Text)
+    pago = Column(Boolean, default=False, nullable=False, index=True)
+    valor = Column(DECIMAL(10, 2), nullable=True)
+    status = Column(Enum(StatusCursoEnum), default=StatusCursoEnum.aprovado, nullable=False, index=True)
     percentual_presenca_minima = Column(Integer, default=75)
     ativo = Column(Boolean, default=True, index=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
@@ -51,6 +65,7 @@ class Curso(Base):
     
     # Relacionamentos
     inscricoes = relationship("InscricaoCurso", back_populates="curso", cascade="all, delete-orphan")
+    solicitacoes = relationship("CourseRequest", back_populates="curso", cascade="all, delete-orphan")
     aulas = relationship("Aula", back_populates="curso", cascade="all, delete-orphan")
     provas = relationship("Prova", back_populates="curso", cascade="all, delete-orphan")
     notas_cursos = relationship("NotaCurso", back_populates="curso", cascade="all, delete-orphan")
@@ -69,6 +84,24 @@ class InscricaoCurso(Base):
     # Relacionamentos
     usuario = relationship("Usuario", back_populates="inscricoes")
     curso = relationship("Curso", back_populates="inscricoes")
+
+# Tabela de Solicitações de Acesso a Cursos Pagos
+class CourseRequest(Base):
+    __tablename__ = "course_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    curso_id = Column(Integer, ForeignKey("cursos.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(Enum(StatusSolicitacaoEnum), default=StatusSolicitacaoEnum.pending, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "curso_id", name="unique_course_request"),
+    )
+
+    usuario = relationship("Usuario", back_populates="solicitacoes_cursos")
+    curso = relationship("Curso", back_populates="solicitacoes")
 
 # Tabela de Aulas
 class Aula(Base):

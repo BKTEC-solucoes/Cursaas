@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -12,7 +13,7 @@ import { AuthService } from '../../../core/services/auth.service';
       <header class="admin-header">
         <div class="header-content">
           <div class="header-top">
-            <h1>🔐 Painel Administrativo</h1>
+            <h1>Painel Administrativo</h1>
             <div class="user-menu">
               <span class="user-greeting">{{ usuarioNome }}</span>
               <button class="btn-logout" (click)="logout()">Sair</button>
@@ -36,6 +37,9 @@ import { AuthService } from '../../../core/services/auth.service';
             </a>
             <a routerLink="/admin/presenca" routerLinkActive="active">
               <span class="icon">✓</span>Presença
+            </a>
+            <a routerLink="/admin/solicitacoes" routerLinkActive="active">
+              <span class="icon">📨</span>Solicitações
             </a>
           </nav>
         </div>

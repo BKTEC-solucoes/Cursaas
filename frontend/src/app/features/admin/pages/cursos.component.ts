@@ -3,15 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
-interface Curso {
-  id: number;
-  nome: string;
-  descricao: string;
-  professor_responsavel: string;
-  data_inicio: string;
-  data_fim: string;
-  ativo: boolean;
-}
+import { AdminCourse, ApiService } from '../../../shared/services/api.service';
+
+type CursoFormValue = number | string | null;
 
 @Component({
   selector: 'app-admin-cursos',
@@ -20,82 +14,135 @@ interface Curso {
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h2>Gerenciar Cursos</h2>
-        <button class="btn-primary" (click)="abrirFormulario()">+ Novo Curso</button>
+        <div>
+          <h2>Gerenciar Cursos</h2>
+          <p>Cursos gratuitos sao publicados na hora. Cursos pagos entram como pendentes para aprovacao.</p>
+        </div>
+        <button class="btn-primary" (click)="abrirFormulario()">Novo Curso</button>
       </div>
 
       <div class="form-card" *ngIf="formAberto">
-        <h3>Novo Curso</h3>
-        <form (ngSubmit)="criarCurso()">
+        <h3>{{ editandoId ? 'Editar curso' : 'Criar curso' }}</h3>
+
+        <form (ngSubmit)="salvarCurso()">
           <div class="form-row">
-            <label>Nome</label>
-            <input type="text" [(ngModel)]="form.nome" name="nome" required />
+            <label for="nome">Nome</label>
+            <input id="nome" type="text" [(ngModel)]="form.nome" name="nome" required />
           </div>
 
           <div class="form-row">
-            <label>Descrição</label>
-            <textarea [(ngModel)]="form.descricao" name="descricao"></textarea>
+            <label for="descricao">Descricao</label>
+            <textarea id="descricao" [(ngModel)]="form.descricao" name="descricao"></textarea>
+          </div>
+
+          <div class="form-row checkbox-row">
+            <label class="checkbox-label" for="curso_pago">
+              <input
+                id="curso_pago"
+                type="checkbox"
+                [(ngModel)]="form.pago"
+                name="curso_pago"
+                (ngModelChange)="onPagoChange($event)"
+              />
+              Curso Pago
+            </label>
+          </div>
+
+          <div class="form-row" *ngIf="form.pago">
+            <label for="valor">Valor <span class="required">*</span></label>
+            <input
+              id="valor"
+              type="number"
+              step="0.01"
+              min="0.01"
+              [(ngModel)]="form.valor"
+              name="valor"
+              required
+            />
+            <small class="form-hint">Obrigatorio para cursos pagos e deve ser maior que zero.</small>
+          </div>
+
+          <div class="form-row" *ngIf="!form.pago">
+            <small class="form-hint">Curso gratuito sera criado com valor nulo e publicado automaticamente.</small>
           </div>
 
           <div class="form-row">
-            <label>Percentual presença mínima</label>
-            <input type="number" [(ngModel)]="form.percentual_presenca_minima" name="percentual_presenca_minima" min="0" max="100" />
+            <label for="percentual">Percentual minimo de presenca</label>
+            <input
+              id="percentual"
+              type="number"
+              [(ngModel)]="form.percentual_presenca_minima"
+              name="percentual_presenca_minima"
+              min="0"
+              max="100"
+            />
+          </div>
+
+          <div class="form-row" *ngIf="editandoId">
+            <label for="ativo">Disponibilidade</label>
+            <select id="ativo" [(ngModel)]="form.ativo" name="ativo">
+              <option [ngValue]="true">Ativo</option>
+              <option [ngValue]="false">Inativo</option>
+            </select>
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn-primary">Salvar</button>
-            <button type="button" class="btn-sm" (click)="cancelarFormulario()">Cancelar</button>
+            <button type="submit" class="btn-primary" [disabled]="criando">
+              {{ criando ? 'Salvando...' : 'Salvar' }}
+            </button>
+            <button type="button" class="btn-secondary" (click)="cancelarFormulario()">Cancelar</button>
           </div>
 
           <div class="form-error" *ngIf="formErro">{{ formErro }}</div>
         </form>
       </div>
 
-      <div class="cursos-table" *ngIf="cursos.length > 0">
+      <div class="success-banner" *ngIf="mensagemSucesso">{{ mensagemSucesso }}</div>
+
+      <div class="table-card" *ngIf="cursos.length > 0">
         <table>
           <thead>
             <tr>
-              <th>Nome do Curso</th>
-              <th>Professor</th>
-              <th>Início</th>
-              <th>Fim</th>
+              <th>Curso</th>
+              <th>Tipo</th>
+              <th>Valor</th>
               <th>Status</th>
-              <th>Ações</th>
+              <th>Ativo</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let curso of cursos" [class.inactive]="!curso.ativo">
-              <td class="curso-nome">{{ curso.nome }}</td>
-              <td>{{ curso.professor_responsavel }}</td>
-              <td>{{ curso.data_inicio | date:'dd/MM/yyyy' }}</td>
-              <td>{{ curso.data_fim | date:'dd/MM/yyyy' }}</td>
+            <tr *ngFor="let curso of cursos">
               <td>
-                <span class="status" [ngClass]="curso.ativo ? 'ativo' : 'inativo'">
-                  {{ curso.ativo ? '✓ Ativo' : '✗ Inativo' }}
+                <div class="curso-nome">{{ curso.nome }}</div>
+                <div class="curso-descricao">{{ curso.descricao || 'Sem descricao.' }}</div>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="curso.pago ? 'pago' : 'gratuito'">
+                  {{ curso.pago ? 'Pago' : 'Gratuito' }}
                 </span>
               </td>
+              <td>{{ formatarValor(curso.valor) }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="'status-' + curso.status">
+                  {{ getStatusLabel(curso.status) }}
+                </span>
+              </td>
+              <td>{{ curso.ativo ? 'Sim' : 'Nao' }}</td>
               <td class="actions">
-                <button class="btn-sm btn-edit" title="Editar">✏️</button>
-                <button class="btn-sm btn-delete" title="Deletar">🗑️</button>
+                <button class="btn-link" (click)="editarCurso(curso)">Editar</button>
+                <button class="btn-link danger" (click)="deletarCurso(curso)" [disabled]="deletandoId === curso.id">
+                  {{ deletandoId === curso.id ? 'Excluindo...' : 'Excluir' }}
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="no-data" *ngIf="cursos.length === 0 && !carregando">
-        <p>Nenhum curso criado ainda. Clique em "Novo Curso" para começar.</p>
-      </div>
-
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando cursos...</p>
-      </div>
-
-      <div class="error" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarCursos()">Tentar novamente</button>
-      </div>
+      <div class="empty-state" *ngIf="!carregando && cursos.length === 0">Nenhum curso cadastrado ainda.</div>
+      <div class="loading-state" *ngIf="carregando">Carregando cursos...</div>
+      <div class="error-state" *ngIf="erro">{{ erro }}</div>
     </div>
   `,
   styles: [`
@@ -107,37 +154,131 @@ interface Curso {
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      gap: 15px;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 24px;
     }
 
     .page-header h2 {
+      margin: 0 0 6px;
+    }
+
+    .page-header p {
       margin: 0;
-      color: #333;
+      color: #667085;
+      max-width: 620px;
+    }
+
+    .form-card,
+    .table-card,
+    .empty-state,
+    .loading-state,
+    .error-state,
+    .success-banner {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .form-card {
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .form-row input,
+    .form-row textarea,
+    .form-row select {
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .form-row textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .checkbox-row {
+      margin-bottom: 8px;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .required {
+      color: #b42318;
+    }
+
+    .form-hint {
+      color: #667085;
+      font-size: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 600;
     }
 
     .btn-primary {
-      background-color: #2c3e50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background-color 0.2s;
-      white-space: nowrap;
+      background: #22303c;
+      color: #fff;
     }
 
-    .btn-primary:hover {
-      background-color: #1a252f;
+    .btn-secondary {
+      background: #eaecf0;
+      color: #344054;
     }
 
-    .cursos-table {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .btn-primary:disabled,
+    .btn-secondary:disabled,
+    .btn-link:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .form-error,
+    .error-state {
+      color: #b42318;
+    }
+
+    .form-error {
+      margin-top: 14px;
+      background: #fef3f2;
+      border: 1px solid #fecdca;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .success-banner {
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      color: #065f46;
+      background: #ecfdf3;
+    }
+
+    .table-card {
       overflow: hidden;
     }
 
@@ -146,212 +287,127 @@ interface Curso {
       border-collapse: collapse;
     }
 
-    thead {
-      background: #f5f5f5;
-      border-bottom: 2px solid #ddd;
+    th,
+    td {
+      padding: 16px;
+      text-align: left;
+      border-bottom: 1px solid #edf2f7;
+      vertical-align: top;
     }
 
     th {
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      color: #333;
-      font-size: 13px;
+      background: #f8fafc;
+      font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    td {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    tbody tr:hover {
-      background-color: #f9f9f9;
-    }
-
-    tbody tr.inactive {
-      opacity: 0.7;
+      letter-spacing: 0.04em;
+      color: #475467;
     }
 
     .curso-nome {
-      font-weight: 600;
-      color: #333;
+      font-weight: 700;
+      color: #101828;
+      margin-bottom: 4px;
     }
 
-    .status {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 12px;
+    .curso-descricao {
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .badge,
+    .status-badge {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 6px 10px;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
     }
 
-    .status.ativo {
-      background: #d4edda;
-      color: #155724;
+    .badge.pago {
+      background: #fff7cc;
+      color: #8a6d00;
     }
 
-    .status.inativo {
-      background: #f8d7da;
-      color: #721c24;
+    .badge.gratuito {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-pendente {
+      background: #fff7cc;
+      color: #8a6d00;
+    }
+
+    .status-aprovado {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-recusado {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .actions {
       display: flex;
-      gap: 8px;
+      gap: 12px;
     }
 
-    .btn-sm {
+    .btn-link {
       background: none;
       border: none;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px 8px;
-      transition: transform 0.2s;
-    }
-
-    .btn-sm:hover {
-      transform: scale(1.2);
-    }
-
-    .btn-edit {
-      color: #3498db;
-    }
-
-    .btn-delete {
-      color: #e74c3c;
-    }
-
-    .no-data {
-      background: white;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      color: #999;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #2c3e50;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      border: 1px solid #f5c6cb;
-      text-align: center;
-    }
-
-    .error button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
+      color: #175cd3;
       cursor: pointer;
       font-weight: 600;
+      padding: 0;
     }
 
-    .form-card {
-      background: white;
-      padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    .btn-link.danger {
+      color: #b42318;
     }
 
-    .form-row {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 12px;
+    .empty-state,
+    .loading-state,
+    .error-state {
+      padding: 24px;
+      margin-top: 16px;
     }
 
-    .form-row label {
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .form-row input, .form-row textarea {
-      padding: 8px 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .form-error {
-      margin-top: 10px;
-      color: #721c24;
-      background: #f8d7da;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #f5c6cb;
-    }
-
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
       .page-header {
         flex-direction: column;
-        align-items: flex-start;
       }
 
-      table {
-        font-size: 12px;
-      }
-
-      th, td {
-        padding: 10px;
-      }
-
-      .actions {
-        flex-direction: column;
+      .table-card {
+        overflow-x: auto;
       }
     }
   `]
 })
 export class AdminCursosComponent implements OnInit {
-  cursos: Curso[] = [];
+  cursos: AdminCourse[] = [];
   carregando = false;
   erro = '';
+  mensagemSucesso = '';
   formAberto = false;
   formErro = '';
   criando = false;
+  deletandoId: number | null = null;
+  editandoId: number | null = null;
+
   form = {
     nome: '',
     descricao: '',
+    pago: false,
+    valor: null as CursoFormValue,
     percentual_presenca_minima: 75,
     ativo: true
   };
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private apiService: ApiService,
+    private http: HttpClient
+  ) {}
 
   ngOnInit(): void {
     this.carregarCursos();
@@ -361,38 +417,72 @@ export class AdminCursosComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Curso[]>('http://localhost:8000/api/cursos').subscribe({
+    this.apiService.getAdminCursos().subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
         this.carregando = false;
       },
-      error: (error: any) => {
+      error: (error) => {
         console.error('Erro ao carregar cursos:', error);
-        this.erro = 'Erro ao carregar cursos. Tente novamente.';
+        this.erro = error?.error?.detail || 'Erro ao carregar cursos.';
         this.carregando = false;
       }
     });
   }
 
   abrirFormulario(): void {
+    this.mensagemSucesso = '';
     this.formErro = '';
+    this.editandoId = null;
     this.form = {
       nome: '',
       descricao: '',
+      pago: false,
+      valor: null,
       percentual_presenca_minima: 75,
       ativo: true
     };
     this.formAberto = true;
   }
 
+  editarCurso(curso: AdminCourse): void {
+    this.mensagemSucesso = '';
+    this.formErro = '';
+    this.editandoId = curso.id;
+    this.form = {
+      nome: curso.nome,
+      descricao: curso.descricao || '',
+      pago: !!curso.pago,
+      valor: curso.pago ? curso.valor ?? null : null,
+      percentual_presenca_minima: curso.percentual_presenca_minima,
+      ativo: curso.ativo
+    };
+    this.formAberto = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   cancelarFormulario(): void {
     this.formAberto = false;
+    this.editandoId = null;
     this.formErro = '';
   }
 
-  criarCurso(): void {
-    if (!this.form.nome || this.form.nome.trim() === '') {
-      this.formErro = 'O nome do curso é obrigatório.';
+  onPagoChange(pago: boolean): void {
+    if (!pago) {
+      this.form.valor = null;
+    }
+  }
+
+  salvarCurso(): void {
+    const nome = this.form.nome.trim();
+    if (!nome) {
+      this.formErro = 'O nome do curso e obrigatorio.';
+      return;
+    }
+
+    const valor = this.normalizarValor(this.form.valor);
+    if (this.form.pago && (valor === null || valor <= 0)) {
+      this.formErro = 'Informe um valor maior que zero para cursos pagos.';
       return;
     }
 
@@ -400,27 +490,85 @@ export class AdminCursosComponent implements OnInit {
     this.formErro = '';
 
     const payload = {
-      nome: this.form.nome,
-      descricao: this.form.descricao,
+      nome,
+      descricao: this.form.descricao.trim() || null,
+      pago: this.form.pago,
+      valor: this.form.pago ? valor : null,
       percentual_presenca_minima: this.form.percentual_presenca_minima,
       ativo: this.form.ativo
     };
 
-    this.http.post('http://localhost:8000/api/cursos', payload).subscribe({
-      next: (res: any) => {
+    const request$ = this.editandoId
+      ? this.apiService.updateCurso(this.editandoId, payload)
+      : this.apiService.createCurso(payload);
+
+    request$.subscribe({
+      next: (curso: AdminCourse) => {
         this.criando = false;
         this.formAberto = false;
+        this.editandoId = null;
+        this.mensagemSucesso = curso.pago && curso.status === 'pendente'
+          ? 'Curso pago criado com status pendente. Ele so sera publicado apos aprovacao do admin.'
+          : 'Curso salvo com sucesso.';
         this.carregarCursos();
       },
-      error: (err: any) => {
-        console.error('Erro ao criar curso:', err);
+      error: (err) => {
+        console.error('Erro ao salvar curso:', err);
         this.criando = false;
-        if (err?.error?.detail) {
-          this.formErro = err.error.detail;
-        } else {
-          this.formErro = 'Erro ao criar curso. Tente novamente.';
-        }
+        this.formErro = err?.error?.detail || 'Erro ao salvar curso.';
       }
     });
+  }
+
+  deletarCurso(curso: AdminCourse): void {
+    const confirmou = confirm(`Deseja excluir o curso "${curso.nome}"?`);
+    if (!confirmou) {
+      return;
+    }
+
+    this.deletandoId = curso.id;
+    this.http.delete(`http://localhost:8000/api/cursos/${curso.id}`).subscribe({
+      next: () => {
+        this.deletandoId = null;
+        this.mensagemSucesso = 'Curso excluido com sucesso.';
+        this.carregarCursos();
+      },
+      error: (err) => {
+        console.error('Erro ao excluir curso:', err);
+        this.deletandoId = null;
+        this.erro = err?.error?.detail || 'Erro ao excluir curso.';
+      }
+    });
+  }
+
+  formatarValor(valor?: number | null): string {
+    if (valor == null || Number(valor) <= 0) {
+      return 'Gratis';
+    }
+
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(Number(valor));
+  }
+
+  getStatusLabel(status: string): string {
+    switch (status) {
+      case 'pendente':
+        return 'Pendente';
+      case 'recusado':
+        return 'Recusado';
+      default:
+        return 'Aprovado';
+    }
+  }
+
+  private normalizarValor(valor: CursoFormValue): number | null {
+    if (valor === null || valor === '') {
+      return null;
+    }
+
+    const normalizado = typeof valor === 'string' ? Number(valor.replace(',', '.')) : Number(valor);
+    return Number.isFinite(normalizado) ? normalizado : null;
   }
 }

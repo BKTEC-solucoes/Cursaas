@@ -568,7 +568,7 @@ export class AdminProvaFormComponent implements OnInit {
   }
 
   carregarCursos(): void {
-    this.http.get<Curso[]>('http://localhost:8000/api/cursos').subscribe({
+    this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
       },
@@ -721,7 +721,7 @@ export class AdminProvaFormComponent implements OnInit {
 
     const request = this.provaId 
       ? this.http.put(`http://localhost:8000/api/provas/${this.provaId}`, dadosProva)
-      : this.http.post('http://localhost:8000/api/provas', dadosProva);
+      : this.http.post('http://localhost:8000/api/provas/', dadosProva);
 
     request.subscribe({
       next: (response: any) => {

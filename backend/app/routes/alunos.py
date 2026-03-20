@@ -1,4 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session, joinedload
+from app.database import get_db
+from app.models import InscricaoCurso, Usuario, Curso, Aula, Prova
+from app.schemas import CursoDetailResponse
 
 router = APIRouter()
 
@@ -27,7 +31,21 @@ def delete_aluno(aluno_id: int):
     """Deleta um aluno (admin)"""
     return {"message": f"Deletar aluno {aluno_id} - TODO"}
 
-@router.get("/{aluno_id}/cursos")
-def get_cursos_aluno(aluno_id: int):
-    """Lista os cursos do aluno"""
-    return {"message": f"Obter cursos do aluno {aluno_id} - TODO"}
+@router.get("/{aluno_id}/cursos", response_model=list[CursoDetailResponse])
+def get_cursos_aluno(aluno_id: int, db: Session = Depends(get_db)):
+    """Lista os cursos em que o aluno está inscrito, com aulas e provas."""
+    aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
+    if not aluno:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    inscricoes = (
+        db.query(InscricaoCurso)
+        .options(
+            joinedload(InscricaoCurso.curso).joinedload(Curso.aulas),
+            joinedload(InscricaoCurso.curso).joinedload(Curso.provas),
+        )
+        .filter(InscricaoCurso.usuario_id == aluno_id)
+        .all()
+    )
+
+    return [CursoDetailResponse.model_validate(i.curso) for i in inscricoes]

@@ -6,7 +6,7 @@ from datetime import timedelta
 from app.database import get_db
 from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse
 from app.services.auth_service import AuthService
-from app.models import Usuario
+from app.models import Usuario, RoleEnum
 
 router = APIRouter()
 security = HTTPBearer()
@@ -58,6 +58,16 @@ async def get_current_user(
         )
     
     return user
+
+def get_current_admin(
+    current_user: Usuario = Depends(get_current_user)
+) -> Usuario:
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem acessar este recurso"
+        )
+    return current_user
 
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
