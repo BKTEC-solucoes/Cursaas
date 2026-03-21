@@ -23,11 +23,9 @@ def _normalize_course_price(pago: bool, valor: Decimal | None) -> Decimal | None
     if not pago:
         return None
 
+    # Temporariamente: se for pago mas não tem valor, usa 0.0 como padrão
     if valor is None or valor <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago",
-        )
+        return Decimal("0.0")
 
     return valor
 

@@ -35,35 +35,71 @@ type CursoFormValue = number | string | null;
             <textarea id="descricao" [(ngModel)]="form.descricao" name="descricao"></textarea>
           </div>
 
-          <div class="form-row checkbox-row">
-            <label class="checkbox-label" for="curso_pago">
+          <!-- Tipo de Curso -->
+          <div class="form-row tipo-curso-section">
+            <label class="section-label">Tipo de Curso</label>
+            <div class="tipo-curso-options">
+              <label class="radio-option">
+                <input
+                  type="radio"
+                  [value]="false"
+                  [(ngModel)]="form.pago"
+                  name="tipo_curso"
+                  (ngModelChange)="onPagoChange($event)"
+                  class="radio-input"
+                />
+                <span class="radio-custom"></span>
+                <span class="option-content">
+                  <span class="option-title">🎁 Livre (Gratuito)</span>
+                  <span class="option-desc">Publicado automaticamente</span>
+                </span>
+              </label>
+
+              <label class="radio-option">
+                <input
+                  type="radio"
+                  [value]="true"
+                  [(ngModel)]="form.pago"
+                  name="tipo_curso"
+                  (ngModelChange)="onPagoChange($event)"
+                  class="radio-input"
+                />
+                <span class="radio-custom"></span>
+                <span class="option-content">
+                  <span class="option-title">💳 Pago</span>
+                  <span class="option-desc">Precisa de aprovacao</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Campo de Valor (Condicional) -->
+          <div class="form-row valor-row" *ngIf="form.pago">
+            <label for="valor">Valor do Curso <span class="required">*</span></label>
+            <div class="valor-input-group">
+              <span class="valor-prefix">R$</span>
               <input
-                id="curso_pago"
-                type="checkbox"
-                [(ngModel)]="form.pago"
-                name="curso_pago"
-                (ngModelChange)="onPagoChange($event)"
+                id="valor"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="999999.99"
+                [(ngModel)]="form.valor"
+                name="valor"
+                placeholder="0,00"
+                class="valor-input"
+                required
               />
-              Curso Pago
-            </label>
+            </div>
+            <small class="form-hint info">Informe um valor maior que zero. Exemplo: 99,90</small>
           </div>
 
-          <div class="form-row" *ngIf="form.pago">
-            <label for="valor">Valor <span class="required">*</span></label>
-            <input
-              id="valor"
-              type="number"
-              step="0.01"
-              min="0.01"
-              [(ngModel)]="form.valor"
-              name="valor"
-              required
-            />
-            <small class="form-hint">Obrigatorio para cursos pagos e deve ser maior que zero.</small>
-          </div>
-
-          <div class="form-row" *ngIf="!form.pago">
-            <small class="form-hint">Curso gratuito sera criado com valor nulo e publicado automaticamente.</small>
+          <!-- Mensagem curso gratuito -->
+          <div class="form-row info-message" *ngIf="!form.pago">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <span class="info-text">Este curso sera gratuito e publicado automaticamente no catalogo.</span>
+            </div>
           </div>
 
           <div class="form-row">
@@ -206,24 +242,191 @@ type CursoFormValue = number | string | null;
       resize: vertical;
     }
 
-    .checkbox-row {
-      margin-bottom: 8px;
+    /* Tipo de Curso Section */
+    .tipo-curso-section {
+      margin-bottom: 20px;
     }
 
-    .checkbox-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
+    .section-label {
       font-weight: 600;
+      color: #101828;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .tipo-curso-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .radio-option {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 14px;
+      border: 2px solid #d0d5dd;
+      border-radius: 12px;
+      background: #fafbfc;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .radio-option:hover {
+      border-color: #b0b7c3;
+      background: #f5f6f8;
+    }
+
+    .radio-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      cursor: pointer;
+    }
+
+    .radio-input:checked + .radio-custom {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .radio-input:checked ~ .option-content .option-title {
+      color: #6366f1;
+      font-weight: 700;
+    }
+
+    .radio-custom {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d0d5dd;
+      border-radius: 50%;
+      background: #fff;
+      transition: all 0.3s ease;
+      margin-top: 2px;
+    }
+
+    .option-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .option-title {
+      font-weight: 600;
+      color: #344054;
+      font-size: 14px;
+      transition: color 0.3s ease;
+    }
+
+    .option-desc {
+      color: #667085;
+      font-size: 13px;
+    }
+
+    /* Valor Input Group */
+    .valor-row {
+      margin-bottom: 16px;
+      animation: slideInDown 0.3s ease;
+    }
+
+    .valor-input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .valor-prefix {
+      position: absolute;
+      left: 12px;
+      font-weight: 700;
+      color: #6366f1;
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .valor-input {
+      width: 100%;
+      border: 2px solid #d0d5dd;
+      border-radius: 10px;
+      padding: 10px 12px 10px 40px !important;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .valor-input:focus {
+      border-color: #6366f1;
+      background: #f8fafc;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      outline: none;
+    }
+
+    .valor-input::placeholder {
+      color: #a1a8b3;
+    }
+
+    /* Info Message */
+    .info-message {
+      animation: slideInDown 0.3s ease;
+    }
+
+    .info-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #ecfdf3 0%, #f0fdf4 100%);
+      border-left: 4px solid #10b981;
+      border-radius: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .info-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .info-text {
+      color: #065f46;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .form-hint {
+      color: #667085;
+      font-size: 12px;
+    }
+
+    .form-hint.info {
+      color: #5f7ed1;
+      font-weight: 500;
     }
 
     .required {
       color: #b42318;
     }
 
-    .form-hint {
-      color: #667085;
-      font-size: 12px;
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
     }
 
     .form-actions {
@@ -380,6 +583,10 @@ type CursoFormValue = number | string | null;
 
       .table-card {
         overflow-x: auto;
+      }
+
+      .tipo-curso-options {
+        grid-template-columns: 1fr;
       }
     }
   `]
@@ -546,14 +753,19 @@ export class AdminCursosComponent implements OnInit {
   }
 
   formatarValor(valor?: number | null): string {
-    if (valor == null || Number(valor) <= 0) {
-      return 'Gratis';
+    if (valor == null) {
+      return 'Grátis';
+    }
+
+    const numValor = Number(valor);
+    if (!Number.isFinite(numValor)) {
+      return 'Grátis';
     }
 
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(Number(valor));
+    }).format(numValor);
   }
 
   getStatusLabel(status: string): string {

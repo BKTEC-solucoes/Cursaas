@@ -118,9 +118,17 @@ const GRADIENTS = [
                 </div>
               </div>
 
-              <div class="card-preco" *ngIf="curso.pago && curso.valor">
+              <div class="card-preco">
                 <span class="preco-label">Valor:</span>
-                <span class="preco-valor">{{ curso.valor | currency:'BRL':'symbol':'1.2-2' }}</span>
+                <span class="preco-valor" *ngIf="curso.pago && curso.valor !== null && curso.valor !== undefined">
+                  {{ curso.valor | currency:'BRL':'symbol':'1.2-2' }}
+                </span>
+                <span class="preco-valor" *ngIf="curso.pago && (curso.valor === null || curso.valor === undefined)">
+                  R$ 0,00
+                </span>
+                <span class="preco-valor gratuito" *ngIf="!curso.pago">
+                  🎁 Grátis
+                </span>
               </div>
 
               <div class="card-divider"></div>
@@ -412,6 +420,36 @@ const GRADIENTS = [
       margin-bottom: 16px;
     }
 
+    .card-preco {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border-left: 4px solid #6366F1;
+    }
+
+    .preco-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preco-valor {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .preco-valor.gratuito {
+      color: #10b981;
+      font-size: 14px;
+    }
+
     .card-actions {
       margin-top: auto;
     }
@@ -422,16 +460,18 @@ const GRADIENTS = [
       color: white;
       border: none;
       padding: 13px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      transition: all 0.3s ease;
       letter-spacing: 0.3px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
     }
 
     .btn-inscrever {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(90deg, #6274e4 0%, #a258f3 100%);
     }
 
     .btn-solicitar {
@@ -440,8 +480,9 @@ const GRADIENTS = [
 
     .btn-inscrever:hover:not(:disabled),
     .btn-solicitar:hover:not(:disabled) {
-      opacity: 0.9;
-      transform: scale(1.02);
+      opacity: 0.85;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
     }
 
     .btn-inscrever:disabled,
@@ -452,7 +493,7 @@ const GRADIENTS = [
     }
 
     .btn-inscrever.loading {
-      background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+      background: linear-gradient(90deg, #a0aec0 0%, #718096 100%);
     }
 
     .inscrito-info,

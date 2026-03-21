@@ -74,8 +74,9 @@ class CursoCreate(CursoBase):
     @model_validator(mode="after")
     def validate_paid_course_rules(self):
         if self.pago:
+            # Se for pago e não tem valor, usa 0.0 temporariamente como padrão
             if self.valor is None or self.valor <= 0:
-                raise ValueError("Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago")
+                self.valor = Decimal("0.0")
         else:
             self.valor = None
         return self
@@ -90,8 +91,10 @@ class CursoUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_paid_course_rules(self):
-        if self.pago is True and (self.valor is None or self.valor <= 0):
-            raise ValueError("Campo 'valor' e obrigatorio e deve ser maior que zero quando o curso e pago")
+        if self.pago is True:
+            # Se for pago e não tem valor, usa 0.0 temporariamente como padrão
+            if self.valor is None or self.valor <= 0:
+                self.valor = Decimal("0.0")
         if self.pago is False:
             self.valor = None
         return self
