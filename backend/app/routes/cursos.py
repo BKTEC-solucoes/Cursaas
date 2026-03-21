@@ -122,7 +122,7 @@ def create_curso(
         )
 
     valor = _normalize_course_price(curso_data.pago, curso_data.valor)
-    initial_status = StatusCursoEnum.pendente if curso_data.pago else StatusCursoEnum.aprovado
+    initial_status = StatusCursoEnum.aprovado
 
     db_curso = Curso(
         nome=curso_data.nome,

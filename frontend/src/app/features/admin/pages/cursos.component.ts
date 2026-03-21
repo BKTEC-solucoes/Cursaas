@@ -718,9 +718,7 @@ export class AdminCursosComponent implements OnInit {
         this.criando = false;
         this.formAberto = false;
         this.editandoId = null;
-        this.mensagemSucesso = curso.pago && curso.status === 'pendente'
-          ? 'Curso pago criado com status pendente. Ele so sera publicado apos aprovacao do admin.'
-          : 'Curso salvo com sucesso.';
+        this.mensagemSucesso = 'Curso salvo com sucesso.';
         this.carregarCursos();
       },
       error: (err) => {
