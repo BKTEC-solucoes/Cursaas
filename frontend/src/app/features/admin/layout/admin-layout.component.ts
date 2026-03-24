@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+
 import { AuthService } from '../../../core/services/auth.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
 
@@ -13,7 +14,7 @@ import { PermissionsService } from '../../../core/services/permissions.service';
       <header class="admin-header">
         <div class="header-content">
           <div class="header-top">
-            <h1>🔐 Painel Administrativo</h1>
+            <h1>Painel Administrativo</h1>
             <div class="user-menu">
               <div class="user-info">
                 <span class="user-greeting">{{ usuarioNome }}</span>
@@ -46,6 +47,9 @@ import { PermissionsService } from '../../../core/services/permissions.service';
             </a>
             <a routerLink="/admin/administradores" routerLinkActive="active" *ngIf="p.can('administradores:read')">
               <span class="icon">🔐</span>Administradores
+            </a>
+            <a routerLink="/admin/solicitacoes" routerLinkActive="active">
+              <span class="icon">📨</span>Solicitações
             </a>
           </nav>
         </div>

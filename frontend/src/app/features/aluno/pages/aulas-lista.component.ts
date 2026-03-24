@@ -303,7 +303,6 @@ export class AulasListaComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    // 1. Buscar cursos em que o aluno está inscrito
     this.http.get<CursoEnrollado[]>(
       `http://localhost:8000/api/alunos/${user.id}/cursos`,
       { headers: this.getHeaders() }
@@ -315,7 +314,6 @@ export class AulasListaComponent implements OnInit {
           return;
         }
 
-        // 2. Buscar aulas de cada curso em paralelo
         const requests = cursos.map(curso =>
           this.http.get<Aula[]>(
             `http://localhost:8000/api/aulas/?curso_id=${curso.id}&limit=200`,
@@ -325,7 +323,6 @@ export class AulasListaComponent implements OnInit {
 
         forkJoin(requests).subscribe({
           next: (resultados) => {
-            // Mesclar, atribuir nome do curso e ordenar por data
             const todas: Aula[] = [];
             resultados.forEach((aulasDosCurso, idx) => {
               aulasDosCurso.forEach(a => {
@@ -333,7 +330,6 @@ export class AulasListaComponent implements OnInit {
                 todas.push(a);
               });
             });
-            // Remover duplicatas por id
             const mapa = new Map<number, Aula>();
             todas.forEach(a => mapa.set(a.id, a));
             this.aulas = Array.from(mapa.values())

@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { ApiService } from '../../../shared/services/api.service';
+
+import { ApiService, CourseRequest } from '../../../shared/services/api.service';
 import { VideoPlayerComponent } from '../../../shared/components';
 
 @Component({
@@ -18,27 +19,47 @@ import { VideoPlayerComponent } from '../../../shared/components';
       </div>
 
       <div class="aula-content" *ngIf="aula">
-        <!-- Video Player com Rastreamento -->
+        <div class="access-status access-loading" *ngIf="carregandoAcesso">
+          <p>Verificando acesso ao curso...</p>
+        </div>
+
+        <div class="access-panel" *ngIf="!carregandoAcesso && curso?.pago && !acessoLiberado">
+          <h3>Curso pago</h3>
+          <p>{{ mensagemAcesso }}</p>
+          <button
+            class="btn-request"
+            *ngIf="podeSolicitarAcesso()"
+            (click)="solicitarAcesso()"
+            [disabled]="processandoSolicitacao"
+          >
+            {{ processandoSolicitacao ? 'Enviando solicitação...' : getTextoBotaoSolicitacao() }}
+          </button>
+        </div>
+
+        <div class="access-status access-approved" *ngIf="!carregandoAcesso && curso?.pago && acessoLiberado">
+          <p>Sua solicitação foi aprovada. O vídeo está liberado.</p>
+        </div>
+
         <div class="video-section" *ngIf="videoUrl">
           <app-video-player
-            [aulaId]="aulaId"
+            [aulaId]="aulaId || 0"
             [videoUrl]="videoUrl"
             [titulo]="aula.titulo"
             [descricao]="aula.descricao"
+            [liberado]="acessoLiberado"
+            [mensagemBloqueio]="mensagemAcesso || 'Aguardando aprovaÃ§Ã£o do administrador.'"
           ></app-video-player>
         </div>
 
-        <div class="no-video" *ngIf="!videoUrl">
+        <div class="no-video" *ngIf="!videoUrl && acessoLiberado">
           <p>Nenhum vídeo disponível para esta aula.</p>
         </div>
 
-        <!-- Descrição da Aula -->
         <div class="aula-description" *ngIf="aula.descricao">
           <h3>Descrição</h3>
           <p>{{ aula.descricao }}</p>
         </div>
 
-        <!-- Informações da Aula -->
         <div class="aula-info">
           <h3>Informações</h3>
           <div class="info-grid">
@@ -48,11 +69,12 @@ import { VideoPlayerComponent } from '../../../shared/components';
             </div>
             <div class="info-item" *ngIf="aula.curso_id">
               <label>Curso:</label>
-              <span>ID {{ aula.curso_id }}</span>
+              <span>{{ curso?.nome || ('ID ' + aula.curso_id) }}</span>
             </div>
             <div class="info-item">
               <label>Status:</label>
-              <span class="status-active">Disponível</span>
+              <span class="status-active" *ngIf="acessoLiberado">Disponível</span>
+              <span class="status-waiting" *ngIf="!acessoLiberado">Aguardando liberação</span>
             </div>
           </div>
         </div>
@@ -93,42 +115,13 @@ import { VideoPlayerComponent } from '../../../shared/components';
     .aula-content {
       display: flex;
       flex-direction: column;
-      gap: 30px;
+      gap: 24px;
     }
 
-    .video-section {
-      width: 100%;
-    }
-
-    .no-video {
-      background: white;
-      border-radius: 8px;
-      padding: 40px;
-      text-align: center;
-      color: #999;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .aula-description {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .aula-description h3 {
-      margin: 0 0 15px 0;
-      color: #333;
-      border-bottom: 2px solid #667eea;
-      padding-bottom: 10px;
-    }
-
-    .aula-description p {
-      margin: 0;
-      color: #666;
-      line-height: 1.6;
-    }
-
+    .access-status,
+    .access-panel,
+    .no-video,
+    .aula-description,
     .aula-info {
       background: white;
       border-radius: 8px;
@@ -136,11 +129,57 @@ import { VideoPlayerComponent } from '../../../shared/components';
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
+    .access-loading {
+      color: #475467;
+    }
+
+    .access-approved {
+      border-left: 4px solid #16a34a;
+      color: #166534;
+      background: #f0fdf4;
+    }
+
+    .access-panel {
+      border-left: 4px solid #d97706;
+      background: #fffbeb;
+    }
+
+    .access-panel h3,
+    .aula-description h3,
     .aula-info h3 {
-      margin: 0 0 15px 0;
+      margin: 0 0 12px 0;
       color: #333;
-      border-bottom: 2px solid #667eea;
-      padding-bottom: 10px;
+    }
+
+    .btn-request {
+      margin-top: 12px;
+      background: #d97706;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-request:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .video-section {
+      width: 100%;
+    }
+
+    .no-video {
+      text-align: center;
+      color: #999;
+    }
+
+    .aula-description p {
+      margin: 0;
+      color: #666;
+      line-height: 1.6;
     }
 
     .info-grid {
@@ -166,13 +205,22 @@ import { VideoPlayerComponent } from '../../../shared/components';
       font-size: 14px;
     }
 
-    .status-active {
-      background-color: #d4edda;
-      color: #155724;
+    .status-active,
+    .status-waiting {
       padding: 4px 8px;
       border-radius: 4px;
       display: inline-block;
       width: fit-content;
+    }
+
+    .status-active {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .status-waiting {
+      background: #fff3cd;
+      color: #856404;
     }
 
     .loading {
@@ -192,10 +240,16 @@ import { VideoPlayerComponent } from '../../../shared/components';
   `]
 })
 export class AulaDetailsComponent implements OnInit {
-  aulaId: any;
+  aulaId?: number;
   aula: any;
-  videoUrl: string = '';
-  erro: string = '';
+  curso: any;
+  solicitacao: CourseRequest | null = null;
+  videoUrl = '';
+  erro = '';
+  mensagemAcesso = '';
+  acessoLiberado = false;
+  carregandoAcesso = false;
+  processandoSolicitacao = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -203,25 +257,36 @@ export class AulaDetailsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      this.aulaId = params['id'];
-      if (this.aulaId) {
+    this.route.params.subscribe((params) => {
+      const id = Number(params['id']);
+      this.aulaId = Number.isNaN(id) ? undefined : id;
+      if (this.aulaId !== undefined) {
         this.carregarAula();
       }
     });
   }
 
   carregarAula(): void {
+    if (this.aulaId === undefined) {
+      return;
+    }
+
     this.apiService.getAula(this.aulaId).subscribe({
       next: (aula) => {
+        if (!aula) {
+          this.erro = 'Aula não encontrada.';
+          return;
+        }
+
         this.aula = aula;
-        // Se houver vídeos, usar o primeiro
+
         if (aula.videos && aula.videos.length > 0) {
           const video = aula.videos[0];
-          // Extrair apenas o nome do arquivo do caminho completo
           const nomeArquivo = video.caminho_arquivo.split('\\').pop() || video.arquivo_nome;
           this.videoUrl = `http://localhost:8000/api/aulas/video/${nomeArquivo}`;
         }
+
+        this.verificarAcessoCurso();
       },
       error: (error) => {
         console.error('Erro ao carregar aula:', error);
@@ -229,5 +294,95 @@ export class AulaDetailsComponent implements OnInit {
       }
     });
   }
-}
 
+  verificarAcessoCurso(): void {
+    if (!this.aula?.curso_id) {
+      this.acessoLiberado = true;
+      return;
+    }
+
+    this.carregandoAcesso = true;
+    this.apiService.getCurso(this.aula.curso_id).subscribe({
+      next: (curso) => {
+        this.curso = curso;
+
+        if (!curso?.pago) {
+          this.acessoLiberado = true;
+          this.mensagemAcesso = '';
+          this.carregandoAcesso = false;
+          return;
+        }
+
+        this.apiService.getCourseRequestStatus(this.aula.curso_id).subscribe({
+          next: (solicitacao) => {
+            this.solicitacao = solicitacao;
+            this.definirEstadoAcesso();
+            this.carregandoAcesso = false;
+          },
+          error: () => {
+            this.solicitacao = null;
+            this.definirEstadoAcesso();
+            this.carregandoAcesso = false;
+          }
+        });
+      },
+      error: () => {
+        this.carregandoAcesso = false;
+        this.erro = 'Erro ao verificar o acesso ao curso.';
+      }
+    });
+  }
+
+  solicitarAcesso(): void {
+    if (!this.aula?.curso_id || this.processandoSolicitacao) {
+      return;
+    }
+
+    this.processandoSolicitacao = true;
+    this.erro = '';
+
+    this.apiService.createCourseRequest(this.aula.curso_id).subscribe({
+      next: (solicitacao) => {
+        this.solicitacao = solicitacao;
+        this.definirEstadoAcesso();
+        this.processandoSolicitacao = false;
+      },
+      error: (error) => {
+        this.processandoSolicitacao = false;
+        this.erro = error?.error?.detail || 'Não foi possível registrar a solicitação.';
+      }
+    });
+  }
+
+  podeSolicitarAcesso(): boolean {
+    return !this.solicitacao || this.solicitacao.status === 'rejected';
+  }
+
+  getTextoBotaoSolicitacao(): string {
+    return this.solicitacao?.status === 'rejected' ? 'Solicitar novamente' : 'Solicitar acesso';
+  }
+
+  private definirEstadoAcesso(): void {
+    const status = this.solicitacao?.status;
+
+    if (status === 'approved') {
+      this.acessoLiberado = true;
+      this.mensagemAcesso = 'Sua solicitação foi aprovada. O vídeo está liberado.';
+      return;
+    }
+
+    this.acessoLiberado = false;
+
+    if (status === 'pending') {
+      this.mensagemAcesso = 'Aguardando aprovação do administrador.';
+      return;
+    }
+
+    if (status === 'rejected') {
+      this.mensagemAcesso = 'Sua solicitação foi recusada. Você pode solicitar novamente.';
+      return;
+    }
+
+    this.mensagemAcesso = 'Este curso é pago. Solicite acesso para liberar o conteúdo.';
+  }
+}

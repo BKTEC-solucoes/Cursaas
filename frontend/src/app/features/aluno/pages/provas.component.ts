@@ -286,7 +286,6 @@ export class AlunoProvasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    // 1. Buscar cursos em que o aluno está inscrito
     this.http.get<CursoEnrollado[]>(
       `http://localhost:8000/api/alunos/${user.id}/cursos`,
       { headers: this.getHeaders() }
@@ -298,7 +297,6 @@ export class AlunoProvasComponent implements OnInit {
           return;
         }
 
-        // 2. Para cada curso, buscar as provas em paralelo
         const requests = cursos.map(curso =>
           this.http.get<Prova[]>(
             `http://localhost:8000/api/provas/?curso_id=${curso.id}&limit=100`,
@@ -308,7 +306,6 @@ export class AlunoProvasComponent implements OnInit {
 
         forkJoin(requests).subscribe({
           next: (resultados) => {
-            // Mesclar e remover duplicatas por id
             const todas = resultados.flat();
             const mapa = new Map<number, Prova>();
             todas.forEach(p => mapa.set(p.id, p));

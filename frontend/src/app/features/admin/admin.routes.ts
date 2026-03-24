@@ -11,6 +11,7 @@ import { AdminPresencaComponent } from './pages/presenca.component';
 import { AdminAlunosComponent } from './pages/alunos.component';
 import { AdminAdministradoresComponent } from './pages/administradores.component';
 import { permissionGuard } from '../../core/guards/permission.guard';
+import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -80,6 +81,10 @@ export const ADMIN_ROUTES: Routes = [
         component: AdminAdministradoresComponent,
         canActivate: [permissionGuard],
         data: { permissions: ['administradores:read'] }
+      },
+      {
+        path: 'solicitacoes',
+        component: AdminSolicitacoesComponent
       },
       {
         path: '',

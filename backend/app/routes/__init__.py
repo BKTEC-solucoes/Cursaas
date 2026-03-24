@@ -1,4 +1,4 @@
 # Routes __init__.py
-from app.routes import auth, cursos, aulas, provas, alunos, presenca, notas
+from app.routes import admin, auth, cursos, aulas, provas, alunos, presenca, notas, requests
 
-__all__ = ["auth", "cursos", "aulas", "provas", "alunos", "presenca", "notas"]
+__all__ = ["admin", "auth", "cursos", "aulas", "provas", "alunos", "presenca", "notas", "requests"]

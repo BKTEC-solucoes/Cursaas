@@ -1,20 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../../core/services/auth.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
-interface Curso {
-  id: number;
-  nome: string;
-  descricao: string | null;
-  percentual_presenca_minima: number;
-  ativo: boolean;
-  data_criacao: string;
-  aulas?: any[];
-  provas?: any[];
-}
+import { AuthService } from '../../../core/services/auth.service';
+import { ApiService, CourseRequest, CourseRequestStatus, CursoResumo } from '../../../shared/services/api.service';
+
+type Curso = CursoResumo;
 
 const GRADIENTS = [
   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -33,11 +27,9 @@ const GRADIENTS = [
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
     <div class="catalogo-container">
-
-      <!-- Hero Banner -->
       <div class="hero-banner">
         <div class="hero-content">
-          <h1>🎓 Catálogo de Cursos</h1>
+          <h1>Catálogo de Cursos</h1>
           <p>Explore todos os cursos disponíveis e expanda seu conhecimento</p>
           <div class="search-box">
             <span class="search-icon">🔍</span>
@@ -54,8 +46,6 @@ const GRADIENTS = [
       </div>
 
       <div class="catalogo-body">
-
-        <!-- Filtros e contagem -->
         <div class="filtros-bar">
           <div class="filtro-tabs">
             <button class="tab" [class.active]="filtroAtivo === 'todos'" (click)="setFiltro('todos')">
@@ -73,7 +63,6 @@ const GRADIENTS = [
           </span>
         </div>
 
-        <!-- Loading -->
         <div class="loading-state" *ngIf="carregando">
           <div class="skeleton-grid">
             <div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6]">
@@ -87,7 +76,6 @@ const GRADIENTS = [
           </div>
         </div>
 
-        <!-- Nenhum resultado -->
         <div class="empty-state" *ngIf="!carregando && cursosFiltrados.length === 0">
           <div class="empty-icon">🔎</div>
           <h3>Nenhum curso encontrado</h3>
@@ -96,11 +84,8 @@ const GRADIENTS = [
           <p *ngIf="!termoBusca && filtroAtivo !== 'inscritos'">Nenhum curso disponível no momento.</p>
         </div>
 
-        <!-- Grid de cursos -->
         <div class="cursos-grid" *ngIf="!carregando && cursosFiltrados.length > 0">
-          <div class="curso-card" *ngFor="let curso of cursosFiltrados; let i = index">
-
-            <!-- Banner colorido -->
+          <div class="curso-card" *ngFor="let curso of cursosFiltrados">
             <div class="card-banner" [style.background]="getGradient(curso.id)">
               <div class="banner-overlay">
                 <span class="banner-icon">🎓</span>
@@ -110,12 +95,10 @@ const GRADIENTS = [
               </div>
             </div>
 
-            <!-- Conteúdo do card -->
             <div class="card-body">
               <h3 class="card-titulo">{{ curso.nome }}</h3>
               <p class="card-descricao">{{ curso.descricao || 'Sem descrição disponível.' }}</p>
 
-              <!-- Metadados estilo e-commerce -->
               <div class="card-meta">
                 <div class="meta-item">
                   <span class="meta-icon">📖</span>
@@ -129,38 +112,66 @@ const GRADIENTS = [
                   <span class="meta-icon">👥</span>
                   <span>{{ curso.percentual_presenca_minima }}% presença</span>
                 </div>
+                <div class="meta-item" [class.meta-paid]="curso.pago">
+                  <span class="meta-icon">{{ curso.pago ? '💳' : '🎁' }}</span>
+                  <span>{{ curso.pago ? 'Curso pago' : 'Acesso gratuito' }}</span>
+                </div>
               </div>
 
-              <!-- Divider -->
+              <div class="card-preco">
+                <span class="preco-label">Valor:</span>
+                <span class="preco-valor" *ngIf="curso.pago && curso.valor !== null && curso.valor !== undefined">
+                  {{ curso.valor | currency:'BRL':'symbol':'1.2-2' }}
+                </span>
+                <span class="preco-valor" *ngIf="curso.pago && (curso.valor === null || curso.valor === undefined)">
+                  R$ 0,00
+                </span>
+                <span class="preco-valor gratuito" *ngIf="!curso.pago">
+                  🎁 Grátis
+                </span>
+              </div>
+
               <div class="card-divider"></div>
 
-              <!-- Ações -->
               <div class="card-actions">
                 <div class="inscrito-info" *ngIf="isInscrito(curso.id)">
-                  <span class="tag-inscrito">✅ Você está inscrito</span>
+                  <span class="tag-inscrito">Você está inscrito</span>
                   <a class="btn-acessar" [routerLink]="['/aluno/cursos']">Ver meus cursos →</a>
                 </div>
 
                 <button
-                  *ngIf="!isInscrito(curso.id)"
+                  *ngIf="!isInscrito(curso.id) && !curso.pago"
                   class="btn-inscrever"
                   (click)="inscrever(curso)"
-                  [disabled]="inscrevendo[curso.id]"
-                  [class.loading]="inscrevendo[curso.id]"
+                  [disabled]="processando[curso.id]"
+                  [class.loading]="processando[curso.id]"
                 >
-                  <span *ngIf="!inscrevendo[curso.id]">🚀 Inscrever-se Grátis</span>
-                  <span *ngIf="inscrevendo[curso.id]">⏳ Inscrevendo...</span>
+                  <span *ngIf="!processando[curso.id]">Inscrever-se grátis</span>
+                  <span *ngIf="processando[curso.id]">Inscrevendo...</span>
                 </button>
+
+                <div class="solicitacao-info" *ngIf="!isInscrito(curso.id) && curso.pago">
+                  <span class="tag-solicitacao" [ngClass]="getSolicitacaoStatus(curso.id)">
+                    {{ getSolicitacaoLabel(curso.id) }}
+                  </span>
+
+                  <button
+                    class="btn-solicitar"
+                    *ngIf="podeSolicitar(curso.id)"
+                    (click)="solicitarAcesso(curso)"
+                    [disabled]="processando[curso.id]"
+                  >
+                    {{ processando[curso.id] ? 'Enviando...' : getSolicitacaoButtonLabel(curso.id) }}
+                  </button>
+                </div>
 
                 <div class="erro-inscricao" *ngIf="erroInscricao[curso.id]">
                   {{ erroInscricao[curso.id] }}
                 </div>
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
     </div>
   `,
@@ -170,7 +181,6 @@ const GRADIENTS = [
       background: #f0f2f5;
     }
 
-    /* Hero */
     .hero-banner {
       background: linear-gradient(135deg, #2c3e50 0%, #4a5568 100%);
       padding: 48px 24px 56px;
@@ -228,18 +238,12 @@ const GRADIENTS = [
       line-height: 1;
     }
 
-    .btn-limpar:hover {
-      color: #333;
-    }
-
-    /* Body */
     .catalogo-body {
       max-width: 1200px;
       margin: -20px auto 0;
       padding: 0 20px 40px;
     }
 
-    /* Filtros */
     .filtros-bar {
       background: white;
       border-radius: 12px;
@@ -299,14 +303,12 @@ const GRADIENTS = [
       color: #888;
     }
 
-    /* Grid */
     .cursos-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 24px;
     }
 
-    /* Card */
     .curso-card {
       background: white;
       border-radius: 16px;
@@ -322,7 +324,6 @@ const GRADIENTS = [
       box-shadow: 0 12px 32px rgba(0,0,0,0.15);
     }
 
-    /* Banner */
     .card-banner {
       height: 140px;
       position: relative;
@@ -360,7 +361,6 @@ const GRADIENTS = [
       backdrop-filter: blur(4px);
     }
 
-    /* Body */
     .card-body {
       padding: 20px;
       display: flex;
@@ -387,7 +387,6 @@ const GRADIENTS = [
       overflow: hidden;
     }
 
-    /* Meta */
     .card-meta {
       display: flex;
       gap: 12px;
@@ -406,6 +405,11 @@ const GRADIENTS = [
       border-radius: 6px;
     }
 
+    .meta-item.meta-paid {
+      background: #fff4e5;
+      color: #9a3412;
+    }
+
     .meta-icon {
       font-size: 13px;
     }
@@ -416,54 +420,121 @@ const GRADIENTS = [
       margin-bottom: 16px;
     }
 
-    /* Ações */
+    .card-preco {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border-left: 4px solid #6366F1;
+    }
+
+    .preco-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preco-valor {
+      font-size: 15px;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .preco-valor.gratuito {
+      color: #10b981;
+      font-size: 14px;
+    }
+
     .card-actions {
       margin-top: auto;
     }
 
-    .btn-inscrever {
+    .btn-inscrever,
+    .btn-solicitar {
       width: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
       padding: 13px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
+      transition: all 0.3s ease;
       letter-spacing: 0.3px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
     }
 
-    .btn-inscrever:hover:not(:disabled) {
-      opacity: 0.9;
-      transform: scale(1.02);
+    .btn-inscrever {
+      background: linear-gradient(90deg, #6274e4 0%, #a258f3 100%);
     }
 
-    .btn-inscrever:disabled {
+    .btn-solicitar {
+      background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    }
+
+    .btn-inscrever:hover:not(:disabled),
+    .btn-solicitar:hover:not(:disabled) {
+      opacity: 0.85;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-inscrever:disabled,
+    .btn-solicitar:disabled {
       opacity: 0.7;
       cursor: not-allowed;
       transform: none;
     }
 
     .btn-inscrever.loading {
-      background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+      background: linear-gradient(90deg, #a0aec0 0%, #718096 100%);
     }
 
-    .inscrito-info {
+    .inscrito-info,
+    .solicitacao-info {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .tag-inscrito {
+    .tag-inscrito,
+    .tag-solicitacao {
       font-size: 13px;
-      color: #276749;
       font-weight: 600;
-      background: #c6f6d5;
       padding: 6px 12px;
       border-radius: 8px;
       text-align: center;
+    }
+
+    .tag-inscrito {
+      color: #276749;
+      background: #c6f6d5;
+    }
+
+    .tag-solicitacao.none {
+      background: #e5eef7;
+      color: #1f3b5b;
+    }
+
+    .tag-solicitacao.pending {
+      background: #fff7cc;
+      color: #8a6d00;
+    }
+
+    .tag-solicitacao.approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .tag-solicitacao.rejected {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .btn-acessar {
@@ -493,7 +564,6 @@ const GRADIENTS = [
       text-align: center;
     }
 
-    /* Empty state */
     .empty-state {
       text-align: center;
       padding: 80px 20px;
@@ -516,7 +586,6 @@ const GRADIENTS = [
       font-size: 14px;
     }
 
-    /* Skeleton loading */
     .skeleton-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -573,11 +642,12 @@ export class AlunoCatalogoComponent implements OnInit {
   termoBusca = '';
   filtroAtivo: 'todos' | 'disponiveis' | 'inscritos' = 'todos';
   carregando = false;
-  inscrevendo: Record<number, boolean> = {};
+  processando: Record<number, boolean> = {};
   erroInscricao: Record<number, string> = {};
+  solicitacoesCurso: Record<number, CourseRequest | null> = {};
 
   constructor(
-    private http: HttpClient,
+    private apiService: ApiService,
     private authService: AuthService
   ) {}
 
@@ -586,38 +656,46 @@ export class AlunoCatalogoComponent implements OnInit {
   }
 
   get cursosDisponiveis(): Curso[] {
-    return this.cursosTodos.filter(c => !this.cursosInscritos.has(c.id));
+    return this.cursosTodos.filter((curso) => !this.cursosInscritos.has(curso.id));
   }
 
   carregarDados(): void {
     this.carregando = true;
+    this.cursosTodos = [];
+    this.cursosFiltrados = [];
     const usuario = this.authService.getCurrentUser();
 
-    // Carregar cursos + inscrições em paralelo
-    const cursosReq = this.http.get<Curso[]>('http://localhost:8000/api/cursos/');
-
-    cursosReq.subscribe({
+    this.apiService.getCursos().subscribe({
       next: (cursos) => {
-        this.cursosTodos = cursos || [];
+        this.cursosTodos = (Array.isArray(cursos) ? cursos : []).map((curso) => ({
+          ...curso,
+          descricao: curso.descricao ?? null
+        }));
+        console.log('Catalogo recebido:', this.cursosTodos);
+        this.carregarSolicitacoesCursosPagos();
 
         if (usuario) {
-          this.http.get<Curso[]>(`http://localhost:8000/api/alunos/${usuario.id}/cursos/`).subscribe({
+          this.apiService.getCursosAluno(usuario.id).subscribe({
             next: (inscritos) => {
-              this.cursosInscritos = new Set((inscritos || []).map(c => c.id));
+              this.cursosInscritos = new Set((Array.isArray(inscritos) ? inscritos : []).map((curso) => curso.id));
               this.carregando = false;
               this.aplicarFiltro();
             },
             error: () => {
+              this.cursosInscritos = new Set();
               this.carregando = false;
               this.aplicarFiltro();
             }
           });
         } else {
+          this.cursosInscritos = new Set();
           this.carregando = false;
           this.aplicarFiltro();
         }
       },
       error: () => {
+        this.cursosTodos = [];
+        this.cursosFiltrados = [];
         this.carregando = false;
       }
     });
@@ -637,49 +715,110 @@ export class AlunoCatalogoComponent implements OnInit {
     this.aplicarFiltro();
   }
 
+  isInscrito(cursoId: number): boolean {
+    return this.cursosInscritos.has(cursoId);
+  }
+
+  inscrever(curso: Curso): void {
+    this.processando[curso.id] = true;
+    this.erroInscricao[curso.id] = '';
+
+    this.apiService.inscreverCurso(curso.id).subscribe({
+      next: () => {
+        this.cursosInscritos = new Set([...this.cursosInscritos, curso.id]);
+        this.processando[curso.id] = false;
+        this.aplicarFiltro();
+      },
+      error: (err: any) => {
+        this.processando[curso.id] = false;
+        this.erroInscricao[curso.id] = err?.error?.detail || 'Erro ao realizar inscrição.';
+      }
+    });
+  }
+
+  solicitarAcesso(curso: Curso): void {
+    this.processando[curso.id] = true;
+    this.erroInscricao[curso.id] = '';
+
+    this.apiService.createCourseRequest(curso.id).subscribe({
+      next: (solicitacao) => {
+        this.solicitacoesCurso[curso.id] = solicitacao;
+        this.processando[curso.id] = false;
+      },
+      error: (err: any) => {
+        this.processando[curso.id] = false;
+        this.erroInscricao[curso.id] = err?.error?.detail || 'Erro ao solicitar acesso.';
+      }
+    });
+  }
+
+  getSolicitacaoStatus(cursoId: number): CourseRequestStatus | 'none' {
+    return this.solicitacoesCurso[cursoId]?.status || 'none';
+  }
+
+  getSolicitacaoLabel(cursoId: number): string {
+    const status = this.getSolicitacaoStatus(cursoId);
+    if (status === 'pending') {
+      return 'Aguardando aprovação do administrador';
+    }
+    if (status === 'approved') {
+      return 'Solicitação aprovada';
+    }
+    if (status === 'rejected') {
+      return 'Solicitação recusada';
+    }
+    return 'Curso pago mediante solicitação';
+  }
+
+  getSolicitacaoButtonLabel(cursoId: number): string {
+    return this.getSolicitacaoStatus(cursoId) === 'rejected' ? 'Solicitar novamente' : 'Solicitar acesso';
+  }
+
+  podeSolicitar(cursoId: number): boolean {
+    const status = this.getSolicitacaoStatus(cursoId);
+    return status === 'none' || status === 'rejected';
+  }
+
+  getGradient(id: number): string {
+    return GRADIENTS[id % GRADIENTS.length];
+  }
+
   private aplicarFiltro(): void {
     let base: Curso[];
     if (this.filtroAtivo === 'inscritos') {
-      base = this.cursosTodos.filter(c => this.cursosInscritos.has(c.id));
+      base = this.cursosTodos.filter((curso) => this.cursosInscritos.has(curso.id));
     } else if (this.filtroAtivo === 'disponiveis') {
-      base = this.cursosTodos.filter(c => !this.cursosInscritos.has(c.id));
+      base = this.cursosTodos.filter((curso) => !this.cursosInscritos.has(curso.id));
     } else {
       base = this.cursosTodos;
     }
 
     const termo = this.termoBusca.trim().toLowerCase();
     if (termo) {
-      base = base.filter(c =>
-        c.nome.toLowerCase().includes(termo) ||
-        (c.descricao || '').toLowerCase().includes(termo)
+      base = base.filter((curso) =>
+        curso.nome.toLowerCase().includes(termo) ||
+        (curso.descricao || '').toLowerCase().includes(termo)
       );
     }
 
-    this.cursosFiltrados = base;
+    this.cursosFiltrados = base || [];
   }
 
-  isInscrito(cursoId: number): boolean {
-    return this.cursosInscritos.has(cursoId);
-  }
+  private carregarSolicitacoesCursosPagos(): void {
+    const cursosPagos = this.cursosTodos.filter((curso) => curso.pago);
+    if (!cursosPagos.length) {
+      this.solicitacoesCurso = {};
+      return;
+    }
 
-  inscrever(curso: Curso): void {
-    this.inscrevendo[curso.id] = true;
-    this.erroInscricao[curso.id] = '';
+    const requests = cursosPagos.map((curso) =>
+      this.apiService.getCourseRequestStatus(curso.id).pipe(catchError(() => of(null)))
+    );
 
-    this.http.post(`http://localhost:8000/api/cursos/${curso.id}/inscrever`, {}).subscribe({
-      next: () => {
-        this.cursosInscritos = new Set([...this.cursosInscritos, curso.id]);
-        this.inscrevendo[curso.id] = false;
-        this.aplicarFiltro();
-      },
-      error: (err: any) => {
-        this.inscrevendo[curso.id] = false;
-        this.erroInscricao[curso.id] = err?.error?.detail || 'Erro ao realizar inscrição.';
-      }
+    forkJoin(requests).subscribe((solicitacoes) => {
+      cursosPagos.forEach((curso, index) => {
+        this.solicitacoesCurso[curso.id] = solicitacoes[index];
+      });
     });
-  }
-
-  getGradient(id: number): string {
-    return GRADIENTS[id % GRADIENTS.length];
   }
 }

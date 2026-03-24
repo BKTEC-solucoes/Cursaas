@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApiService, CursoResumo } from '../../../shared/services/api.service';
 
 interface Aula {
   id: number;
@@ -24,13 +24,7 @@ interface Prova {
   ativo: boolean;
 }
 
-interface Curso {
-  id: number;
-  nome: string;
-  descricao: string | null;
-  percentual_presenca_minima: number;
-  ativo: boolean;
-  data_criacao: string;
+interface Curso extends CursoResumo {
   aulas: Aula[];
   provas: Prova[];
 }
@@ -93,6 +87,15 @@ interface Curso {
             <span class="stat">👥 {{ curso.percentual_presenca_minima }}% presença mínima</span>
           </div>
 
+          <!-- Preço do Curso -->
+          <div class="curso-preco" *ngIf="curso.pago">
+            <span class="preco-label">💳 Valor:</span>
+            <span class="preco-valor">{{ (curso.valor || 0) | currency:'BRL':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="curso-preco gratuito" *ngIf="!curso.pago">
+            <span class="preco-label">🎁 Acesso:</span>
+            <span class="preco-valor">Gratuito</span>
+          </div>
           <!-- Detalhes expandíveis -->
           <div class="curso-detalhes" *ngIf="expandido[curso.id]">
 
@@ -338,6 +341,39 @@ interface Curso {
       border-radius: 6px;
     }
 
+    .curso-preco {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #2c3e50;
+      background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-top: 12px;
+      margin-bottom: 12px;
+      border-left: 4px solid #6366F1;
+    }
+
+    .curso-preco.gratuito {
+      background: linear-gradient(135deg, #f0fdf4 0%, #f7fee7 100%);
+      border-left-color: #10b981;
+    }
+
+    .preco-label {
+      font-weight: 600;
+      color: #666;
+      min-width: 70px;
+    }
+
+    .preco-valor {
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .curso-preco.gratuito .preco-valor {
+      color: #10b981;
+    }
     /* Detalhes expandíveis */
     .curso-detalhes {
       margin-top: 20px;
@@ -490,7 +526,7 @@ export class AlunoCursosComponent implements OnInit {
   expandido: Record<number, boolean> = {};
 
   constructor(
-    private http: HttpClient,
+    private apiService: ApiService,
     private authService: AuthService
   ) {}
 
@@ -508,10 +544,17 @@ export class AlunoCursosComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Curso[]>(`http://localhost:8000/api/alunos/${usuario.id}/cursos/`).subscribe({
+    this.apiService.getCursosAluno(usuario.id).subscribe({
       next: (cursos) => {
-        this.cursos = cursos || [];
+        this.cursos = (Array.isArray(cursos) ? cursos : []).map((curso) => ({
+          ...curso,
+          descricao: curso.descricao ?? null,
+          aulas: Array.isArray(curso.aulas) ? curso.aulas : [],
+          provas: Array.isArray(curso.provas) ? curso.provas : []
+        })) as Curso[];
+        console.log('Cursos do aluno recebidos:', this.cursos);
         this.carregando = false;
+        this.erro = '';
       },
       error: (err: any) => {
         console.error('Erro ao carregar cursos:', err);
