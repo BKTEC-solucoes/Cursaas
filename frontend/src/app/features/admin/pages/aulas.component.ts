@@ -126,7 +126,7 @@ interface Video {
             </div>
 
             <div class="videos-section">
-              <h4>🎥 Vídeos ({{ aulaDetalhes.videos?.length || 0 }})</h4>
+              <h4>🎥 Vídeos ({{ aulaDetalhes.videos.length }})</h4>
 
               <div class="sem-video" *ngIf="!aulaDetalhes.videos || aulaDetalhes.videos.length === 0">
                 <p>Nenhum vídeo enviado para esta aula.</p>

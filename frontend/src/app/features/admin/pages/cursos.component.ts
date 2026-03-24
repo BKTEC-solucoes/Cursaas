@@ -986,7 +986,7 @@ export class AdminCursosComponent implements OnInit {
     }
   }
 
-  abrirNovaAula(curso: Curso): void {
+  abrirNovaAula(curso: AdminCourse): void {
     this.cursoSelecionado = curso;
     this.erroAula = '';
     this.formAula = { titulo: '', descricao: '', data_aula: '', duracao_minutos: null };
@@ -1034,7 +1034,7 @@ export class AdminCursosComponent implements OnInit {
     });
   }
 
-  abrirDelecao(curso: Curso): void {
+  abrirDelecao(curso: AdminCourse): void {
     this.deleteErro = '';
     this.cursoParaDeletar = curso;
   }
