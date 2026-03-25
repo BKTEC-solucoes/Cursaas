@@ -998,13 +998,32 @@ export class AdminAdministradoresComponent implements OnInit {
       return;
     }
 
-    // Criar preview local
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.adminForm.foto_perfil = e.target?.result as string;
-      this.adminFormErro = '';
-    };
-    reader.readAsDataURL(file);
+    // Preview local imediato enquanto faz upload
+    const previewUrl = URL.createObjectURL(file);
+    this.adminForm.foto_perfil = previewUrl;
+    this.adminFormErro = '';
+
+    // Upload para o servidor — salva o arquivo em disco
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<any>(
+      'http://localhost:8000/api/auth/upload-profile-picture',
+      formData,
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: (resp) => {
+        URL.revokeObjectURL(previewUrl);
+        // Armazena apenas a URL do arquivo em disco (não base64)
+        this.adminForm.foto_perfil = `http://localhost:8000/${resp.path}`;
+        this.adminFormErro = '';
+      },
+      error: () => {
+        URL.revokeObjectURL(previewUrl);
+        this.adminForm.foto_perfil = null;
+        this.adminFormErro = 'Erro ao fazer upload da imagem.';
+      }
+    });
   }
 
   gerarAvatar(): void {

@@ -42,6 +42,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 # Criar diretório de uploads se não existir
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "videos"), exist_ok=True)
+os.makedirs(os.path.join(settings.UPLOAD_DIR, "profile_pictures"), exist_ok=True)
 
 # Servir arquivos de upload como conteúdo estático
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
