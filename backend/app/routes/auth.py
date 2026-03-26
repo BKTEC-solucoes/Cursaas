@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import HTTPBearer
 from starlette.requests import Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import Optional
 from datetime import timedelta
 import os
 from pathlib import Path
 from app.database import get_db
-from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse, AdminCreate, AdminUpdate, AdminManageResponse, AdminRoleEnum
+from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse, AdminCreate, AdminUpdate, AdminManageResponse, AdminRoleEnum, AdminListResponse
 from app.services.auth_service import AuthService
 from app.services.avatar_service import gerar_avatar_iniciais
 from app.models import Usuario, RoleEnum, AdminRoleEnum as ModelAdminRoleEnum, AdminCurso, Curso
@@ -115,6 +116,22 @@ def get_current_admin(
             detail="Apenas administradores podem acessar este recurso"
         )
     return current_user
+
+@router.get("/check-email")
+def check_email(
+    email: str,
+    exclude_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """Verifica se um e-mail já está registrado. Usado para validação em tempo real."""
+    query = db.query(Usuario).filter(
+        func.lower(Usuario.email) == email.strip().lower()
+    )
+    if exclude_id:
+        query = query.filter(Usuario.id != exclude_id)
+    exists = query.first() is not None
+    return {"available": not exists}
+
 
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
@@ -257,39 +274,83 @@ def admin_registro(
     return UsuarioResponse.from_orm(user)
 
 
-@router.get("/admins", response_model=list[AdminManageResponse])
+@router.get("/admins", response_model=AdminListResponse)
 def listar_admins(
+    busca: Optional[str] = None,
+    admin_role: Optional[str] = None,
+    ativo: Optional[bool] = None,
+    page: int = 1,
+    page_size: int = 10,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Lista todos os usuários administradores (acesso apenas admin)."""
+    """Lista administradores com filtros, busca e paginação."""
     if current_user.role != RoleEnum.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a administradores"
         )
 
+    query = db.query(Usuario).filter(Usuario.role == RoleEnum.admin)
+
+    if busca:
+        termo = f"%{busca.strip().lower()}%"
+        query = query.filter(
+            (func.lower(Usuario.nome).like(termo)) |
+            (func.lower(Usuario.email).like(termo))
+        )
+
+    if admin_role is not None:
+        if admin_role == "legacy":
+            query = query.filter(Usuario.admin_role.is_(None))
+        else:
+            try:
+                role_enum = ModelAdminRoleEnum(admin_role)
+                query = query.filter(Usuario.admin_role == role_enum)
+            except ValueError:
+                pass
+
+    if ativo is not None:
+        query = query.filter(Usuario.ativo == ativo)
+
+    total = query.count()
+
+    if page_size < 1:
+        page_size = 10
+    if page_size > 100:
+        page_size = 100
+    if page < 1:
+        page = 1
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    offset = (page - 1) * page_size
+
     admins = (
-        db.query(Usuario)
-        .filter(Usuario.role == RoleEnum.admin)
-        .order_by(Usuario.nome.asc())
+        query.order_by(Usuario.nome.asc())
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
 
     admin_ids = [a.id for a in admins]
-    vinculos = db.query(AdminCurso.admin_id, AdminCurso.curso_id).filter(AdminCurso.admin_id.in_(admin_ids)).all()
+    vinculos = (
+        db.query(AdminCurso.admin_id, AdminCurso.curso_id)
+        .filter(AdminCurso.admin_id.in_(admin_ids))
+        .all()
+    ) if admin_ids else []
 
     cursos_por_admin: dict[int, list[int]] = {}
     for admin_id, curso_id in vinculos:
         cursos_por_admin.setdefault(admin_id, []).append(curso_id)
 
-    return [
+    items = [
         AdminManageResponse(
             id=a.id,
             nome=a.nome,
             email=a.email,
             admin_role=a.admin_role,
             foto_perfil=a.foto_perfil,
+            ativo=a.ativo,
             curso_ids=cursos_por_admin.get(a.id, []),
             telefone=a.telefone,
             sexo=a.sexo,
@@ -300,6 +361,14 @@ def listar_admins(
         )
         for a in admins
     ]
+
+    return AdminListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.put("/admins/{admin_id}", response_model=UsuarioResponse)
