@@ -1,0 +1,26 @@
+<div class="register-container">
+  <div class="register-box">
+    <h1>Criar Conta</h1>
+    <p class="subtitle">Qual tipo de conta você deseja criar?</p>
+    
+    <div class="account-options">
+      <button class="option-button aluno-button" (click)="selectAluno()">
+        <div class="option-icon">👤</div>
+        <div class="option-text">
+          <h3>Aluno</h3>
+        </div>
+      </button>
+
+      <button class="option-button instituicao-button" (click)="selectInstituicao()">
+        <div class="option-icon">🏫</div>
+        <div class="option-text">
+          <h3>Instituição</h3>
+        </div>
+      </button>
+    </div>
+
+    <div class="back-link">
+      <a (click)="goBack()" href="javascript:void(0)">Voltar para login</a>
+    </div>
+  </div>
+</div>

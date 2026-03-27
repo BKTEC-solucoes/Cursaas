@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { LojasComponent } from './lojas/lojas.component';
 
 export const routes: Routes = [
   {
@@ -11,6 +12,11 @@ export const routes: Routes = [
   {
     path: 'auth',
     loadChildren: () => import('./auth/auth.routes').then(m => m.AUTH_ROUTES)
+  },
+  {
+    path: 'lojas',
+    canActivate: [authGuard],
+    component: LojasComponent
   },
   {
     path: 'admin',

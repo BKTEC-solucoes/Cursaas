@@ -1,0 +1,17 @@
+<div class="lojas-container">
+  <div class="lojas-header">
+    <h1>Lojas das Instituições</h1>
+    <p class="subtitle">Selecione uma instituição para acessar seus cursos</p>
+    <button class="logout-button" (click)="logout()">Sair</button>
+  </div>
+
+  <div class="lojas-grid">
+    <div *ngFor="let loja of lojas" class="loja-card" (click)="abrirLoja(loja)">
+      <div class="loja-icon">🏫</div>
+      <h3>{{ loja.nome }}</h3>
+      <p class="loja-cidade">{{ loja.cidade }}</p>
+      <p class="loja-email">{{ loja.email }}</p>
+      <button class="loja-button">Ver Cursos</button>
+    </div>
+  </div>
+</div>
