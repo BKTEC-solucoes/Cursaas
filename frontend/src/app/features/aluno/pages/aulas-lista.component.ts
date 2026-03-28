@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { generateHTML } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
 
 interface CursoEnrollado {
   id: number;
@@ -26,140 +28,203 @@ interface Aula {
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h2>Aulas & Vídeos</h2>
-        <p class="page-subtitle">Assista às aulas do seu curso com rastreamento automático</p>
+    <div class="lista-page">
+
+      <div class="lista-header">
+        <h2>Minhas Aulas</h2>
+        <p>Aulas dos cursos em que você está inscrito</p>
       </div>
 
-      <div class="aulas-grid" *ngIf="aulas.length > 0">
-        <div class="aula-card" *ngFor="let aula of aulas">
-          <div class="aula-header">
-            <h3>{{ aula.titulo }}</h3>
-            <span class="duration">⏱ {{ aula.duracao_minutos }}min</span>
-          </div>
-
-          <div class="curso-tag" *ngIf="aula.curso_nome">📚 {{ aula.curso_nome }}</div>
-
-          <p class="aula-description">{{ aula.descricao }}</p>
-
-          <div class="aula-meta">
-            <span class="has-video" *ngIf="aula.videos && aula.videos.length > 0">
-              ✓ Com vídeo
-            </span>
-            <span class="no-video" *ngIf="!aula.videos || aula.videos.length === 0">
-              ✗ Sem vídeo
-            </span>
-            <span class="date">{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</span>
-          </div>
-
-          <button
-            class="btn-assistir"
-            [routerLink]="['/aluno/aulas', aula.id]"
-            [class.disabled]="!aula.videos || aula.videos.length === 0"
-            [disabled]="!aula.videos || aula.videos.length === 0"
-          >
-            {{ aula.videos && aula.videos.length > 0 ? 'Assistir Aula' : 'Sem vídeo' }}
-          </button>
-        </div>
-      </div>
-
-      <div class="no-aulas" *ngIf="aulas.length === 0 && !carregando && !erro">
-        <p>Nenhuma aula encontrada para os cursos em que você está inscrito.</p>
-      </div>
-
-      <div class="loading" *ngIf="carregando">
+      <!-- Loading -->
+      <div class="lista-loading" *ngIf="carregando">
         <div class="spinner"></div>
         <p>Carregando aulas...</p>
       </div>
 
-      <div class="error" *ngIf="erro">
+      <!-- Erro -->
+      <div class="lista-erro" *ngIf="erro && !carregando">
         <p>{{ erro }}</p>
         <button (click)="carregarAulas()">Tentar novamente</button>
       </div>
+
+      <!-- Grid -->
+      <div class="aulas-grid" *ngIf="!carregando && aulas.length > 0">
+        <a
+          class="aula-card"
+          *ngFor="let aula of aulas"
+          [routerLink]="['/aluno/aulas', aula.id]"
+        >
+          <!-- Topo do card -->
+          <div class="card-top">
+            <div class="card-tipo-badges">
+              <span class="badge-video" *ngIf="temConteudo(aula)">▶ Com conteúdo</span>
+              <span class="badge-sem" *ngIf="!temConteudo(aula)">📄 Aula</span>
+            </div>
+            <span class="card-dur" *ngIf="aula.duracao_minutos">{{ aula.duracao_minutos }}min</span>
+          </div>
+
+          <!-- Título -->
+          <h3 class="card-titulo">{{ aula.titulo }}</h3>
+
+          <!-- Curso -->
+          <div class="card-curso" *ngIf="aula.curso_nome">
+            <span class="curso-dot"></span>{{ aula.curso_nome }}
+          </div>
+
+          <!-- Resumo da descrição -->
+          <p class="card-resumo" *ngIf="resumoDescricao(aula.descricao) as resumo">{{ resumo }}</p>
+
+          <!-- Rodapé -->
+          <div class="card-footer">
+            <span class="card-data">{{ aula.data_aula | date:'dd/MM/yyyy' }}</span>
+            <span class="card-cta">Assistir →</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Vazio -->
+      <div class="lista-vazio" *ngIf="!carregando && !erro && aulas.length === 0">
+        <span>📚</span>
+        <p>Nenhuma aula encontrada para os cursos em que você está inscrito.</p>
+      </div>
+
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1200px;
+    :host { display: block; }
+
+    .lista-page {
+      max-width: 1100px;
       margin: 0 auto;
+      padding: 32px 24px;
     }
 
-    .page-header {
-      margin-bottom: 30px;
-      border-bottom: 2px solid #eee;
-      padding-bottom: 15px;
+    /* Header */
+    .lista-header {
+      margin-bottom: 28px;
     }
-
-    .page-header h2 {
-      margin: 0 0 5px 0;
-      color: #333;
+    .lista-header h2 {
+      margin: 0 0 4px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
     }
-
-    .page-subtitle {
+    .lista-header p {
       margin: 0;
-      color: #999;
-      font-size: 14px;
+      color: #64748b;
+      font-size: .9rem;
     }
 
+    /* Loading */
+    .lista-loading {
+      display: flex; flex-direction: column;
+      align-items: center; padding: 80px 20px;
+      color: #94a3b8;
+    }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Erro */
+    .lista-erro {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      padding: 20px; text-align: center;
+      color: #b91c1c;
+    }
+    .lista-erro button {
+      margin-top: 10px; padding: 8px 16px;
+      background: #b91c1c; color: white;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+
+    /* Grid */
     .aulas-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 18px;
     }
 
+    /* Card */
     .aula-card {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
       display: flex;
       flex-direction: column;
+      gap: 10px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow .15s, transform .15s, border-color .15s;
+      cursor: pointer;
     }
-
     .aula-card:hover {
+      box-shadow: 0 6px 24px rgba(102,126,234,.15);
+      border-color: #a5b4fc;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
-    .aula-header {
+    /* Topo */
+    .card-top {
       display: flex;
       justify-content: space-between;
-      align-items: start;
-      margin-bottom: 12px;
-      gap: 10px;
+      align-items: center;
+    }
+    .badge-video {
+      background: #ede9fe; color: #6d28d9;
+      font-size: .72rem; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .badge-sem {
+      background: #f1f5f9; color: #64748b;
+      font-size: .72rem; font-weight: 600;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .card-dur {
+      font-size: .75rem; color: #94a3b8;
+      background: #f8fafc;
+      padding: 3px 8px; border-radius: 6px;
     }
 
-    .aula-header h3 {
+    /* Título */
+    .card-titulo {
       margin: 0;
-      color: #333;
-      font-size: 16px;
-      flex: 1;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.3;
     }
 
-    .duration {
-      background: #f0f0f0;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #666;
-      white-space: nowrap;
-    }
-
-    .curso-tag {
-      font-size: 11px;
+    /* Curso */
+    .card-curso {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .78rem;
       color: #667eea;
       font-weight: 600;
-      margin-bottom: 10px;
+    }
+    .curso-dot {
+      width: 6px; height: 6px;
+      background: #667eea;
+      border-radius: 50%;
+      flex-shrink: 0;
     }
 
-    .aula-description {
-      color: #666;
-      font-size: 13px;
+    /* Resumo */
+    .card-resumo {
+      margin: 0;
+      font-size: .83rem;
+      color: #64748b;
       line-height: 1.5;
-      margin: 0 0 15px 0;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
@@ -167,113 +232,31 @@ interface Aula {
       flex-grow: 1;
     }
 
-    .aula-meta {
-      background: #f9f9f9;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 15px;
+    /* Rodapé */
+    .card-footer {
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 12px;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid #f1f5f9;
+      margin-top: auto;
     }
+    .card-data { font-size: .75rem; color: #94a3b8; }
+    .card-cta  { font-size: .78rem; font-weight: 700; color: #667eea; }
 
-    .has-video {
-      color: #28A745;
-      font-weight: 600;
-    }
-
-    .no-video {
-      color: #999;
-      font-weight: 600;
-    }
-
-    .date {
-      color: #999;
-    }
-
-    .btn-assistir {
-      width: 100%;
-      padding: 10px;
-      background-color: #667eea;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .btn-assistir:hover:not(:disabled) {
-      background-color: #5568d3;
-    }
-
-    .btn-assistir:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
-    .no-aulas {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error {
-      background-color: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      border: 1px solid #f5c6cb;
+    /* Vazio */
+    .lista-vazio {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
+      padding: 80px 20px;
+      color: #94a3b8; font-size: .95rem;
       text-align: center;
     }
+    .lista-vazio span { font-size: 3rem; }
 
-    .error button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .error button:hover {
-      background: #5a1419;
-    }
-
-    @media (max-width: 768px) {
-      .aulas-grid {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 640px) {
+      .lista-page { padding: 20px 14px; }
+      .aulas-grid { grid-template-columns: 1fr; }
     }
   `]
 })
@@ -291,6 +274,56 @@ export class AulasListaComponent implements OnInit {
   private getHeaders(): HttpHeaders {
     const token = this.auth.getToken();
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
+  /** Extrai texto puro de descricao (JSON de blocos, TipTap doc ou texto legado) */
+  resumoDescricao(descricao: string): string {
+    if (!descricao) return '';
+    try {
+      const parsed = JSON.parse(descricao);
+      // Array de BlocoEditavel (formato novo do editor de aulas)
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((b: any) => b.tipo === 'texto' || b.tipo === 'titulo')
+          .map((b: any) => {
+            if (!b.conteudo) return '';
+            try {
+              const inner = JSON.parse(b.conteudo);
+              if (inner?.type === 'doc') {
+                return generateHTML(inner, [StarterKit])
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+              }
+            } catch { /* texto puro */ }
+            return b.conteudo;
+          })
+          .filter(Boolean)
+          .join(' ');
+      }
+      // TipTap doc direto
+      if (parsed?.type === 'doc') {
+        return generateHTML(parsed, [StarterKit])
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+    } catch { /* fallthrough */ }
+    // Texto / HTML legado — remove tags
+    return descricao.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /** Retorna true se a aula tem vídeo enviado OU bloco de YouTube */
+  temConteudo(aula: Aula): boolean {
+    if (aula.videos && aula.videos.length > 0) return true;
+    if (!aula.descricao) return false;
+    try {
+      const parsed = JSON.parse(aula.descricao);
+      if (Array.isArray(parsed)) {
+        return parsed.some((b: any) => b.tipo === 'video');
+      }
+    } catch { /* */ }
+    return false;
   }
 
   carregarAulas(): void {

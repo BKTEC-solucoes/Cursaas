@@ -3,6 +3,7 @@ import { AdminLayoutComponent } from './layout/admin-layout.component';
 import { AdminDashboardComponent } from './pages/dashboard.component';
 import { AdminCursosComponent } from './pages/cursos.component';
 import { AdminAulasComponent } from './pages/aulas.component';
+import { AdminAulaFormComponent } from './pages/aula-form.component';
 import { AdminProvasComponent } from './pages/provas.component';
 import { AdminProvaFormComponent } from './pages/prova-form.component';
 import { AdminProvaResultadosComponent } from './pages/prova-resultados.component';
@@ -33,6 +34,18 @@ export const ADMIN_ROUTES: Routes = [
         component: AdminAulasComponent,
         canActivate: [permissionGuard],
         data: { permissions: ['aulas:read'] }
+      },
+      {
+        path: 'aulas/nova',
+        component: AdminAulaFormComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['aulas:write'] }
+      },
+      {
+        path: 'aulas/:id/editar',
+        component: AdminAulaFormComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['aulas:write'] }
       },
       {
         path: 'provas',
