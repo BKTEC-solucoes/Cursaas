@@ -8,7 +8,6 @@ from datetime import timedelta
 import os
 from pathlib import Path
 from app.database import get_db
-<<<<<<< HEAD
 from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioCreateSimples, UsuarioResponse, AdminCreate, AdminUpdate, AdminManageResponse, AdminRoleEnum, AdminListResponse
 from app.services.auth_service import AuthService
 from app.services.avatar_service import gerar_avatar_iniciais
