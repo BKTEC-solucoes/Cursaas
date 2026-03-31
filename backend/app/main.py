@@ -9,7 +9,7 @@ from sqlalchemy import inspect, text
 from app.config import settings
 from app.database import Base, engine
 from app.models import CourseRequest
-from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests
+from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites
 
 
 def ensure_schema_updates():
@@ -86,6 +86,7 @@ app.include_router(alunos.router, prefix="/api/alunos", tags=["Alunos"])
 app.include_router(presenca.router, prefix="/api/presenca", tags=["Presenca"])
 app.include_router(notas.router, prefix="/api/notas", tags=["Notas"])
 app.include_router(requests.router, prefix="/api/requests", tags=["Solicitacoes"])
+app.include_router(convites.router, prefix="/api/convites", tags=["Convites"])
 
 
 @app.get("/health", tags=["Health"])

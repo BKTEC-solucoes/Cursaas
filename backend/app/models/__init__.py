@@ -95,6 +95,25 @@ class Curso(Base):
     notas_cursos = relationship("NotaCurso", back_populates="curso", cascade="all, delete-orphan")
 
 
+class ConviteAdmin(Base):
+    """Token de convite para cadastro de administrador via link."""
+    __tablename__ = "convites_admin"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(128), unique=True, nullable=False, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    admin_role = Column(Enum(AdminRoleEnum), nullable=False, default=AdminRoleEnum.instrutor)
+    # quem enviou o convite
+    convidado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    # controle de estado
+    usado = Column(Boolean, default=False, nullable=False)
+    data_criacao = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_expiracao = Column(DateTime, nullable=False)
+    data_uso = Column(DateTime, nullable=True)
+
+    convidado_por = relationship("Usuario", foreign_keys=[convidado_por_id])
+
+
 class AdminCurso(Base):
     __tablename__ = "admin_cursos"
 

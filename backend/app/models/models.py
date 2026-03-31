@@ -2,6 +2,7 @@
 from app.models import (
     Usuario,
     AdminCurso,
+    ConviteAdmin,
     Curso,
     InscricaoCurso,
     CourseRequest,
@@ -22,6 +23,7 @@ from app.models import (
 __all__ = [
     "Usuario",
     "AdminCurso",
+    "ConviteAdmin",
     "Curso",
     "InscricaoCurso",
     "CourseRequest",

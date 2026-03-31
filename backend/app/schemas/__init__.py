@@ -103,6 +103,7 @@ class AdminManageResponse(BaseModel):
     email: EmailStr
     admin_role: Optional[AdminRoleEnum] = None
     foto_perfil: Optional[str] = None
+    ativo: bool = True
     curso_ids: List[int] = []
     # Dados pessoais
     telefone: Optional[str] = None
@@ -111,6 +112,44 @@ class AdminManageResponse(BaseModel):
     cpf_rg: Optional[str] = None
     cep: Optional[str] = None
     endereco: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AdminListResponse(BaseModel):
+    items: List[AdminManageResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+# ==================== SCHEMAS DE CONVITE ====================
+
+class ConviteAdminCreate(BaseModel):
+    email: EmailStr
+    admin_role: AdminRoleEnum = AdminRoleEnum.instrutor
+
+
+class ConviteAdminResponse(BaseModel):
+    id: int
+    email: EmailStr
+    admin_role: AdminRoleEnum
+    usado: bool
+    data_criacao: datetime
+    data_expiracao: datetime
+    data_uso: Optional[datetime] = None
+    convidado_por_nome: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AceitarConviteRequest(BaseModel):
+    token: str
+    nome: str = Field(..., min_length=2)
+    senha: str = Field(..., min_length=6)
 
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None

@@ -33,6 +33,12 @@ backend/uploads/videos/*
 !backend/uploads/videos/.gitkeep
 frontend/uploads/*
 !frontend/uploads/.gitkeep
+uploads/videos/*.mp4
+uploads/videos/*.avi
+uploads/videos/*.mov
+uploads/videos/*.mkv
+uploads/
+!uploads/.gitkeep
 
 # Arquivos temporários
 *.tmp

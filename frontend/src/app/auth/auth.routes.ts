@@ -3,6 +3,7 @@ import { LoginComponent } from './pages/login.component';
 import { RegisterComponent } from './pages/register.component';
 import { RegisterAlunoComponent } from './pages/register-aluno.component';
 import { RegisterInstituicaoComponent } from './pages/register-instituicao.component';
+import { AceitarConviteComponent } from './pages/aceitar-convite.component';
 
 export const AUTH_ROUTES: Routes = [
   {
@@ -20,6 +21,10 @@ export const AUTH_ROUTES: Routes = [
   {
     path: 'register/instituicao',
     component: RegisterInstituicaoComponent
+  },
+  {
+    path: 'convite',
+    component: AceitarConviteComponent
   },
   {
     path: '',

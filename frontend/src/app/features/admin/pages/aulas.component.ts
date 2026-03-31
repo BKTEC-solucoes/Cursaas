@@ -2,6 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { generateHTML } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import { RichTextEditorComponent } from '../../../shared/components';
 
 interface Aula {
   id: number;
@@ -33,7 +37,7 @@ interface Video {
 @Component({
   selector: 'app-admin-aulas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RichTextEditorComponent],
   template: `
     <div class="page-container">
       <div class="page-header">
@@ -105,7 +109,7 @@ interface Video {
               </div>
               <div class="detalhe-row" *ngIf="aulaDetalhes.descricao">
                 <span class="detalhe-label">Descrição</span>
-                <span class="detalhe-valor">{{ aulaDetalhes.descricao }}</span>
+                <span class="detalhe-valor rich-content" [innerHTML]="renderDescricao(aulaDetalhes.descricao)"></span>
               </div>
               <div class="detalhe-row">
                 <span class="detalhe-label">Data</span>
@@ -179,7 +183,11 @@ interface Video {
               </div>
               <div class="form-row">
                 <label>Descrição</label>
-                <textarea [(ngModel)]="formNovaAula.descricao" name="descricao" placeholder="Conteúdo da aula..."></textarea>
+                <app-rich-text-editor
+                  [content]="formNovaAula.descricao"
+                  placeholder="Conteúdo da aula..."
+                  (contentChange)="formNovaAula.descricao = $event"
+                />
               </div>
               <div class="form-row">
                 <label>Data e Hora da Aula *</label>
@@ -234,7 +242,11 @@ interface Video {
               </div>
               <div class="form-row">
                 <label>Descrição</label>
-                <textarea [(ngModel)]="formEdicao.descricao" name="descricao" placeholder="Conteúdo da aula..."></textarea>
+                <app-rich-text-editor
+                  [content]="formEdicao.descricao"
+                  placeholder="Conteúdo da aula..."
+                  (contentChange)="formEdicao.descricao = $event"
+                />
               </div>
               <div class="form-row">
                 <label>Data e Hora da Aula *</label>
@@ -989,7 +1001,7 @@ export class AdminAulasComponent implements OnInit {
   erroUpload = '';
   dragover = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit(): void {
     this.carregarAulas();
@@ -1047,6 +1059,21 @@ export class AdminAulasComponent implements OnInit {
     return `${m}m ${s.toString().padStart(2, '0')}s`;
   }
 
+  /**
+   * Converte o campo `descricao` (JSON TipTap ou texto/HTML legado) para HTML
+   * seguro para renderizar com [innerHTML].
+   */
+  renderDescricao(descricao: string): string {
+    if (!descricao) return '';
+    try {
+      const parsed = JSON.parse(descricao);
+      if (parsed?.type === 'doc') {
+        return generateHTML(parsed, [StarterKit]);
+      }
+    } catch { /* não é JSON TipTap */ }
+    return descricao; // HTML / texto puro legado
+  }
+
   carregarCursos(): void {
     this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
       next: (cursos) => { this.cursos = cursos || []; },
@@ -1055,9 +1082,7 @@ export class AdminAulasComponent implements OnInit {
   }
 
   abrirFormulario(): void {
-    this.erroNovaAula = '';
-    this.formNovaAula = { curso_id: null, titulo: '', descricao: '', data_aula: '', duracao_minutos: null };
-    this.modalNovaAulaAberto = true;
+    this.router.navigate(['/admin/aulas/nova']);
   }
 
   fecharNovaAula(): void {
@@ -1128,9 +1153,12 @@ export class AdminAulasComponent implements OnInit {
   }
 
   editarAula(aula: Aula): void {
+    this.router.navigate(['/admin/aulas', aula.id, 'editar']);
+  }
+
+  _editarAulaLegado(aula: Aula): void {
     this.aulaEmEdicao = aula;
     this.erroEdicaoAula = '';
-    // Converter data ISO para formato datetime-local (YYYY-MM-DDTHH:mm)
     const dataLocal = aula.data_aula
       ? new Date(aula.data_aula).toISOString().slice(0, 16)
       : '';

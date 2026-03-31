@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Subject, EMPTY } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil, merge } from 'rxjs/operators';
 import { ADMIN_ROLE_OPTIONS, AdminRole, ADMIN_ROLE_LABELS, type Permission } from '../../../core/permissions';
 import { PermissionsService } from '../../../core/services/permissions.service';
 
@@ -29,6 +31,7 @@ interface AdminResumo {
   email: string;
   admin_role: AdminRole | null;
   foto_perfil: string | null;
+  ativo: boolean;
   curso_ids: number[];
   // Dados pessoais
   telefone: string | null;
@@ -37,6 +40,14 @@ interface AdminResumo {
   cpf_rg: string | null;
   cep: string | null;
   endereco: string | null;
+}
+
+interface AdminListResponse {
+  items: AdminResumo[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 interface CursoOption {
@@ -63,6 +74,17 @@ function adminFormVazio(): AdminForm {
   };
 }
 
+interface ConviteItem {
+  id: number;
+  email: string;
+  admin_role: AdminRole;
+  usado: boolean;
+  data_criacao: string;
+  data_expiracao: string;
+  data_uso: string | null;
+  convidado_por_nome: string | null;
+}
+
 @Component({
   selector: 'app-admin-administradores',
   standalone: true,
@@ -86,7 +108,10 @@ function adminFormVazio(): AdminForm {
                 name="admin_nome"
                 required
                 placeholder="Nome do administrador"
+                (blur)="marcarTocado('nome')"
+                [class.campo-invalido]="tocados.has('nome') && !adminForm.nome.trim()"
               />
+              <span class="campo-erro" *ngIf="tocados.has('nome') && !adminForm.nome.trim()">Campo obrigatório</span>
             </div>
             <div class="form-row span2">
               <label>Foto de Perfil</label>
@@ -141,13 +166,21 @@ function adminFormVazio(): AdminForm {
             </div>
             <div class="form-row">
               <label>E-mail *</label>
-              <input
-                type="email"
-                [(ngModel)]="adminForm.email"
-                name="admin_email"
-                required
-                placeholder="admin@exemplo.com"
-              />
+              <div class="email-check-wrapper">
+                <input
+                  type="email"
+                  [(ngModel)]="adminForm.email"
+                  (ngModelChange)="onEmailChange($event)"
+                  name="admin_email"
+                  required
+                  placeholder="admin@exemplo.com"
+                  [class.input-email-available]="emailStatus === 'available'"
+                  [class.input-email-taken]="emailStatus === 'taken'"
+                />
+                <span *ngIf="emailStatus === 'checking'" class="email-status email-checking">⏳ Verificando...</span>
+                <span *ngIf="emailStatus === 'available'" class="email-status email-available">✔ E-mail disponível</span>
+                <span *ngIf="emailStatus === 'taken'" class="email-status email-taken">✖ E-mail já cadastrado</span>
+              </div>
             </div>
             <div class="form-row">
               <label>Confirmar E-mail *</label>
@@ -157,7 +190,11 @@ function adminFormVazio(): AdminForm {
                 name="admin_confirmar_email"
                 required
                 placeholder="Confirme o e-mail"
+                (blur)="marcarTocado('confirmarEmail')"
+                [class.campo-invalido]="tocados.has('confirmarEmail') && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()"
               />
+              <span class="campo-erro" *ngIf="tocados.has('confirmarEmail') && !adminForm.confirmarEmail.trim()">Campo obrigatório</span>
+              <span class="campo-erro" *ngIf="tocados.has('confirmarEmail') && adminForm.confirmarEmail.trim() && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()">Os e-mails não conferem</span>
             </div>
             <div class="form-row">
               <label>Senha *</label>
@@ -169,11 +206,24 @@ function adminFormVazio(): AdminForm {
                   required
                   minlength="6"
                   placeholder="Mínimo 6 caracteres"
+                  (blur)="marcarTocado('senha')"
+                  [class.campo-invalido]="tocados.has('senha') && !editandoAdminId && !adminForm.senha"
                 />
                 <button type="button" class="toggle-password" (click)="mostrarSenha = !mostrarSenha">
                   {{ mostrarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
+              <div class="forca-senha" *ngIf="adminForm.senha">
+                <div class="forca-barras">
+                  <div class="forca-barra" [style.background]="forcaSenha.score >= 1 ? forcaSenha.cor : '#e0e0e0'"></div>
+                  <div class="forca-barra" [style.background]="forcaSenha.score >= 2 ? forcaSenha.cor : '#e0e0e0'"></div>
+                  <div class="forca-barra" [style.background]="forcaSenha.score >= 3 ? forcaSenha.cor : '#e0e0e0'"></div>
+                  <div class="forca-barra" [style.background]="forcaSenha.score >= 4 ? forcaSenha.cor : '#e0e0e0'"></div>
+                </div>
+                <span class="forca-texto" [style.color]="forcaSenha.cor">{{ forcaSenha.texto }}</span>
+              </div>
+              <span class="campo-erro" *ngIf="tocados.has('senha') && !editandoAdminId && !adminForm.senha">Senha obrigatória</span>
+              <span class="campo-erro" *ngIf="tocados.has('senha') && adminForm.senha && adminForm.senha.length < 6">Mínimo 6 caracteres</span>
             </div>
             <div class="form-row">
               <label>Confirmar Senha *</label>
@@ -185,11 +235,15 @@ function adminFormVazio(): AdminForm {
                   required
                   minlength="6"
                   placeholder="Confirme a senha"
+                  (blur)="marcarTocado('confirmarSenha')"
+                  [class.campo-invalido]="tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha !== adminForm.senha"
                 />
                 <button type="button" class="toggle-password" (click)="mostrarConfirmarSenha = !mostrarConfirmarSenha">
                   {{ mostrarConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
+              <span class="campo-erro" *ngIf="tocados.has('confirmarSenha') && !editandoAdminId && !adminForm.confirmarSenha">Campo obrigatório</span>
+              <span class="campo-erro" *ngIf="tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha && adminForm.confirmarSenha !== adminForm.senha">As senhas não conferem</span>
             </div>
             <div class="form-row">
               <label>Celular</label>
@@ -254,7 +308,8 @@ function adminFormVazio(): AdminForm {
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="btn-primary" [disabled]="salvandoAdmin">
+            <button type="submit" class="btn-primary btn-submit" [disabled]="salvandoAdmin">
+              <span *ngIf="salvandoAdmin" class="spinner"></span>
               {{ salvandoAdmin ? 'Salvando...' : (editandoAdminId ? 'Atualizar' : 'Criar Administrador') }}
             </button>
             <button type="button" class="btn-sm" (click)="limparFormulario()">{{ editandoAdminId ? 'Cancelar' : 'Limpar' }}</button>
@@ -265,8 +320,114 @@ function adminFormVazio(): AdminForm {
         </form>
       </div>
 
+      <!-- ══ Painel de Convites ══════════════════════════════════════════════ -->
+      <div class="form-card convite-card" *ngIf="p.can('administradores:write')">
+        <h3>✉️ Convidar Administrador por E-mail</h3>
+        <form (ngSubmit)="enviarConvite()" class="convite-form">
+          <div class="convite-grid">
+            <div class="form-row">
+              <label>E-mail do convidado *</label>
+              <input
+                type="email"
+                [(ngModel)]="conviteEmail"
+                name="convite_email"
+                required
+                placeholder="novo@exemplo.com"
+              />
+            </div>
+            <div class="form-row">
+              <label>Perfil *</label>
+              <select [(ngModel)]="conviteRole" name="convite_role" class="role-select">
+                <option *ngFor="let opt of roleOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top: 14px;">
+            <button type="submit" class="btn-primary btn-submit" [disabled]="enviandoConvite">
+              <span *ngIf="enviandoConvite" class="spinner"></span>
+              {{ enviandoConvite ? 'Enviando...' : '📨 Enviar Convite' }}
+            </button>
+          </div>
+          <div class="form-error" *ngIf="conviteErro">{{ conviteErro }}</div>
+          <div class="form-success" *ngIf="conviteSucesso">{{ conviteSucesso }}</div>
+        </form>
+
+        <!-- Lista de convites enviados -->
+        <div class="convites-lista" *ngIf="convites.length > 0 || carregandoConvites">
+          <h4 style="margin: 20px 0 10px; color: #2c3e50; font-size: .95rem;">Convites Enviados</h4>
+          <div class="loading" *ngIf="carregandoConvites">Carregando convites...</div>
+          <div class="convites-table" *ngIf="!carregandoConvites">
+            <table>
+              <thead>
+                <tr>
+                  <th>E-mail</th>
+                  <th>Perfil</th>
+                  <th>Status</th>
+                  <th>Expira em</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let c of convites">
+                  <td>{{ c.email }}</td>
+                  <td><span class="role-badge" [class]="'role-' + c.admin_role">{{ getRoleLabel(c.admin_role) }}</span></td>
+                  <td>
+                    <span class="status-badge"
+                      [class.status-ativo]="!c.usado && !conviteExpirado(c)"
+                      [class.status-inativo]="c.usado || conviteExpirado(c)">
+                      {{ c.usado ? 'Aceito' : conviteExpirado(c) ? 'Expirado' : 'Pendente' }}
+                    </span>
+                  </td>
+                  <td class="expira-cell">{{ formatarData(c.data_expiracao) }}</td>
+                  <td>
+                    <button
+                      *ngIf="!c.usado && !conviteExpirado(c)"
+                      type="button"
+                      class="btn-revogar"
+                      (click)="revogarConvite(c)"
+                      title="Revogar convite"
+                    >Revogar</button>
+                    <span *ngIf="c.usado || conviteExpirado(c)" class="sem-acao">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="list-card">
         <h3>📋 Administradores Cadastrados</h3>
+
+        <!-- Barra de filtros -->
+        <div class="filtros-bar">
+          <div class="filtro-busca">
+            <input
+              type="text"
+              [(ngModel)]="filtroBusca"
+              (ngModelChange)="onFiltroChange()"
+              name="filtro_busca"
+              placeholder="🔍 Buscar por nome ou e-mail..."
+              class="input-busca"
+            />
+          </div>
+          <div class="filtros-selects">
+            <select [(ngModel)]="filtroAdminRole" (ngModelChange)="onFiltroSelectChange()" name="filtro_role" class="filtro-select">
+              <option value="">Todos os tipos</option>
+              <option value="super_admin">Super Admin</option>
+              <option value="instrutor">Instrutor</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="suporte">Suporte</option>
+              <option value="legacy">Legado</option>
+            </select>
+            <select [(ngModel)]="filtroAtivo" (ngModelChange)="onFiltroSelectChange()" name="filtro_ativo" class="filtro-select">
+              <option value="">Todos os status</option>
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+            </select>
+            <span class="filtro-total" *ngIf="!carregandoLista">{{ total }} resultado(s)</span>
+          </div>
+        </div>
 
         <div class="loading" *ngIf="carregandoLista">Carregando administradores...</div>
         <div class="form-error" *ngIf="!carregandoLista && erroLista">{{ erroLista }}</div>
@@ -279,6 +440,7 @@ function adminFormVazio(): AdminForm {
                 <th>Nome</th>
                 <th>E-mail</th>
                 <th>Tipo</th>
+                <th>Status</th>
                 <th>Cursos</th>
                 <th *ngIf="p.can('administradores:write')">Ações</th>
               </tr>
@@ -299,6 +461,11 @@ function adminFormVazio(): AdminForm {
                   <td>{{ admin.email }}</td>
                   <td><span class="role-badge" [class]="'role-' + (admin.admin_role ?? 'legacy')">{{ getRoleLabel(admin.admin_role) }}</span></td>
                   <td>
+                    <span class="status-badge" [class.status-ativo]="admin.ativo" [class.status-inativo]="!admin.ativo">
+                      {{ admin.ativo ? 'Ativo' : 'Inativo' }}
+                    </span>
+                  </td>
+                  <td>
                     <span class="cursos-resumo">{{ formatCursosAdmin(admin.curso_ids) }}</span>
                   </td>
                   <td *ngIf="p.can('administradores:write')" class="actions-cell">
@@ -318,7 +485,7 @@ function adminFormVazio(): AdminForm {
                 </tr>
                 <!-- Painel inline de gerenciamento de cursos -->
                 <tr *ngIf="gerenciandoCursosAdminId === admin.id" class="cursos-panel-row">
-                  <td [attr.colspan]="p.can('administradores:write') ? 6 : 5" class="cursos-panel-cell">
+                  <td [attr.colspan]="p.can('administradores:write') ? 7 : 6" class="cursos-panel-cell">
                     <div class="cursos-panel">
                       <div class="cursos-panel-header">
                         <strong>📚 Cursos gerenciados por {{ admin.nome }}</strong>
@@ -377,8 +544,23 @@ function adminFormVazio(): AdminForm {
           </table>
         </div>
 
+        <!-- Paginação -->
+        <div class="paginacao" *ngIf="!carregandoLista && totalPaginas > 1">
+          <button class="pag-btn" (click)="irParaPagina(1)" [disabled]="paginaAtual === 1">«</button>
+          <button class="pag-btn" (click)="irParaPagina(paginaAtual - 1)" [disabled]="paginaAtual === 1">‹</button>
+          <button
+            *ngFor="let p of paginas"
+            class="pag-btn"
+            [class.pag-ativa]="p === paginaAtual"
+            (click)="irParaPagina(p)"
+          >{{ p }}</button>
+          <button class="pag-btn" (click)="irParaPagina(paginaAtual + 1)" [disabled]="paginaAtual === totalPaginas">›</button>
+          <button class="pag-btn" (click)="irParaPagina(totalPaginas)" [disabled]="paginaAtual === totalPaginas">»</button>
+          <span class="pag-info">Página {{ paginaAtual }} de {{ totalPaginas }}</span>
+        </div>
+
         <div class="empty-state" *ngIf="!carregandoLista && !erroLista && admins.length === 0">
-          Nenhum administrador cadastrado.
+          Nenhum administrador encontrado.
         </div>
       </div>
     </div>
@@ -877,9 +1059,239 @@ function adminFormVazio(): AdminForm {
       .form-grid { grid-template-columns: 1fr; }
       .form-row.span2 { grid-column: span 1; }
     }
+
+    /* Validação de e-mail em tempo real */
+    .email-check-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .email-check-wrapper input.input-email-available {
+      border-color: #27ae60;
+    }
+
+    .email-check-wrapper input.input-email-taken {
+      border-color: #e74c3c;
+    }
+
+    .email-status {
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .email-checking { color: #7f8c8d; }
+    .email-available { color: #27ae60; }
+    .email-taken { color: #e74c3c; }
+
+    /* Validação por campo */
+    .campo-invalido {
+      border-color: #e74c3c !important;
+    }
+    .campo-invalido:focus {
+      border-color: #e74c3c !important;
+      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.12);
+    }
+    .campo-erro {
+      font-size: 0.78rem;
+      color: #e74c3c;
+      font-weight: 500;
+    }
+
+    /* Indicador de força da senha */
+    .forca-senha {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+    }
+    .forca-barras {
+      display: flex;
+      gap: 4px;
+    }
+    .forca-barra {
+      width: 38px;
+      height: 5px;
+      border-radius: 3px;
+      transition: background 0.3s;
+    }
+    .forca-texto {
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    /* Spinner no botão */
+    .btn-submit {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Barra de filtros */
+    .filtros-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .filtro-busca { flex: 1; min-width: 200px; }
+
+    .input-busca {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.92rem;
+      outline: none;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .input-busca:focus { border-color: #3498db; }
+
+    .filtros-selects {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filtro-select {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      background: white;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .filtro-select:focus { border-color: #3498db; }
+
+    .filtro-total {
+      font-size: 0.82rem;
+      color: #7f8c8d;
+      white-space: nowrap;
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .status-ativo { background: #d5f5e3; color: #1e8449; }
+    .status-inativo { background: #fadbd8; color: #922b21; }
+
+    /* Paginação */
+    .paginacao {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pag-btn {
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: #2c3e50;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .pag-btn:hover:not(:disabled):not(.pag-ativa) { background: #ecf0f1; }
+    .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pag-btn.pag-ativa {
+      background: #3498db;
+      color: white;
+      border-color: #3498db;
+      font-weight: 600;
+      cursor: default;
+    }
+
+    .pag-info {
+      font-size: 0.82rem;
+      color: #7f8c8d;
+      margin-left: 6px;
+    }
+
+    /* Painel de convites */
+    .convite-card { border-left-color: #8e44ad; }
+
+    .convite-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 20px;
+    }
+
+    .convites-table {
+      overflow-x: auto;
+      border: 1px solid #ecf0f1;
+      border-radius: 8px;
+    }
+    .convites-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    .convites-table th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ecf0f1;
+      color: #2c3e50;
+      font-weight: 600;
+      font-size: .85rem;
+    }
+    .convites-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f2f2f2;
+      color: #2f2f2f;
+    }
+    .convites-table tbody tr:last-child td { border-bottom: none; }
+
+    .expira-cell { font-size: .82rem; color: #7f8c8d; }
+
+    .btn-revogar {
+      padding: 4px 10px;
+      background: white;
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    .btn-revogar:hover { background: #e74c3c; color: white; }
+
+    .sem-acao { color: #bdc3c7; }
+
+    @media (max-width: 700px) {
+      .convite-grid { grid-template-columns: 1fr; }
+    }
   `]
 })
-export class AdminAdministradoresComponent implements OnInit {
+export class AdminAdministradoresComponent implements OnInit, OnDestroy {
   salvandoAdmin = false;
   mostrarSenha = false;
   mostrarConfirmarSenha = false;
@@ -896,6 +1308,46 @@ export class AdminAdministradoresComponent implements OnInit {
   salvandoCursos = false;
   erroCursos = '';
   sucessoCursos = '';
+
+  emailStatus: 'idle' | 'checking' | 'available' | 'taken' = 'idle';
+  private emailCheck$ = new Subject<string>();
+  private destroy$ = new Subject<void>();
+
+  // Filtros e paginação
+  filtroBusca = '';
+  filtroAdminRole = '';
+  filtroAtivo: '' | 'true' | 'false' = '';
+  paginaAtual = 1;
+  tamanhoPagina = 10;
+  total = 0;
+  totalPaginas = 1;
+  private busca$ = new Subject<void>();
+
+  tocados = new Set<string>();
+
+  // Convites
+  conviteEmail = '';
+  conviteRole: AdminRole = 'instrutor';
+  enviandoConvite = false;
+  conviteErro = '';
+  conviteSucesso = '';
+  convites: ConviteItem[] = [];
+  carregandoConvites = false;
+
+  get forcaSenha(): { score: number; texto: string; cor: string } {
+    const s = this.adminForm.senha;
+    if (!s) return { score: 0, texto: '', cor: '' };
+    let pts = 0;
+    if (s.length >= 6) pts++;
+    if (s.length >= 10) pts++;
+    if (/[A-Z]/.test(s) && /[a-z]/.test(s)) pts++;
+    if (/[0-9]/.test(s)) pts++;
+    if (/[^A-Za-z0-9]/.test(s)) pts++;
+    const nivel = pts <= 1 ? 1 : pts <= 2 ? 2 : pts <= 3 ? 3 : 4;
+    const textos = ['', 'Fraca', 'Razoável', 'Boa', 'Forte'];
+    const cores  = ['', '#e74c3c', '#e67e22', '#f1c40f', '#27ae60'];
+    return { score: nivel, texto: textos[nivel], cor: cores[nivel] };
+  }
 
   readonly roleOptions = ADMIN_ROLE_OPTIONS;
 
@@ -918,6 +1370,55 @@ export class AdminAdministradoresComponent implements OnInit {
   ngOnInit(): void {
     this.carregarCursosDisponiveis();
     this.carregarAdmins();
+    this.carregarConvites();
+
+    this.emailCheck$.pipe(
+      debounceTime(500),
+      distinctUntilChanged(),
+      switchMap(email => {
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          this.emailStatus = 'idle';
+          return EMPTY;
+        }
+        this.emailStatus = 'checking';
+        const url = new URL('http://localhost:8000/api/auth/check-email');
+        url.searchParams.set('email', email);
+        if (this.editandoAdminId) {
+          url.searchParams.set('exclude_id', String(this.editandoAdminId));
+        }
+        return this.http.get<{ available: boolean }>(url.toString());
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (resp) => { this.emailStatus = resp.available ? 'available' : 'taken'; },
+      error: () => { this.emailStatus = 'idle'; },
+    });
+
+    this.busca$.pipe(
+      debounceTime(400),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.paginaAtual = 1;
+      this.carregarAdmins();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  onEmailChange(email: string): void {
+    this.emailStatus = 'idle';
+    this.emailCheck$.next(email.trim());
+  }
+
+  marcarTocado(campo: string): void {
+    this.tocados.add(campo);
+  }
+
+  private marcarTodosTocados(): void {
+    ['nome', 'email', 'confirmarEmail', 'senha', 'confirmarSenha'].forEach(c => this.tocados.add(c));
   }
 
   getRoleLabel(role: AdminRole | null): string {
@@ -976,6 +1477,86 @@ export class AdminAdministradoresComponent implements OnInit {
     if (palavras.length === 0) return '?';
     if (palavras.length === 1) return palavras[0][0].toUpperCase();
     return (palavras[0][0] + palavras[1][0]).toUpperCase();
+  }
+
+  onFiltroChange(): void {
+    this.busca$.next();
+  }
+
+  onFiltroSelectChange(): void {
+    this.paginaAtual = 1;
+    this.carregarAdmins();
+  }
+
+  // ── Convites ──────────────────────────────────────────────────────────────
+
+  private readonly convitesUrl = 'http://localhost:8000/api/convites';
+
+  private carregarConvites(): void {
+    if (!this.permissionsService.can('administradores:write')) return;
+    this.carregandoConvites = true;
+    this.http.get<ConviteItem[]>(this.convitesUrl, { headers: this.getHeaders() }).subscribe({
+      next: (data) => { this.convites = data; this.carregandoConvites = false; },
+      error: () => { this.carregandoConvites = false; },
+    });
+  }
+
+  enviarConvite(): void {
+    this.conviteErro = '';
+    this.conviteSucesso = '';
+    if (!this.conviteEmail.trim()) { this.conviteErro = 'Informe o e-mail do convidado.'; return; }
+
+    this.enviandoConvite = true;
+    this.http.post<ConviteItem>(
+      this.convitesUrl,
+      { email: this.conviteEmail.trim(), admin_role: this.conviteRole },
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: (novo) => {
+        this.enviandoConvite = false;
+        this.conviteSucesso = `Convite enviado para ${novo.email}!`;
+        this.conviteEmail = '';
+        this.convites = [novo, ...this.convites];
+      },
+      error: (err) => {
+        this.enviandoConvite = false;
+        this.conviteErro = err?.error?.detail ?? 'Erro ao enviar convite.';
+      },
+    });
+  }
+
+  revogarConvite(c: ConviteItem): void {
+    if (!confirm(`Revogar convite para ${c.email}?`)) return;
+    this.http.delete(`${this.convitesUrl}/${c.id}`, { headers: this.getHeaders() }).subscribe({
+      next: () => { this.convites = this.convites.filter(x => x.id !== c.id); },
+      error: (err) => { this.conviteErro = err?.error?.detail ?? 'Erro ao revogar convite.'; },
+    });
+  }
+
+  conviteExpirado(c: ConviteItem): boolean {
+    return new Date(c.data_expiracao) < new Date();
+  }
+
+  formatarData(iso: string): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }
+
+  irParaPagina(p: number): void {
+    if (p < 1 || p > this.totalPaginas) return;
+    this.paginaAtual = p;
+    this.carregarAdmins();
+  }
+
+  get paginas(): number[] {
+    const range: number[] = [];
+    const start = Math.max(1, this.paginaAtual - 2);
+    const end = Math.min(this.totalPaginas, this.paginaAtual + 2);
+    for (let i = start; i <= end; i++) range.push(i);
+    return range;
   }
 
   onFotoSelecionada(event: Event): void {
@@ -1117,6 +1698,8 @@ export class AdminAdministradoresComponent implements OnInit {
 
   editarAdmin(admin: AdminResumo): void {
     this.editandoAdminId = admin.id;
+    this.emailStatus = 'idle';
+    this.tocados.clear();
     this.fecharGerenciarCursos();
     this.adminForm = {
       nome: admin.nome,
@@ -1140,6 +1723,7 @@ export class AdminAdministradoresComponent implements OnInit {
   }
 
   salvarAdmin() {
+    this.marcarTodosTocados();
     this.adminFormErro = '';
     this.adminFormSucesso = '';
 
@@ -1156,6 +1740,11 @@ export class AdminAdministradoresComponent implements OnInit {
       this.adminForm.email.trim().toLowerCase() !== this.adminForm.confirmarEmail.trim().toLowerCase()
     ) {
       this.adminFormErro = 'Os e-mails não conferem.';
+      return;
+    }
+
+    if (this.emailStatus === 'taken') {
+      this.adminFormErro = 'Este e-mail já está cadastrado. Escolha outro.';
       return;
     }
 
@@ -1257,6 +1846,8 @@ export class AdminAdministradoresComponent implements OnInit {
     this.adminFormErro = '';
     this.adminFormSucesso = '';
     this.editandoAdminId = null;
+    this.emailStatus = 'idle';
+    this.tocados.clear();
   }
 
   private carregarCursosDisponiveis() {
@@ -1274,9 +1865,19 @@ export class AdminAdministradoresComponent implements OnInit {
     this.carregandoLista = true;
     this.erroLista = '';
 
-    this.http.get<AdminResumo[]>(this.adminsListUrl, { headers: this.getHeaders() }).subscribe({
+    const url = new URL(this.adminsListUrl);
+    if (this.filtroBusca.trim()) url.searchParams.set('busca', this.filtroBusca.trim());
+    if (this.filtroAdminRole) url.searchParams.set('admin_role', this.filtroAdminRole);
+    if (this.filtroAtivo !== '') url.searchParams.set('ativo', this.filtroAtivo);
+    url.searchParams.set('page', String(this.paginaAtual));
+    url.searchParams.set('page_size', String(this.tamanhoPagina));
+
+    this.http.get<AdminListResponse>(url.toString(), { headers: this.getHeaders() }).subscribe({
       next: (data) => {
-        this.admins = data;
+        this.admins = data.items;
+        this.total = data.total;
+        this.totalPaginas = data.total_pages;
+        this.paginaAtual = data.page;
         this.carregandoLista = false;
       },
       error: (err) => {

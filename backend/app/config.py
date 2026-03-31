@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
     MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", str(500 * 1024 * 1024)))
     ALLOWED_VIDEO_FORMATS: list = ["mp4", "webm", "avi", "mov"]
+
+    # SMTP (deixado em branco desativa envio real — apenas loga o link)
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@cursaas.com")
+
+    # URL base do frontend (usado para montar links nos e-mails)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:4200")
+
+    # Convite admin
+    INVITE_EXPIRE_HOURS: int = int(os.getenv("INVITE_EXPIRE_HOURS", "48"))
     
     # CORS
     ALLOWED_ORIGINS: list = ["http://localhost:4200", "http://localhost:3000"]
