@@ -11,13 +11,30 @@ import { Router } from '@angular/router';
   styleUrls: ['./register-instituicao.component.css']
 })
 export class RegisterInstituicaoComponent {
+  // Dados básicos
   nomeInstituicao = '';
   cnpj = '';
   email = '';
+  
+  // Localização
+  endereco = '';
+  
+  // Contato do Responsável
+  nomeResponsavel = '';
+  telefonResponsavel = '';
+  
+  // Foto de Perfil
+  fotoPerfil: File | null = null;
+  fotoPreview: string | null = null;
+  fotoSelecionada = false;
+  
+  // Segurança
   senha = '';
   confirmarSenha = '';
   showSenha = false;
   showConfirmarSenha = false;
+  
+  // Estados
   loading = false;
   error = '';
   success = false;
@@ -40,8 +57,52 @@ export class RegisterInstituicaoComponent {
     }
   }
 
+  formatarTelefone(event: any): void {
+    let value = event.target.value.replace(/\D/g, '');
+    if (value.length > 11) {
+      value = value.slice(0, 11);
+    }
+    if (value.length <= 2) {
+      this.telefonResponsavel = value;
+    } else if (value.length <= 7) {
+      this.telefonResponsavel = '(' + value.slice(0, 2) + ') ' + value.slice(2);
+    } else {
+      this.telefonResponsavel = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7);
+    }
+  }
+
+  onFotoSelecionada(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        this.error = 'Por favor, selecione um arquivo de imagem válido';
+        return;
+      }
+
+      // Validar tamanho (máx 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.error = 'A imagem deve ter no máximo 5MB';
+        return;
+      }
+
+      this.fotoPerfil = file;
+      this.fotoSelecionada = true;
+      this.error = '';
+
+      // Criar preview
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.fotoPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   register(): void {
-    if (!this.nomeInstituicao || !this.cnpj || !this.email || !this.senha || !this.confirmarSenha) {
+    // Validar campos obrigatórios
+    if (!this.nomeInstituicao || !this.cnpj || !this.email || !this.endereco || 
+        !this.nomeResponsavel || !this.telefonResponsavel || !this.senha || !this.confirmarSenha) {
       this.error = 'Todos os campos são obrigatórios';
       return;
     }
@@ -62,16 +123,41 @@ export class RegisterInstituicaoComponent {
       return;
     }
 
+    const telefoneSemMascara = this.telefonResponsavel.replace(/\D/g, '');
+    if (telefoneSemMascara.length < 10) {
+      this.error = 'Telefone deve conter no mínimo 10 dígitos';
+      return;
+    }
+
     this.loading = true;
     this.error = '';
 
+    // Dados para enviar
+    const formData = new FormData();
+    formData.append('nomeInstituicao', this.nomeInstituicao);
+    formData.append('cnpj', cnpjSemMascara);
+    formData.append('email', this.email);
+    formData.append('endereco', this.endereco);
+    formData.append('nomeResponsavel', this.nomeResponsavel);
+    formData.append('telefonResponsavel', telefoneSemMascara);
+    formData.append('senha', this.senha);
+    formData.append('tipo', 'instituicao');
+    
+    if (this.fotoPerfil) {
+      formData.append('fotoPerfil', this.fotoPerfil);
+    }
+
     // Aqui você faria a chamada ao backend
-    // this.authService.registerInstituicao({nomeInstituicao, cnpj, email, senha}).subscribe(...)
+    // this.authService.registerInstituicao(formData).subscribe(...)
     console.log('Registrando instituição:', {
       nomeInstituicao: this.nomeInstituicao,
-      cnpj: this.cnpj,
+      cnpj: cnpjSemMascara,
       email: this.email,
-      tipo: 'instituicao'
+      endereco: this.endereco,
+      nomeResponsavel: this.nomeResponsavel,
+      telefonResponsavel: telefoneSemMascara,
+      tipo: 'instituicao',
+      temFoto: !!this.fotoPerfil
     });
 
     // Simular sucesso

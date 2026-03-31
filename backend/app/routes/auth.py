@@ -7,7 +7,7 @@ from datetime import timedelta
 import os
 from pathlib import Path
 from app.database import get_db
-from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse, AdminCreate, AdminUpdate, AdminManageResponse, AdminRoleEnum
+from app.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioCreateSimples, UsuarioResponse, AdminCreate, AdminUpdate, AdminManageResponse, AdminRoleEnum
 from app.services.auth_service import AuthService
 from app.services.avatar_service import gerar_avatar_iniciais
 from app.models import Usuario, RoleEnum, AdminRoleEnum as ModelAdminRoleEnum, AdminCurso, Curso
@@ -149,9 +149,10 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @router.post("/registro", response_model=TokenResponse)
-def registro(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
+def registro(usuario_data: UsuarioCreateSimples, db: Session = Depends(get_db)):
     """
     Endpoint para registro de novo usuário (aluno).
+    Aceita apenas: nome, email, senha.
     Retorna um token JWT e informações do usuário criado.
     """
     # Verificar se o email já existe
@@ -451,5 +452,18 @@ def generate_avatar(nome: str):
     return {
         "avatar": f"data:image/svg+xml;base64,{svg_b64}",
         "nome": nome
+    }
+
+
+@router.get("/check-email/{email}")
+def check_email(email: str, db: Session = Depends(get_db)):
+    """
+    Endpoint para validar se um email já está registrado.
+    Retorna: {"disponivel": true/false}
+    """
+    existing_user = db.query(Usuario).filter(Usuario.email == email.lower()).first()
+    return {
+        "disponivel": existing_user is None,
+        "email": email
     }
 

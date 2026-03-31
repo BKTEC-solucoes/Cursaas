@@ -60,6 +60,13 @@ class UsuarioCreate(UsuarioBase):
     historico_escolar: str
 
 
+class UsuarioCreateSimples(BaseModel):
+    """Schema para registro simplificado de alunos (apenas nome, email, senha)"""
+    nome: str = Field(..., min_length=1)
+    email: EmailStr
+    senha: str = Field(..., min_length=6)
+
+
 class AdminCreate(BaseModel):
     nome: str
     email: EmailStr

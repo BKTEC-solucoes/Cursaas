@@ -1,0 +1,353 @@
+// Exemplos de Requisições HTTP para Testar o Registro de Alunos
+// ============================================================
+// Copie e cole no Insomnia, Postman ou execute com cURL
+
+// BASE URL (Altere se necessário)
+@base_url = http://localhost:8000/api
+
+// ============================================================
+// 1. VALIDAR EMAIL DISPONÍVEL
+// ============================================================
+
+### Verificar email novo (deve retornar disponivel: true)
+GET @base_url/auth/check-email/novo@example.com
+
+### Verificar email existente (caso já esteja registrado)
+GET @base_url/auth/check-email/joao@example.com
+
+
+// ============================================================
+// 2. REGISTRAR NOVO ALUNO
+// ============================================================
+
+### Registro bem-sucedido (201)
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "João Silva",
+  "email": "joao@example.com",
+  "senha": "senha123456"
+}
+
+### Registro com email diferente (para testar múltiplas vezes)
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "Maria Santos",
+  "email": "maria@example.com",
+  "senha": "senhaSegura123"
+}
+
+### Erro: Email duplicado (400)
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "Outro João",
+  "email": "joao@example.com",
+  "senha": "outrasenha123"
+}
+
+
+// ============================================================
+// 3. VALIDAÇÕES QUE DEVEM FALHAR (422)
+// ============================================================
+
+### Erro: Senha muito curta (min 6)
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "email": "teste@example.com",
+  "senha": "123"
+}
+
+### Erro: Email inválido
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "email": "nao-eh-email",
+  "senha": "senha123456"
+}
+
+### Erro: Nome vazio
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "",
+  "email": "teste@example.com",
+  "senha": "senha123456"
+}
+
+### Erro: Faltam campos
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "email": "teste@example.com"
+}
+
+
+// ============================================================
+// 4. LOGIN APÓS SUCESSO NO REGISTRO
+// ============================================================
+
+### Login com novo usuário (use email/senha do registro)
+POST @base_url/auth/login
+Content-Type: application/json
+
+{
+  "email": "joao@example.com",
+  "senha": "senha123456"
+}
+
+
+// ============================================================
+// 5. EXEMPLOS COM cURL
+// ============================================================
+
+## VALIDAR EMAIL (GET)
+curl -X GET \
+  "http://localhost:8000/api/auth/check-email/novo@example.com" \
+  -H "Content-Type: application/json"
+
+
+## REGISTRAR ALUNO (POST)
+curl -X POST \
+  "http://localhost:8000/api/auth/registro" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nome": "João Silva",
+    "email": "joao@example.com",
+    "senha": "senha123456"
+  }'
+
+
+## EMAIL DUPLICADO (POST)
+curl -X POST \
+  "http://localhost:8000/api/auth/registro" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nome": "Outro João",
+    "email": "joao@example.com",
+    "senha": "outrasenha"
+  }'
+
+
+## LOGIN (POST)
+curl -X POST \
+  "http://localhost:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@example.com",
+    "senha": "senha123456"
+  }'
+
+
+// ============================================================
+// 6. RESPOSTAS ESPERADAS
+// ============================================================
+
+## SUCESSO: Validar Email Disponível (200 OK)
+
+GET /api/auth/check-email/novo@example.com
+
+Response:
+{
+  "disponivel": true,
+  "email": "novo@example.com"
+}
+
+---
+
+## ERRO: Validar Email Duplicado (200 OK - mesmo que disponível)
+
+GET /api/auth/check-email/joao@example.com
+
+Response:
+{
+  "disponivel": false,
+  "email": "joao@example.com"
+}
+
+---
+
+## SUCESSO: Registrar Aluno (201 Created)
+
+POST /api/auth/registro
+Body: {
+  "nome": "João Silva",
+  "email": "joao@example.com",
+  "senha": "senha123456"
+}
+
+Response:
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqb2FvQGV4YW1wbGUuY29tIiwicm9sZSI6ImFsdW5vIiwidXNlcl9pZCI6MTIzLCJub21lIjoiSm/Dpbyv4oCbIFNpbHZhIn0...",
+  "token_type": "bearer",
+  "usuario": {
+    "id": 123,
+    "nome": "João Silva",
+    "email": "joao@example.com",
+    "role": "aluno",
+    "admin_role": null,
+    "ativo": true,
+    "data_criacao": "2025-03-30T10:30:00"
+  }
+}
+
+---
+
+## ERRO: Email Duplicado (400 Bad Request)
+
+POST /api/auth/registro
+Body: {
+  "nome": "Outro João",
+  "email": "joao@example.com",
+  "senha": "outrasenha"
+}
+
+Response:
+{
+  "detail": "Email já registrado"
+}
+
+---
+
+## ERRO: Dados Inválidos (422 Unprocessable Entity)
+
+POST /api/auth/registro
+Body: {
+  "nome": "Teste",
+  "email": "nao-eh-email",
+  "senha": "123"
+}
+
+Response:
+{
+  "detail": [
+    {
+      "loc": ["body", "email"],
+      "msg": "invalid email format",
+      "type": "value_error.email"
+    },
+    {
+      "loc": ["body", "senha"],
+      "msg": "ensure this value has at least 6 characters",
+      "type": "value_error.string.too_short"
+    }
+  ]
+}
+
+
+// ============================================================
+// 7. VARIÁVEIS ÚTEIS (para reutilizar testes)
+// ============================================================
+
+@timestamp = {{$timestamp}}
+@email_novo = {{$randomFirstName}}@{{$randomLastName}}.com
+@nome_aleatorio = {{$randomFirstName}} {{$randomLastName}}
+
+
+### Registrar com email aleatório (pode rodar múltiplas vezes)
+POST @base_url/auth/registro
+Content-Type: application/json
+
+{
+  "nome": "@nome_aleatorio",
+  "email": "@email_novo",
+  "senha": "teste123456"
+}
+
+
+// ============================================================
+// 8. TEST SCRIPT (Postman/Insomnia - Verificar Resposta)
+// ============================================================
+
+## Para Validar Email
+
+tests["Status é 200"] = responseCode.code === 200;
+tests["Email está no response"] = responseBody.has("email");
+tests["Campo 'disponivel' existe"] = responseBody.has("disponivel");
+
+---
+
+## Para Registrar Aluno
+
+tests["Status é 201"] = responseCode.code === 201;
+tests["Token JWT retornado"] = responseBody.has("access_token");
+tests["Usuario tem nome"] = pm.response.json().usuario.nome !== null;
+tests["Role é 'aluno'"] = pm.response.json().usuario.role === "aluno";
+tests["Email foi salvo"] = pm.response.json().usuario.email === pm.variables.get("email");
+
+
+// ============================================================
+// 9. FLUXO COMPLETO DE TESTE
+// ============================================================
+
+PASSO 1: Validar Email
+GET /api/auth/check-email/novo_usuario@example.com
+Esperado: {"disponivel": true}
+
+PASSO 2: Registrar Novo Aluno
+POST /api/auth/registro
+Body: {
+  "nome": "Novo Usuario",
+  "email": "novo_usuario@example.com",
+  "senha": "senhaSegura123"
+}
+Esperado: 201 Created + access_token
+
+PASSO 3: Fazer Login
+POST /api/auth/login
+Body: {
+  "email": "novo_usuario@example.com",
+  "senha": "senhaSegura123"
+}
+Esperado: 200 OK + novo token
+
+PASSO 4: Tentar Registrar Novamente com Mesmo Email
+POST /api/auth/registro
+Body: {
+  "nome": "Outro Nome",
+  "email": "novo_usuario@example.com",
+  "senha": "outrasenha"
+}
+Esperado: 400 Bad Request + "Email já registrado"
+
+
+// ============================================================
+// 10. TROUBLESHOOTING
+// ============================================================
+
+❌ "Connection refused"
+   → Backend não está rodando
+   → Inicie: python backend/run_server.py
+
+❌ "404 Not Found"
+   → URL errada ou rota não existe
+   → Teste: GET /api/docs (deveria mostrar Swagger)
+
+❌ "422 Unprocessable Entity"
+   → Dados inválidos
+   → Verifique email, senha mínimo 6, nome não vazio
+
+❌ "400 Email já registrado"
+   → Email já existe no banco
+   → Use outro email ou limpe o banco
+
+❌ Token não funciona
+   → Token expirou (24 horas)
+   → Registre novamente ou faça login
+
+✅ Tudo OK!
+   → Verifique response.status_code
+   → Verifique response.json()
+   → Veja se dados estão no banco: SELECT * FROM usuarios;

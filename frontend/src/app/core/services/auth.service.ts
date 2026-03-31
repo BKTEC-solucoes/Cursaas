@@ -102,4 +102,24 @@ export class AuthService {
     const roles = Array.isArray(role) ? role : [role];
     return roles.includes(user.role);
   }
+
+  register(nome: string, email: string, senha: string): Observable<TokenResponse> {
+    return this.http.post<TokenResponse>(`${this.apiUrl}/auth/registro`, {
+      nome,
+      email,
+      senha
+    }).pipe(
+      tap(response => {
+        localStorage.setItem('access_token', response.access_token);
+        this.tokenSubject.next(response.access_token);
+        this.loadUserInfo();
+      })
+    );
+  }
+
+  checkEmailAvailability(email: string): Observable<{ disponivel: boolean; email: string }> {
+    return this.http.get<{ disponivel: boolean; email: string }>(
+      `${this.apiUrl}/auth/check-email/${email}`
+    );
+  }
 }

@@ -17,13 +17,20 @@
       </div>
 
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">
+          Email
+          <span *ngIf="validandoEmail" class="validating">Verificando...</span>
+          <span *ngIf="!validandoEmail && emailEmUso" class="email-em-uso">✗ Email em uso</span>
+          <span *ngIf="!validandoEmail && !emailEmUso && email" class="email-disponivel">✓ Email disponível</span>
+        </label>
         <input
           type="email"
           id="email"
           [(ngModel)]="email"
           name="email"
+          (blur)="verificarEmailDisponivel()"
           placeholder="seu@email.com"
+          [class.email-error]="emailEmUso"
           required
         />
       </div>
@@ -72,7 +79,11 @@
 
       <div *ngIf="error" class="error-message">{{ error }}</div>
 
-      <button type="submit" class="submit-button" [disabled]="loading">
+      <button 
+        type="submit" 
+        class="submit-button" 
+        [disabled]="loading || emailEmUso || validandoEmail"
+      >
         {{ loading ? 'Criando conta...' : 'Criar Conta' }}
       </button>
     </form>
@@ -80,7 +91,7 @@
     <div *ngIf="success" class="success-message">
       <div class="success-icon">✓</div>
       <h2>Bem-vindo!</h2>
-      <p>Redirecionando para as lojas...</p>
+      <p>Redirecionando para o dashboard...</p>
     </div>
 
     <div class="back-link">
