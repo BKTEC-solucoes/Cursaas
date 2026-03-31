@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-register-instituicao',
@@ -39,7 +40,7 @@ export class RegisterInstituicaoComponent {
   error = '';
   success = false;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private authService: AuthService) {}
 
   formatarCNPJ(event: any): void {
     let value = event.target.value.replace(/\D/g, '');
@@ -132,43 +133,44 @@ export class RegisterInstituicaoComponent {
     this.loading = true;
     this.error = '';
 
-    // Dados para enviar
-    const formData = new FormData();
-    formData.append('nomeInstituicao', this.nomeInstituicao);
-    formData.append('cnpj', cnpjSemMascara);
-    formData.append('email', this.email);
-    formData.append('endereco', this.endereco);
-    formData.append('nomeResponsavel', this.nomeResponsavel);
-    formData.append('telefonResponsavel', telefoneSemMascara);
-    formData.append('senha', this.senha);
-    formData.append('tipo', 'instituicao');
-    
-    if (this.fotoPerfil) {
-      formData.append('fotoPerfil', this.fotoPerfil);
-    }
-
-    // Aqui você faria a chamada ao backend
-    // this.authService.registerInstituicao(formData).subscribe(...)
-    console.log('Registrando instituição:', {
-      nomeInstituicao: this.nomeInstituicao,
-      cnpj: cnpjSemMascara,
+    // Preparar dados para enviar
+    const dadosInstituicao = {
+      nome_instituicao: this.nomeInstituicao,
+      cnpj: this.cnpj.replace(/\D/g, ''),
       email: this.email,
       endereco: this.endereco,
-      nomeResponsavel: this.nomeResponsavel,
-      telefonResponsavel: telefoneSemMascara,
-      tipo: 'instituicao',
-      temFoto: !!this.fotoPerfil
-    });
+      nome_responsavel: this.nomeResponsavel,
+      contato_responsavel: this.telefonResponsavel.replace(/\D/g, ''),
+      senha: this.senha
+    };
 
-    // Simular sucesso
-    setTimeout(() => {
-      this.loading = false;
-      this.success = true;
-      // Mostrar mensagem por 5 segundos antes de voltar
-      setTimeout(() => {
-        this.router.navigate(['/auth/login']);
-      }, 5000);
-    }, 1500);
+    // Chamar serviço de autenticação
+    this.authService.registrarInstituicao(dadosInstituicao).subscribe({
+      next: (response) => {
+        this.loading = false;
+        this.success = true;
+        
+        // Redirecionar para dashboard após 2 segundos
+        setTimeout(() => {
+          this.router.navigate(['/admin/dashboard']);
+        }, 2000);
+      },
+      error: (error) => {
+        this.loading = false;
+        
+        if (error.error?.detail) {
+          this.error = Array.isArray(error.error.detail) 
+            ? error.error.detail[0]?.msg || error.error.detail[0] 
+            : error.error.detail;
+        } else if (error.error?.message) {
+          this.error = error.error.message;
+        } else {
+          this.error = 'Erro ao registrar instituição. Tente novamente.';
+        }
+        
+        console.error('Erro no registro:', error);
+      }
+    });
   }
 
   goBack(): void {

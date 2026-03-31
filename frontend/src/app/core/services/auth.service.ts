@@ -117,6 +117,24 @@ export class AuthService {
     );
   }
 
+  registrarInstituicao(dados: {
+    nome_instituicao: string;
+    cnpj: string;
+    email: string;
+    nome_responsavel: string;
+    contato_responsavel: string;
+    endereco: string;
+    senha: string;
+  }): Observable<TokenResponse> {
+    return this.http.post<TokenResponse>(`${this.apiUrl}/instituicoes/registrar`, dados).pipe(
+      tap(response => {
+        localStorage.setItem('access_token', response.access_token);
+        this.tokenSubject.next(response.access_token);
+        this.loadUserInfo();
+      })
+    );
+  }
+
   checkEmailAvailability(email: string): Observable<{ disponivel: boolean; email: string }> {
     return this.http.get<{ disponivel: boolean; email: string }>(
       `${this.apiUrl}/auth/check-email/${email}`

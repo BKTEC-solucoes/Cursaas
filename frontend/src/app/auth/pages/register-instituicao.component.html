@@ -1,179 +1,209 @@
 <div class="register-container">
   <div class="register-box">
-    <div class="header-section">
-      <div class="text-section">
+    <form (ngSubmit)="register()" *ngIf="!success" class="form-wrapper">
+      
+      <!-- ========== CABEÇALHO (FULL WIDTH) ========== -->
+      <div class="form-header">
         <h1>Cadastro de Instituição</h1>
         <p class="subtitle">Preencha os dados de sua instituição</p>
       </div>
-      <div class="avatar-section">
-        <div class="avatar-container">
-          <img *ngIf="fotoPreview" [src]="fotoPreview" alt="Foto da Instituição" class="avatar-image">
-          <div *ngIf="!fotoPreview" class="avatar-placeholder">
-            <span class="avatar-icon">🏢</span>
+
+      <!-- ========== CORPO (2 COLUNAS) ========== -->
+      <div class="form-body">
+        
+        <!-- COLUNA ESQUERDA -->
+        <div class="column-left">
+          
+          <!-- Avatar Section -->
+          <div class="avatar-section">
+            <div class="avatar-container">
+              <img *ngIf="fotoPreview" [src]="fotoPreview" alt="Foto da Instituição" class="avatar-image">
+              <div *ngIf="!fotoPreview" class="avatar-placeholder">
+                <span class="avatar-icon">🏢</span>
+              </div>
+            </div>
+            <label class="upload-button" [class.has-file]="fotoSelecionada">
+              <input
+                type="file"
+                id="fotoPerfil"
+                (change)="onFotoSelecionada($event)"
+                accept="image/*"
+                style="display: none"
+              />
+              Alterar Foto
+            </label>
+          </div>
+
+          <!-- Linha divisória -->
+          <div class="divider-line"></div>
+
+          <!-- Campos da Esquerda -->
+          <div class="fields-left">
+            <div class="form-group">
+              <label for="nomeInstituicao">Nome da Instituição</label>
+              <input
+                type="text"
+                id="nomeInstituicao"
+                [(ngModel)]="nomeInstituicao"
+                name="nomeInstituicao"
+                placeholder="Nome da sua instituição"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="cnpj">CNPJ</label>
+              <input
+                type="text"
+                id="cnpj"
+                [(ngModel)]="cnpj"
+                (input)="formatarCNPJ($event)"
+                name="cnpj"
+                placeholder="XX.XXX.XXX/XXXX-XX"
+                required
+                maxlength="18"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                [(ngModel)]="email"
+                name="email"
+                placeholder="contato@instituicao.com"
+                required
+              />
+            </div>
           </div>
         </div>
-        <label class="upload-button" [class.has-file]="fotoSelecionada">
-          <input
-            type="file"
-            id="fotoPerfil"
-            (change)="onFotoSelecionada($event)"
-            accept="image/*"
-            style="display: none"
-          />
-          Alterar Foto
-        </label>
-      </div>
-    </div>
-    
-    <form (ngSubmit)="register()" *ngIf="!success">
-      <div class="form-wrapper">
-      <div class="form-group">
-        <label for="nomeInstituicao">Nome da Instituição</label>
-        <input
-          type="text"
-          id="nomeInstituicao"
-          [(ngModel)]="nomeInstituicao"
-          name="nomeInstituicao"
-          placeholder="Nome da sua instituição"
-          required
-        />
-      </div>
 
-      <div class="form-group">
-        <label for="cnpj">CNPJ</label>
-        <input
-          type="text"
-          id="cnpj"
-          [(ngModel)]="cnpj"
-          (input)="formatarCNPJ($event)"
-          name="cnpj"
-          placeholder="XX.XXX.XXX/XXXX-XX"
-          required
-          maxlength="18"
-        />
-      </div>
+        <!-- Divisor Vertical -->
+        <div class="divider-vertical"></div>
 
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          [(ngModel)]="email"
-          name="email"
-          placeholder="contato@instituicao.com"
-          required
-        />
-      </div>
+        <!-- COLUNA DIREITA -->
+        <div class="column-right">
+          
+          <!-- SEÇÃO: LOCALIZAÇÃO -->
+          <div class="form-section">
+            <h3 class="section-title">Localização</h3>
+            <div class="form-group">
+              <label for="endereco">Endereço Completo</label>
+              <input
+                type="text"
+                id="endereco"
+                [(ngModel)]="endereco"
+                name="endereco"
+                placeholder="Rua, nº, complemento, cidade, estado, CEP"
+                required
+              />
+            </div>
+          </div>
 
-      <!-- Seção de Endereço -->
-      <div class="section-title">Localização</div>
+          <!-- SEÇÃO: CONTATO DO RESPONSÁVEL -->
+          <div class="form-section">
+            <h3 class="section-title">Contato do Responsável</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="nomeResponsavel">Nome do Responsável</label>
+                <input
+                  type="text"
+                  id="nomeResponsavel"
+                  [(ngModel)]="nomeResponsavel"
+                  name="nomeResponsavel"
+                  placeholder="Nome completo"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="telefonResponsavel">Telefone/WhatsApp</label>
+                <input
+                  type="tel"
+                  id="telefonResponsavel"
+                  [(ngModel)]="telefonResponsavel"
+                  (input)="formatarTelefone($event)"
+                  name="telefonResponsavel"
+                  placeholder="(XX) 99999-9999"
+                  required
+                  maxlength="15"
+                />
+              </div>
+            </div>
+          </div>
 
-      <div class="form-group">
-        <label for="endereco">Endereço Completo</label>
-        <input
-          type="text"
-          id="endereco"
-          [(ngModel)]="endereco"
-          name="endereco"
-          placeholder="Rua, nº, complemento, cidade, estado, CEP"
-          required
-        />
-      </div>
+          <!-- SEÇÃO: SEGURANÇA DA CONTA -->
+          <div class="form-section">
+            <h3 class="section-title">Segurança da Conta</h3>
+            <div class="form-group">
+              <label for="senha">Senha</label>
+              <div class="password-field">
+                <input
+                  [type]="showSenha ? 'text' : 'password'"
+                  id="senha"
+                  [(ngModel)]="senha"
+                  name="senha"
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                />
+                <button 
+                  type="button" 
+                  class="toggle-password" 
+                  (click)="showSenha = !showSenha"
+                >
+                  {{ showSenha ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+            </div>
 
-      <!-- Seção de Contato do Responsável -->
-      <div class="section-title">Contato do Responsável</div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="nomeResponsavel">Nome do Responsável</label>
-          <input
-            type="text"
-            id="nomeResponsavel"
-            [(ngModel)]="nomeResponsavel"
-            name="nomeResponsavel"
-            placeholder="Nome completo"
-            required
-          />
+            <div class="form-group">
+              <label for="confirmarSenha">Confirmar Senha</label>
+              <div class="password-field">
+                <input
+                  [type]="showConfirmarSenha ? 'text' : 'password'"
+                  id="confirmarSenha"
+                  [(ngModel)]="confirmarSenha"
+                  name="confirmarSenha"
+                  placeholder="Digite a senha novamente"
+                  required
+                />
+                <button 
+                  type="button" 
+                  class="toggle-password" 
+                  (click)="showConfirmarSenha = !showConfirmarSenha"
+                >
+                  {{ showConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="telefonResponsavel">Telefone/WhatsApp</label>
-          <input
-            type="tel"
-            id="telefonResponsavel"
-            [(ngModel)]="telefonResponsavel"
-            (input)="formatarTelefone($event)"
-            name="telefonResponsavel"
-            placeholder="(XX) 99999-9999"
-            required
-            maxlength="15"
-          />
-        </div>
       </div>
 
-      <!-- Seção de Segurança -->
-      <div class="section-title">Segurança da Conta</div>
-
-      <div class="form-group">
-        <label for="senha">Senha</label>
-        <div class="password-field">
-          <input
-            [type]="showSenha ? 'text' : 'password'"
-            id="senha"
-            [(ngModel)]="senha"
-            name="senha"
-            placeholder="Mínimo 6 caracteres"
-            required
-          />
-          <button 
-            type="button" 
-            class="toggle-password" 
-            (click)="showSenha = !showSenha"
-          >
-            {{ showSenha ? 'Ocultar' : 'Mostrar' }}
-          </button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="confirmarSenha">Confirmar Senha</label>
-        <div class="password-field">
-          <input
-            [type]="showConfirmarSenha ? 'text' : 'password'"
-            id="confirmarSenha"
-            [(ngModel)]="confirmarSenha"
-            name="confirmarSenha"
-            placeholder="Digite a senha novamente"
-            required
-          />
-          <button 
-            type="button" 
-            class="toggle-password" 
-            (click)="showConfirmarSenha = !showConfirmarSenha"
-          >
-            {{ showConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
-          </button>
-        </div>
-      </div>
-
-      </div>
-      
+      <!-- Mensagem de erro (se houver) -->
       <div *ngIf="error" class="error-message">{{ error }}</div>
 
-      <button type="submit" class="submit-button" [disabled]="loading">
-        {{ loading ? 'Criando conta...' : 'Criar Conta' }}
-      </button>
+      <!-- ========== RODAPÉ (FULL WIDTH - CENTRALIZADO) ========== -->
+      <div class="form-footer-divider"></div>
+      
+      <div class="form-footer">
+        <button type="submit" class="submit-button" [disabled]="loading">
+          {{ loading ? 'Criando conta...' : 'Criar Conta' }}
+        </button>
+        <div class="back-link">
+          <a (click)="goBack()" href="javascript:void(0)">Voltar</a>
+        </div>
+      </div>
+
     </form>
 
+    <!-- Mensagem de Sucesso -->
     <div *ngIf="success" class="success-message">
       <div class="success-icon">📬</div>
       <h2>Solicitação Enviada!</h2>
       <p>Sua solicitação foi enviada para aprovação.</p>
       <p class="approval-text">Você receberá um email assim que for aprovado.</p>
-    </div>
-
-    <div class="back-link">
-      <a (click)="goBack()" href="javascript:void(0)">Voltar</a>
     </div>
   </div>
 </div>

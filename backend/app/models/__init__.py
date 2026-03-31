@@ -306,3 +306,20 @@ class NotaCurso(Base):
     # Relacionamentos
     usuario = relationship("Usuario", back_populates="notas_cursos")
     curso = relationship("Curso", back_populates="notas_cursos")
+
+# Tabela de Instituições
+class Instituicao(Base):
+    __tablename__ = "instituicoes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    nome_instituicao = Column(String(255), nullable=False)
+    cnpj = Column(String(18), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    nome_responsavel = Column(String(255), nullable=False)
+    contato_responsavel = Column(String(255), nullable=False)
+    endereco = Column(String(500), nullable=False)
+    senha = Column(String(255), nullable=False)
+    ativo = Column(Boolean, default=False, index=True)
+    aprovada = Column(Boolean, default=False, index=True)
+    data_criacao = Column(DateTime, default=datetime.utcnow)
+    data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

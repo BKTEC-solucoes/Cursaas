@@ -591,6 +591,42 @@ class NotaCursoDetailResponse(NotaCursoResponse):
     curso_nome: Optional[str] = None
     notas_provas: Optional[List[NotaListResponse]] = []
 
+# ==================== SCHEMAS DE INSTITUIÇÃO ====================
+
+class InstituicaoBase(BaseModel):
+    nome_instituicao: str = Field(..., min_length=1)
+    cnpj: str = Field(..., regex=r"^\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}$")  # Formato: XX.XXX.XXX/XXXX-XX
+    email: EmailStr
+    nome_responsavel: str = Field(..., min_length=1)
+    contato_responsavel: str = Field(..., min_length=10)
+    endereco: str = Field(..., min_length=1)
+
+class InstituicaoCreate(InstituicaoBase):
+    senha: str = Field(..., min_length=6)
+
+class InstituicaoUpdate(BaseModel):
+    nome_instituicao: Optional[str] = None
+    cnpj: Optional[str] = None
+    email: Optional[EmailStr] = None
+    nome_responsavel: Optional[str] = None
+    contato_responsavel: Optional[str] = None
+    endereco: Optional[str] = None
+    senha: Optional[str] = Field(None, min_length=6)
+    ativo: Optional[bool] = None
+    aprovada: Optional[bool] = None
+
+class InstituicaoResponse(InstituicaoBase):
+    id: int
+    ativo: bool
+    aprovada: bool
+    data_criacao: datetime
+    
+    class Config:
+        from_attributes = True
+
+class InstituicaoDetailResponse(InstituicaoResponse):
+    data_atualizacao: datetime
+
 # Update forward references
 AulaResponse.model_rebuild()
 AulaDetailResponse.model_rebuild()
