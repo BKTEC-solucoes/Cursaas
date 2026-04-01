@@ -1,0 +1,208 @@
+<div class="container-lg py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">
+            <i class="fas fa-building"></i> Registrar Nova Instituição
+          </h2>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Mensagem de Sucesso -->
+          <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show">
+            {{ successMessage }}
+            <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+          </div>
+
+          <!-- Mensagem de Erro -->
+          <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show">
+            <strong>Erro:</strong> {{ errorMessage }}
+            <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+          </div>
+
+          <p class="text-muted mb-4">
+            <strong>ℹ️ Nota:</strong> Se você já possui um email registrado no sistema,
+            essa instituição será automaticamente vinculada ao seu usuário existente.
+          </p>
+
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <!-- Nome da Instituição -->
+            <div class="mb-3">
+              <label for="nome_instituicao" class="form-label">
+                <strong>Nome da Instituição</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="nome_instituicao"
+                formControlName="nome_instituicao"
+                placeholder="Ex: Escola Estadual João Silva"
+                [class.is-invalid]="form.get('nome_instituicao')?.invalid && form.get('nome_instituicao')?.touched"
+              />
+              <div class="invalid-feedback">
+                Nome é obrigatório e deve ter pelo menos 3 caracteres
+              </div>
+            </div>
+
+            <!-- CNPJ -->
+            <div class="mb-3">
+              <label for="cnpj" class="form-label">
+                <strong>CNPJ</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="cnpj"
+                formControlName="cnpj"
+                placeholder="XX.XXX.XXX/XXXX-XX"
+                (input)="formatarCNPJ()"
+                maxlength="18"
+                [class.is-invalid]="cnpjInvalido"
+              />
+              <small class="form-text text-muted">Digite apenas números, a formatação é automática</small>
+              <div class="invalid-feedback" *ngIf="cnpjInvalido">
+                CNPJ inválido
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+              <label for="email" class="form-label">
+                <strong>Email da Instituição</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                formControlName="email"
+                placeholder="admin@instituicao.com.br"
+                [class.is-invalid]="emailInvalido"
+              />
+              <small class="form-text text-muted">
+                Se este email já existe na sua conta, a instituição será vinculada automaticamente
+              </small>
+              <div class="invalid-feedback" *ngIf="emailInvalido">
+                Email inválido
+              </div>
+            </div>
+
+            <!-- Nome do Responsável -->
+            <div class="mb-3">
+              <label for="nome_responsavel" class="form-label">
+                <strong>Nome do Responsável Legal</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="nome_responsavel"
+                formControlName="nome_responsavel"
+                placeholder="Ex: João Silva Santos"
+                [class.is-invalid]="form.get('nome_responsavel')?.invalid && form.get('nome_responsavel')?.touched"
+              />
+              <div class="invalid-feedback">
+                Nome do responsável é obrigatório
+              </div>
+            </div>
+
+            <!-- Contato do Responsável -->
+            <div class="mb-3">
+              <label for="contato_responsavel" class="form-label">
+                <strong>Telefone/WhatsApp do Responsável</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="tel"
+                class="form-control"
+                id="contato_responsavel"
+                formControlName="contato_responsavel"
+                placeholder="(11) 98765-4321"
+                [class.is-invalid]="form.get('contato_responsavel')?.invalid && form.get('contato_responsavel')?.touched"
+              />
+              <div class="invalid-feedback">
+                Telefone é obrigatório (mínimo 10 dígitos)
+              </div>
+            </div>
+
+            <!-- Endereço -->
+            <div class="mb-3">
+              <label for="endereco" class="form-label">
+                <strong>Endereço Completo</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="endereco"
+                formControlName="endereco"
+                placeholder="Rua, número, complemento, cidade - SP"
+                [class.is-invalid]="form.get('endereco')?.invalid && form.get('endereco')?.touched"
+              />
+              <div class="invalid-feedback">
+                Endereço é obrigatório
+              </div>
+            </div>
+
+            <!-- Senha -->
+            <div class="mb-3">
+              <label for="senha" class="form-label">
+                <strong>Senha</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="password"
+                class="form-control"
+                id="senha"
+                formControlName="senha"
+                placeholder="Mínimo 6 caracteres"
+                [class.is-invalid]="form.get('senha')?.invalid && form.get('senha')?.touched"
+              />
+              <div class="invalid-feedback">
+                Senha é obrigatória e deve ter pelo menos 6 caracteres
+              </div>
+            </div>
+
+            <!-- Confirmar Senha -->
+            <div class="mb-3">
+              <label for="confirmarSenha" class="form-label">
+                <strong>Confirmar Senha</strong> <span class="text-danger">*</span>
+              </label>
+              <input
+                type="password"
+                class="form-control"
+                id="confirmarSenha"
+                formControlName="confirmarSenha"
+                placeholder="Repita a senha"
+                [class.is-invalid]="senhasCorrespondemVal && form.get('confirmarSenha')?.touched"
+              />
+              <div class="invalid-feedback" *ngIf="senhasCorrespondemVal">
+                As senhas não correspondem
+              </div>
+            </div>
+
+            <!-- Botão de Submissão -->
+            <div class="d-grid gap-2">
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg"
+                [disabled]="form.invalid || loading"
+              >
+                <span *ngIf="!loading">
+                  <i class="fas fa-check-circle"></i> Registrar Instituição
+                </span>
+                <span *ngIf="loading">
+                  <i class="fas fa-spinner fa-spin"></i> Registrando...
+                </span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="router.navigate(['/admin'])"
+                [disabled]="loading"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

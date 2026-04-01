@@ -55,6 +55,7 @@ class Usuario(Base):
     endereco = Column(String(500), nullable=True)
     cep = Column(String(10), nullable=True)
     telefone = Column(String(20), nullable=True)
+    instituicao_id = Column(Integer, ForeignKey("instituicoes.id", ondelete="SET NULL"), nullable=True, index=True)
     # Responsável
     nome_responsavel = Column(String(255), nullable=True)
     # Dados escolares
@@ -70,6 +71,8 @@ class Usuario(Base):
     respostas = relationship("Resposta", back_populates="usuario", cascade="all, delete-orphan")
     notas = relationship("Nota", back_populates="usuario", cascade="all, delete-orphan")
     notas_cursos = relationship("NotaCurso", back_populates="usuario", cascade="all, delete-orphan")
+    instituicao = relationship("Instituicao", foreign_keys=[instituicao_id], back_populates="usuarios")
+    instituicoes = relationship("Instituicao", foreign_keys="Instituicao.user_id")
 
 # Tabela de Cursos
 class Curso(Base):
@@ -314,12 +317,16 @@ class Instituicao(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome_instituicao = Column(String(255), nullable=False)
     cnpj = Column(String(18), unique=True, nullable=False, index=True)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    nome_responsavel = Column(String(255), nullable=False)
-    contato_responsavel = Column(String(255), nullable=False)
+    contato = Column(String(255), nullable=False)
     endereco = Column(String(500), nullable=False)
-    senha = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
     ativo = Column(Boolean, default=False, index=True)
     aprovada = Column(Boolean, default=False, index=True)
+    motivo_rejeicao = Column(String(500), nullable=True)
+    observacoes = Column(Text, nullable=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relacionamentos
+    usuarios = relationship("Usuario", foreign_keys="Usuario.instituicao_id", back_populates="instituicao")
+    usuario = relationship("Usuario", foreign_keys=[user_id])

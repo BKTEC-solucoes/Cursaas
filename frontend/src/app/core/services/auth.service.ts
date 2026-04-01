@@ -11,6 +11,7 @@ export interface LoginRequest {
 export interface TokenResponse {
   access_token: string;
   token_type: string;
+  usuario?: UserInfo;
 }
 
 export interface UserInfo {
@@ -19,6 +20,7 @@ export interface UserInfo {
   email: string;
   role: 'admin' | 'aluno';
   admin_role?: string | null;
+  instituicao_id?: number | null;
 }
 
 @Injectable({
@@ -89,6 +91,7 @@ export class AuthService {
       email: payload.sub,
       role: payload.role,
       admin_role: payload.admin_role ?? null,
+      instituicao_id: payload.instituicao_id ?? null,
     };
   }
 
@@ -122,7 +125,7 @@ export class AuthService {
     cnpj: string;
     email: string;
     nome_responsavel: string;
-    contato_responsavel: string;
+    contato: string;
     endereco: string;
     senha: string;
   }): Observable<TokenResponse> {

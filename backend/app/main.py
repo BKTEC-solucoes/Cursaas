@@ -37,6 +37,97 @@ def ensure_schema_updates():
                     text("ALTER TABLE cursos ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'aprovado'")
                 )
 
+    if inspector.has_table("instituicoes"):
+        instituicoes_columns = {
+            column["name"]: column for column in inspector.get_columns("instituicoes")
+        }
+        with engine.begin() as connection:
+            if "contato" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN contato VARCHAR(255) NULL AFTER cnpj")
+                )
+
+            if "user_id" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN user_id INT NULL")
+                )
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD INDEX idx_user_id (user_id)")
+                )
+
+            if "contato_responsavel" in instituicoes_columns:
+                connection.execute(
+                    text(
+                        "UPDATE instituicoes "
+                        "SET contato = contato_responsavel "
+                        "WHERE (contato IS NULL OR contato = '') "
+                        "AND contato_responsavel IS NOT NULL"
+                    )
+                )
+
+            if "email" in instituicoes_columns and not instituicoes_columns["email"]["nullable"]:
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN email VARCHAR(255) NULL")
+                )
+
+            if (
+                "nome_responsavel" in instituicoes_columns
+                and not instituicoes_columns["nome_responsavel"]["nullable"]
+            ):
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN nome_responsavel VARCHAR(255) NULL")
+                )
+
+            if (
+                "contato_responsavel" in instituicoes_columns
+                and not instituicoes_columns["contato_responsavel"]["nullable"]
+            ):
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN contato_responsavel VARCHAR(255) NULL")
+                )
+
+            if "senha" in instituicoes_columns and not instituicoes_columns["senha"]["nullable"]:
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN senha VARCHAR(255) NULL")
+                )
+
+    if inspector.has_table("usuarios"):
+        usuarios_columns = {
+            column["name"]: column for column in inspector.get_columns("usuarios")
+        }
+        usuarios_fks = inspector.get_foreign_keys("usuarios")
+        fk_usuarios_instituicao = any(
+            fk.get("constrained_columns") == ["instituicao_id"] for fk in usuarios_fks
+        )
+
+        with engine.begin() as connection:
+            if "instituicao_id" not in usuarios_columns:
+                connection.execute(
+                    text("ALTER TABLE usuarios ADD COLUMN instituicao_id INT NULL")
+                )
+                connection.execute(
+                    text("ALTER TABLE usuarios ADD INDEX idx_instituicao_id (instituicao_id)")
+                )
+
+            if not fk_usuarios_instituicao:
+                connection.execute(
+                    text(
+                        "ALTER TABLE usuarios "
+                        "ADD CONSTRAINT fk_usuarios_instituicao_id "
+                        "FOREIGN KEY (instituicao_id) REFERENCES instituicoes(id) ON DELETE SET NULL"
+                    )
+                )
+
+            if inspector.has_table("instituicoes") and "user_id" in instituicoes_columns:
+                connection.execute(
+                    text(
+                        "UPDATE usuarios u "
+                        "JOIN instituicoes i ON i.user_id = u.id "
+                        "SET u.instituicao_id = i.id "
+                        "WHERE u.instituicao_id IS NULL"
+                    )
+                )
+
     CourseRequest.__table__.create(bind=engine, checkfirst=True)
 
 
