@@ -33,6 +33,11 @@ class StatusCursoEnum(str, enum.Enum):
     aprovado = "aprovado"
     recusado = "recusado"
 
+class StatusInstituicaoEnum(str, enum.Enum):
+    pendente = "pendente"
+    aprovado = "aprovado"
+    recusado = "recusado"
+
 # Tabela de Usuários
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -325,3 +330,23 @@ class NotaCurso(Base):
     # Relacionamentos
     usuario = relationship("Usuario", back_populates="notas_cursos")
     curso = relationship("Curso", back_populates="notas_cursos")
+
+
+# Tabela de Instituições
+class Instituicao(Base):
+    __tablename__ = "instituicoes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    cnpj = Column(String(18), unique=True, nullable=False, index=True)
+    status = Column(
+        Enum(StatusInstituicaoEnum),
+        default=StatusInstituicaoEnum.pendente,
+        nullable=False,
+        index=True,
+    )
+    descricao = Column(Text, nullable=True)
+    data_solicitacao = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_aprovacao = Column(DateTime, nullable=True)
+    ativa = Column(Boolean, default=False, nullable=False, index=True)

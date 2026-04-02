@@ -53,6 +53,12 @@ import { AuthService } from '../../../core/services/auth.service';
             <div class="action-title">Administradores</div>
             <div class="action-desc">Cadastrar novos admins</div>
           </a>
+
+          <a routerLink="/admin/instituicoes" class="action-btn action-instituicoes">
+            <div class="action-icon">🏛️</div>
+            <div class="action-title">Instituições</div>
+            <div class="action-desc">Solicitações de novas instituições</div>
+          </a>
         </div>
       </div>
 
@@ -174,6 +180,11 @@ import { AuthService } from '../../../core/services/auth.service';
     .action-btn.action-administradores:hover {
       border-color: #2c3e50;
       background: #eef2f5;
+    }
+
+    .action-btn.action-instituicoes:hover {
+      border-color: #7c3aed;
+      background: #f5f0ff;
     }
 
     .action-icon {

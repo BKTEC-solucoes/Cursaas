@@ -51,6 +51,9 @@ import { PermissionsService } from '../../../core/services/permissions.service';
             <a routerLink="/admin/solicitacoes" routerLinkActive="active">
               <span class="icon">📨</span>Solicitações
             </a>
+            <a routerLink="/admin/instituicoes" routerLinkActive="active">
+              <span class="icon">🏛️</span>Instituições
+            </a>
           </nav>
         </div>
       </header>

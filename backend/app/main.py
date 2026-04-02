@@ -8,8 +8,8 @@ from sqlalchemy import inspect, text
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import CourseRequest
-from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites
+from app.models import CourseRequest, Instituicao
+from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, faculdades
 
 
 def ensure_schema_updates():
@@ -38,6 +38,15 @@ def ensure_schema_updates():
                 )
 
     CourseRequest.__table__.create(bind=engine, checkfirst=True)
+    Instituicao.__table__.create(bind=engine, checkfirst=True)
+
+    if inspector.has_table("instituicoes"):
+        inst_columns = {col["name"] for col in inspector.get_columns("instituicoes")}
+        if "ativa" not in inst_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN ativa BOOLEAN NOT NULL DEFAULT FALSE")
+                )
 
 
 Base.metadata.create_all(bind=engine)
@@ -87,6 +96,7 @@ app.include_router(presenca.router, prefix="/api/presenca", tags=["Presenca"])
 app.include_router(notas.router, prefix="/api/notas", tags=["Notas"])
 app.include_router(requests.router, prefix="/api/requests", tags=["Solicitacoes"])
 app.include_router(convites.router, prefix="/api/convites", tags=["Convites"])
+app.include_router(faculdades.router, prefix="/api/faculdades", tags=["Faculdades"])
 
 
 @app.get("/health", tags=["Health"])

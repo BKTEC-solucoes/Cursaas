@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-register-instituicao',
@@ -39,7 +40,7 @@ export class RegisterInstituicaoComponent {
   error = '';
   success = false;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private http: HttpClient) {}
 
   formatarCNPJ(event: any): void {
     let value = event.target.value.replace(/\D/g, '');
@@ -132,43 +133,26 @@ export class RegisterInstituicaoComponent {
     this.loading = true;
     this.error = '';
 
-    // Dados para enviar
-    const formData = new FormData();
-    formData.append('nomeInstituicao', this.nomeInstituicao);
-    formData.append('cnpj', cnpjSemMascara);
-    formData.append('email', this.email);
-    formData.append('endereco', this.endereco);
-    formData.append('nomeResponsavel', this.nomeResponsavel);
-    formData.append('telefonResponsavel', telefoneSemMascara);
-    formData.append('senha', this.senha);
-    formData.append('tipo', 'instituicao');
-    
-    if (this.fotoPerfil) {
-      formData.append('fotoPerfil', this.fotoPerfil);
-    }
-
-    // Aqui você faria a chamada ao backend
-    // this.authService.registerInstituicao(formData).subscribe(...)
-    console.log('Registrando instituição:', {
-      nomeInstituicao: this.nomeInstituicao,
+    const payload = {
+      nome: this.nomeInstituicao,
       cnpj: cnpjSemMascara,
       email: this.email,
-      endereco: this.endereco,
-      nomeResponsavel: this.nomeResponsavel,
-      telefonResponsavel: telefoneSemMascara,
-      tipo: 'instituicao',
-      temFoto: !!this.fotoPerfil
-    });
+      descricao: `Responsável: ${this.nomeResponsavel} | Tel: ${this.telefonResponsavel} | Endereço: ${this.endereco}`,
+    };
 
-    // Simular sucesso
-    setTimeout(() => {
-      this.loading = false;
-      this.success = true;
-      // Mostrar mensagem por 5 segundos antes de voltar
-      setTimeout(() => {
-        this.router.navigate(['/auth/login']);
-      }, 5000);
-    }, 1500);
+    this.http.post('http://localhost:8000/api/faculdades/', payload).subscribe({
+      next: () => {
+        this.loading = false;
+        this.success = true;
+        setTimeout(() => {
+          this.router.navigate(['/auth/login']);
+        }, 5000);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.detail || 'Erro ao enviar solicitação. Tente novamente.';
+      },
+    });
   }
 
   goBack(): void {
