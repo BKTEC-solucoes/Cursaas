@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -25,9 +27,9 @@ async def registrar_instituicao(
         raise HTTPException(status_code=error.status_code, detail=error.message) from error
 
 
-@router.get("/{instituicao_id}", response_model=InstituicaoDetailResponse)
+@router.get("/{instituicao_id:int}", response_model=InstituicaoDetailResponse)
 async def obter_instituicao(
-    instituicao_id: int,
+    instituicao_id: Annotated[int, Path(gt=0)],
     db: Session = Depends(get_db),
 ):
     instituicao = db.query(Instituicao).filter(Instituicao.id == instituicao_id).first()

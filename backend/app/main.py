@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,8 @@ from app.config import settings
 from app.database import Base, engine
 from app.models import CourseRequest, Instituicao
 from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, instituicao
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_schema_updates():
@@ -42,10 +45,160 @@ def ensure_schema_updates():
             column["name"]: column for column in inspector.get_columns("instituicoes")
         }
         with engine.begin() as connection:
+            if "nome_instituicao" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN nome_instituicao VARCHAR(255) NULL AFTER id")
+                )
+                if "nome" in instituicoes_columns:
+                    connection.execute(
+                        text(
+                            "UPDATE instituicoes "
+                            "SET nome_instituicao = nome "
+                            "WHERE nome_instituicao IS NULL OR nome_instituicao = ''"
+                        )
+                    )
+                connection.execute(
+                    text(
+                        "UPDATE instituicoes "
+                        "SET nome_instituicao = 'Instituicao sem nome' "
+                        "WHERE nome_instituicao IS NULL OR nome_instituicao = ''"
+                    )
+                )
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN nome_instituicao VARCHAR(255) NOT NULL")
+                )
+
             if "contato" not in instituicoes_columns:
                 connection.execute(
                     text("ALTER TABLE instituicoes ADD COLUMN contato VARCHAR(255) NULL AFTER cnpj")
                 )
+
+            if "endereco" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN endereco VARCHAR(500) NULL AFTER contato")
+                )
+                if "descricao" in instituicoes_columns:
+                    connection.execute(
+                        text(
+                            "UPDATE instituicoes "
+                            "SET endereco = descricao "
+                            "WHERE (endereco IS NULL OR endereco = '') "
+                            "AND descricao IS NOT NULL "
+                            "AND descricao != ''"
+                        )
+                    )
+                connection.execute(
+                    text(
+                        "UPDATE instituicoes "
+                        "SET endereco = 'Endereco nao informado' "
+                        "WHERE endereco IS NULL OR endereco = ''"
+                    )
+                )
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN endereco VARCHAR(500) NOT NULL")
+                )
+
+            if "ativo" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT FALSE")
+                )
+                if "ativa" in instituicoes_columns:
+                    connection.execute(
+                        text("UPDATE instituicoes SET ativo = COALESCE(ativa, 0)")
+                    )
+
+            if "aprovada" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN aprovada BOOLEAN NOT NULL DEFAULT FALSE")
+                )
+                if "status" in instituicoes_columns:
+                    connection.execute(
+                        text(
+                            "UPDATE instituicoes "
+                            "SET aprovada = CASE "
+                            "WHEN LOWER(CAST(status AS CHAR)) IN ('aprovada', 'aprovado', 'approved') THEN TRUE "
+                            "ELSE FALSE "
+                            "END"
+                        )
+                    )
+
+            if "motivo_rejeicao" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN motivo_rejeicao VARCHAR(500) NULL")
+                )
+
+            if "observacoes" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN observacoes TEXT NULL")
+                )
+                if "descricao" in instituicoes_columns:
+                    connection.execute(
+                        text(
+                            "UPDATE instituicoes "
+                            "SET observacoes = descricao "
+                            "WHERE observacoes IS NULL AND descricao IS NOT NULL"
+                        )
+                    )
+
+            if "data_criacao" not in instituicoes_columns:
+                connection.execute(
+                    text("ALTER TABLE instituicoes ADD COLUMN data_criacao DATETIME NULL")
+                )
+                if "data_solicitacao" in instituicoes_columns:
+                    connection.execute(
+                        text(
+                            "UPDATE instituicoes "
+                            "SET data_criacao = data_solicitacao "
+                            "WHERE data_criacao IS NULL"
+                        )
+                    )
+                connection.execute(
+                    text(
+                        "UPDATE instituicoes "
+                        "SET data_criacao = NOW() "
+                        "WHERE data_criacao IS NULL"
+                    )
+                )
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN data_criacao DATETIME NOT NULL")
+                )
+
+            if "data_atualizacao" not in instituicoes_columns:
+                connection.execute(
+                    text(
+                        "ALTER TABLE instituicoes "
+                        "ADD COLUMN data_atualizacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                    )
+                )
+
+            # Compatibilidade com schema legado de instituicoes:
+            # colunas antigas podem continuar no banco, mas nao devem bloquear inserts no modelo atual.
+            if "nome" in instituicoes_columns and not instituicoes_columns["nome"]["nullable"]:
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN nome VARCHAR(255) NULL")
+                )
+
+            if "status" in instituicoes_columns and not instituicoes_columns["status"]["nullable"]:
+                status_type = instituicoes_columns["status"]["type"].compile(dialect=engine.dialect)
+                connection.execute(
+                    text(f"ALTER TABLE instituicoes MODIFY COLUMN status {status_type} NULL")
+                )
+
+            if (
+                "data_solicitacao" in instituicoes_columns
+                and not instituicoes_columns["data_solicitacao"]["nullable"]
+            ):
+                connection.execute(
+                    text("ALTER TABLE instituicoes MODIFY COLUMN data_solicitacao DATETIME NULL")
+                )
+
+            connection.execute(
+                text(
+                    "UPDATE instituicoes "
+                    "SET contato = 'Nao informado' "
+                    "WHERE contato IS NULL OR contato = ''"
+                )
+            )
 
             if "user_id" not in instituicoes_columns:
                 connection.execute(
@@ -151,6 +304,7 @@ app.add_middleware(
 # Garantir cabeçalhos CORS mesmo em respostas de erro não tratadas (500)
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception while processing %s %s", request.method, request.url.path)
     origin = request.headers.get("origin", "")
     headers = {}
     if origin in settings.ALLOWED_ORIGINS:
