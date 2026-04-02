@@ -63,3 +63,4 @@ yarn-error.log
 # Arquivos de lock (opcional - descomente se não quiser fazer track)
 # package-lock.json
 # yarn.lock
+package-lock.json
