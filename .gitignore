@@ -7,6 +7,7 @@ backend/.pytest_cache/
 backend/venv/
 backend/.env
 backend/.env.local
+backend-node/.env
 backend/.python-version
 backend/*.egg-info/
 backend/dist/
@@ -57,3 +58,11 @@ yarn-error.log
 # Arquivos de lock (opcional - descomente se não quiser fazer track)
 # package-lock.json
 # yarn.lock
+
+# Node backend auxiliar
+backend-node/node_modules/
+backend-node/dist/
+
+# Ambiente local (generico)
+.env
+.venv/

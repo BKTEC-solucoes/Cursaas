@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, map, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 export interface LoginRequest {
   email: string;
@@ -23,11 +24,20 @@ export interface UserInfo {
   instituicao_id?: number | null;
 }
 
+export interface GoogleLoginResponse {
+  token: string;
+  user: {
+    email: string;
+    name: string;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private apiUrl = 'http://localhost:8000/api';
+  private googleAuthUrl = environment.googleAuthBackendUrl;
   private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
@@ -87,9 +97,9 @@ export class AuthService {
     const payload = JSON.parse(jsonPayload);
     return {
       id: payload.user_id ?? payload.id,
-      nome: payload.nome ?? payload.sub,
-      email: payload.sub,
-      role: payload.role,
+      nome: payload.nome ?? payload.name ?? payload.sub,
+      email: payload.email ?? payload.sub,
+      role: payload.role ?? 'aluno',
       admin_role: payload.admin_role ?? null,
       instituicao_id: payload.instituicao_id ?? null,
     };
@@ -115,6 +125,18 @@ export class AuthService {
       tap(response => {
         localStorage.setItem('access_token', response.access_token);
         this.tokenSubject.next(response.access_token);
+        this.loadUserInfo();
+      })
+    );
+  }
+
+  loginWithGoogle(idToken: string): Observable<GoogleLoginResponse> {
+    return this.http.post<GoogleLoginResponse>(this.googleAuthUrl, {
+      token: idToken
+    }).pipe(
+      tap(response => {
+        localStorage.setItem('access_token', response.token);
+        this.tokenSubject.next(response.token);
         this.loadUserInfo();
       })
     );
