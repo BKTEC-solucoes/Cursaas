@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.database import get_db
 from app.models import Curso, StatusCursoEnum, Usuario
-from app.routes.auth import get_current_admin
-from app.schemas import CursoAdminResponse
+from app.models import Instituicao, StatusInstituicaoEnum
+from app.routes.auth import get_current_admin, get_current_super_admin
+from app.schemas import CursoAdminResponse, InstituicaoResponse, InstituicaoStatusUpdate
 
 router = APIRouter()
 
@@ -79,3 +81,41 @@ def reject_course_request(
     db.commit()
     db.refresh(curso)
     return CursoAdminResponse.model_validate(curso)
+
+
+# ==================== INSTITUIÇÕES ====================
+
+@router.get("/instituicoes", response_model=list[InstituicaoResponse])
+def list_instituicoes(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_super_admin),
+):
+    instituicoes = (
+        db.query(Instituicao)
+        .order_by(Instituicao.data_solicitacao.desc())
+        .all()
+    )
+    return [InstituicaoResponse.model_validate(inst) for inst in instituicoes]
+
+
+@router.patch("/instituicoes/{instituicao_id}/status", response_model=InstituicaoResponse)
+def update_instituicao_status(
+    instituicao_id: int,
+    body: InstituicaoStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_super_admin),
+):
+    inst = db.query(Instituicao).filter(Instituicao.id == instituicao_id).first()
+    if not inst:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instituição {instituicao_id} não encontrada",
+        )
+
+    inst.status = StatusInstituicaoEnum(body.status)
+    if body.status == StatusInstituicaoEnum.aprovado:
+        inst.data_aprovacao = datetime.utcnow()
+
+    db.commit()
+    db.refresh(inst)
+    return InstituicaoResponse.model_validate(inst)

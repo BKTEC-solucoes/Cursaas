@@ -26,6 +26,46 @@ class StatusCursoEnum(str, PyEnum):
     aprovado = "aprovado"
     recusado = "recusado"
 
+class StatusInstituicaoEnum(str, PyEnum):
+    pendente = "pendente"
+    aprovado = "aprovado"
+    recusado = "recusado"
+
+# ==================== SCHEMAS DE INSTITUIÇÃO ====================
+
+class InstituicaoCreate(BaseModel):
+    nome: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
+    cnpj: str = Field(..., min_length=14, max_length=18, description="CNPJ com ou sem formatação")
+    descricao: Optional[str] = None
+
+class InstituicaoResponse(BaseModel):
+    id: int
+    nome: str
+    email: str
+    cnpj: str
+    status: StatusInstituicaoEnum
+    ativa: bool
+    descricao: Optional[str] = None
+    data_solicitacao: datetime
+    data_aprovacao: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class InstituicaoStatusUpdate(BaseModel):
+    status: StatusInstituicaoEnum
+
+class AcessoInstituicaoUpdate(BaseModel):
+    ativa: bool
+
+class InstituicaoPageResponse(BaseModel):
+    items: list[InstituicaoResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
 # ==================== SCHEMAS DE USUÁRIO ====================
 
 class UsuarioBase(BaseModel):

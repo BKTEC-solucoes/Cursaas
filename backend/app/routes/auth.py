@@ -117,6 +117,22 @@ def get_current_admin(
         )
     return current_user
 
+
+def get_current_super_admin(
+    current_user: Usuario = Depends(get_current_admin)
+) -> Usuario:
+    """
+    Dependency que exige autenticação como admin com perfil SUPER_ADMIN.
+    Usado em endpoints sensíveis: aprovar/recusar instituições, visualizar lista completa.
+    """
+    from app.models import AdminRoleEnum as ModelAdminRoleEnum
+    if current_user.admin_role != ModelAdminRoleEnum.super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas Super Admins podem realizar esta operação"
+        )
+    return current_user
+
 @router.get("/check-email")
 def check_email(
     email: str,

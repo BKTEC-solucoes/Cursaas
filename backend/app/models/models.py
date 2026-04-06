@@ -15,9 +15,11 @@ from app.models import (
     Resposta,
     Nota,
     NotaCurso,
+    Instituicao,
     RoleEnum,
     AdminRoleEnum,
     StatusSolicitacaoEnum,
+    StatusInstituicaoEnum,
 )
 
 __all__ = [
@@ -36,7 +38,9 @@ __all__ = [
     "Resposta",
     "Nota",
     "NotaCurso",
+    "Instituicao",
     "RoleEnum",
     "AdminRoleEnum",
     "StatusSolicitacaoEnum",
+    "StatusInstituicaoEnum",
 ]

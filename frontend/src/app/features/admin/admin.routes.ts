@@ -13,6 +13,8 @@ import { AdminAlunosComponent } from './pages/alunos.component';
 import { AdminAdministradoresComponent } from './pages/administradores.component';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
+import { AdminInstituicoesComponent } from './pages/instituicoes.component';
+import { AdminInstituicaoDetalheComponent } from './pages/instituicao-detalhe.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -98,6 +100,14 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'solicitacoes',
         component: AdminSolicitacoesComponent
+      },
+      {
+        path: 'instituicoes',
+        component: AdminInstituicoesComponent
+      },
+      {
+        path: 'instituicoes/:id',
+        component: AdminInstituicaoDetalheComponent
       },
       {
         path: '',

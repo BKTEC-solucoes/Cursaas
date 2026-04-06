@@ -72,3 +72,4 @@ backend-node/dist/
 # Ambiente local (generico)
 .env
 .venv/
+package-lock.json

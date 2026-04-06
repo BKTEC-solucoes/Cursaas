@@ -33,6 +33,11 @@ class StatusCursoEnum(str, enum.Enum):
     aprovado = "aprovado"
     recusado = "recusado"
 
+class StatusInstituicaoEnum(str, enum.Enum):
+    pendente = "pendente"
+    aprovado = "aprovado"
+    recusado = "recusado"
+
 # Tabela de Usuários
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -329,22 +334,36 @@ class NotaCurso(Base):
     usuario = relationship("Usuario", back_populates="notas_cursos")
     curso = relationship("Curso", back_populates="notas_cursos")
 
+
+
 # Tabela de Instituições
 class Instituicao(Base):
     __tablename__ = "instituicoes"
     
     id = Column(Integer, primary_key=True, index=True)
     nome_instituicao = Column(String(255), nullable=False)
+    nome = Column(String(255), nullable=True)
+    email = Column(String(255), unique=True, nullable=True, index=True)
     cnpj = Column(String(18), unique=True, nullable=False, index=True)
-    contato = Column(String(255), nullable=False)
-    endereco = Column(String(500), nullable=False)
+    contato = Column(String(255), nullable=True)
+    endereco = Column(String(500), nullable=True)
+    descricao = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
     ativo = Column(Boolean, default=False, index=True)
+    ativa = Column(Boolean, default=False, nullable=False, index=True)
     aprovada = Column(Boolean, default=False, index=True)
     motivo_rejeicao = Column(String(500), nullable=True)
     observacoes = Column(Text, nullable=True)
+    status = Column(
+        Enum(StatusInstituicaoEnum),
+        default=StatusInstituicaoEnum.pendente,
+        nullable=False,
+        index=True,
+    )
     data_criacao = Column(DateTime, default=datetime.utcnow)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    data_solicitacao = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_aprovacao = Column(DateTime, nullable=True)
 
     # Relacionamentos
     usuarios = relationship("Usuario", foreign_keys="Usuario.instituicao_id", back_populates="instituicao")
