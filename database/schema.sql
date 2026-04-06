@@ -14,13 +14,35 @@ CREATE TABLE usuarios (
     role ENUM('admin', 'aluno') NOT NULL DEFAULT 'aluno',
     admin_role ENUM('super_admin', 'instrutor', 'financeiro', 'suporte') NULL DEFAULT NULL,
     foto_perfil LONGTEXT NULL,
+    instituicao_id INT NULL,
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_role (role),
-    INDEX idx_admin_role (admin_role)
+    INDEX idx_admin_role (admin_role),
+    INDEX idx_instituicao_id (instituicao_id)
 );
+
+-- Tabela de Instituições (Cadastro de Instituições)
+CREATE TABLE instituicoes (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nome_instituicao VARCHAR(255) NOT NULL,
+    cnpj VARCHAR(18) UNIQUE NOT NULL,
+    contato VARCHAR(255) NOT NULL,
+    endereco VARCHAR(500) NOT NULL,
+    ativo BOOLEAN DEFAULT FALSE,
+    aprovada BOOLEAN DEFAULT FALSE,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_cnpj (cnpj),
+    INDEX idx_ativo (ativo),
+    INDEX idx_aprovada (aprovada)
+);
+
+ALTER TABLE usuarios
+ADD CONSTRAINT fk_usuarios_instituicao_id
+FOREIGN KEY (instituicao_id) REFERENCES instituicoes(id) ON DELETE SET NULL;
 
 -- Tabela de Cursos
 CREATE TABLE cursos (

@@ -38,6 +38,23 @@
       <button type="submit" class="submit-button" [disabled]="loading">
         {{ loading ? 'Entrando...' : 'Entrar' }}
       </button>
+
+      <div class="divider">
+        <span>ou</span>
+      </div>
+
+      <button
+        type="button"
+        class="google-button"
+        [disabled]="googleLoading || !googleConfigured"
+        (click)="loginWithGoogle()"
+      >
+        {{
+          googleConfigured
+            ? (googleLoading ? 'Conectando com Google...' : 'Entrar com Google')
+            : 'Configure o Google Client ID'
+        }}
+      </button>
     </form>
 
     <div class="register-link">

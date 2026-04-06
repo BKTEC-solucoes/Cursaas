@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 
 import { AdminCourse, ApiService } from '../../../shared/services/api.service';
 
@@ -836,7 +835,6 @@ export class AdminCursosComponent implements OnInit {
   cursoParaDeletar: AdminCourse | null = null;
   deletando = false;
   deleteErro = '';
-  deletandoId: number | null = null;
   form = {
     nome: '',
     descricao: '',
@@ -858,8 +856,7 @@ export class AdminCursosComponent implements OnInit {
   };
 
   constructor(
-    private apiService: ApiService,
-    private http: HttpClient
+    private apiService: ApiService
   ) {}
 
   ngOnInit(): void {
@@ -956,8 +953,8 @@ export class AdminCursosComponent implements OnInit {
       ativo: this.form.ativo
     };
 
-    if (this.editandoId) {
-      this.http.put(`http://localhost:8000/api/cursos/${this.editandoId}`, payload).subscribe({
+    if (this.editandoId !== null) {
+      this.apiService.updateCurso(this.editandoId, payload).subscribe({
         next: () => {
           this.criando = false;
           this.formAberto = false;
@@ -971,7 +968,7 @@ export class AdminCursosComponent implements OnInit {
         }
       });
     } else {
-      this.http.post('http://localhost:8000/api/cursos/', payload).subscribe({
+      this.apiService.createCurso(payload).subscribe({
         next: () => {
           this.criando = false;
           this.formAberto = false;
@@ -1020,7 +1017,7 @@ export class AdminCursosComponent implements OnInit {
       duracao_minutos: this.formAula.duracao_minutos || null
     };
 
-    this.http.post('http://localhost:8000/api/aulas/', payload).subscribe({
+    this.apiService.createAula(payload).subscribe({
       next: () => {
         this.criandoAula = false;
         this.modalAulaAberto = false;
@@ -1050,7 +1047,7 @@ export class AdminCursosComponent implements OnInit {
     this.deletando = true;
     this.deleteErro = '';
 
-    this.http.delete(`http://localhost:8000/api/cursos/${this.cursoParaDeletar.id}`).subscribe({
+    this.apiService.deleteCurso(this.cursoParaDeletar.id).subscribe({
       next: () => {
         this.deletando = false;
         this.cursoParaDeletar = null;
@@ -1060,27 +1057,6 @@ export class AdminCursosComponent implements OnInit {
         console.error('Erro ao deletar curso:', err);
         this.deletando = false;
         this.deleteErro = err?.error?.detail || 'Erro ao deletar curso. Tente novamente.';
-      }
-    });
-  }
-
-  deletarCurso(curso: AdminCourse): void {
-    const confirmou = confirm(`Deseja excluir o curso "${curso.nome}"?`);
-    if (!confirmou) {
-      return;
-    }
-
-    this.deletandoId = curso.id;
-    this.http.delete(`http://localhost:8000/api/cursos/${curso.id}`).subscribe({
-      next: () => {
-        this.deletandoId = null;
-        this.mensagemSucesso = 'Curso excluido com sucesso.';
-        this.carregarCursos();
-      },
-      error: (err) => {
-        console.error('Erro ao excluir curso:', err);
-        this.deletandoId = null;
-        this.erro = err?.error?.detail || 'Erro ao excluir curso.';
       }
     });
   }
