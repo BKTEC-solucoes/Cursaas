@@ -41,7 +41,6 @@ export class RegisterInstituicaoComponent {
   formatarCNPJ(event: Event): void {
     const input = event.target as HTMLInputElement;
     let value = input.value.replace(/\D/g, '');
-    }
 
     if (value.length <= 2) {
       this.cnpj = value;
@@ -158,15 +157,11 @@ export class RegisterInstituicaoComponent {
     this.loading = true;
     this.error = '';
 
-<<<<<<< HEAD
     const dadosInstituicao = {
-      nome_instituicao: this.nomeInstituicao.trim(),
+      nome: this.nomeInstituicao.trim(),
       cnpj: cnpjSemMascara,
       email: this.email.trim().toLowerCase(),
-      nome_responsavel: this.nomeResponsavel.trim(),
-      contato: this.telefonResponsavel.trim(),
-      endereco: this.endereco.trim(),
-      senha: this.senha
+      descricao: `Responsável: ${this.nomeResponsavel} | Tel: ${this.telefonResponsavel} | Endereço: ${this.endereco}`
     };
 
     this.authService.registrarInstituicao(dadosInstituicao).subscribe({
@@ -193,27 +188,6 @@ export class RegisterInstituicaoComponent {
         this.error = 'Erro ao registrar instituição. Tente novamente.';
         console.error('Erro no registro:', error);
       }
-=======
-    const payload = {
-      nome: this.nomeInstituicao,
-      cnpj: cnpjSemMascara,
-      email: this.email,
-      descricao: `Responsável: ${this.nomeResponsavel} | Tel: ${this.telefonResponsavel} | Endereço: ${this.endereco}`,
-    };
-
-    this.http.post('http://localhost:8000/api/faculdades/', payload).subscribe({
-      next: () => {
-        this.loading = false;
-        this.success = true;
-        setTimeout(() => {
-          this.router.navigate(['/auth/login']);
-        }, 5000);
-      },
-      error: (err) => {
-        this.loading = false;
-        this.error = err?.error?.detail || 'Erro ao enviar solicitação. Tente novamente.';
-      },
->>>>>>> origin/Gahe0
     });
   }
 

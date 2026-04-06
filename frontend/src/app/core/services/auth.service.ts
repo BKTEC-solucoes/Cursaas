@@ -143,15 +143,12 @@ export class AuthService {
   }
 
   registrarInstituicao(dados: {
-    nome_instituicao: string;
+    nome: string;
     cnpj: string;
     email: string;
-    nome_responsavel: string;
-    contato: string;
-    endereco: string;
-    senha: string;
+    descricao: string;
   }): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>(`${this.apiUrl}/instituicoes/registrar`, dados).pipe(
+    return this.http.post<TokenResponse>(`${this.apiUrl}/faculdades`, dados).pipe(
       tap(response => {
         localStorage.setItem('access_token', response.access_token);
         this.tokenSubject.next(response.access_token);

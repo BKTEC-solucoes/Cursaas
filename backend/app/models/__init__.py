@@ -77,7 +77,6 @@ class Usuario(Base):
     notas = relationship("Nota", back_populates="usuario", cascade="all, delete-orphan")
     notas_cursos = relationship("NotaCurso", back_populates="usuario", cascade="all, delete-orphan")
     instituicao = relationship("Instituicao", foreign_keys=[instituicao_id], back_populates="usuarios")
-    instituicoes = relationship("Instituicao", foreign_keys="Instituicao.user_id")
 
 # Tabela de Cursos
 class Curso(Base):
@@ -339,32 +338,21 @@ class NotaCurso(Base):
 # Tabela de Instituições
 class Instituicao(Base):
     __tablename__ = "instituicoes"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    nome_instituicao = Column(String(255), nullable=False)
-    nome = Column(String(255), nullable=True)
-    email = Column(String(255), unique=True, nullable=True, index=True)
+    nome = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
     cnpj = Column(String(18), unique=True, nullable=False, index=True)
-    contato = Column(String(255), nullable=True)
-    endereco = Column(String(500), nullable=True)
-    descricao = Column(Text, nullable=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
-    ativo = Column(Boolean, default=False, index=True)
-    ativa = Column(Boolean, default=False, nullable=False, index=True)
-    aprovada = Column(Boolean, default=False, index=True)
-    motivo_rejeicao = Column(String(500), nullable=True)
-    observacoes = Column(Text, nullable=True)
     status = Column(
         Enum(StatusInstituicaoEnum),
         default=StatusInstituicaoEnum.pendente,
         nullable=False,
         index=True,
     )
-    data_criacao = Column(DateTime, default=datetime.utcnow)
-    data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    descricao = Column(Text, nullable=True)
     data_solicitacao = Column(DateTime, default=datetime.utcnow, nullable=False)
     data_aprovacao = Column(DateTime, nullable=True)
-
+    ativa = Column(Boolean, default=False, nullable=False, index=True)
+    
     # Relacionamentos
-    usuarios = relationship("Usuario", foreign_keys="Usuario.instituicao_id", back_populates="instituicao")
-    usuario = relationship("Usuario", foreign_keys=[user_id])
+    usuarios = relationship("Usuario", back_populates="instituicao", cascade="all, delete-orphan")

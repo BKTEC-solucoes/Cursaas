@@ -66,6 +66,9 @@ class InstituicaoPageResponse(BaseModel):
     limit: int
     total_pages: int
 
+class InstituicaoDetailResponse(InstituicaoResponse):
+    data_atualizacao: datetime
+
 # ==================== SCHEMAS DE USUÁRIO ====================
 
 class UsuarioBase(BaseModel):
@@ -670,43 +673,6 @@ class NotaCursoDetailResponse(NotaCursoResponse):
     usuario_nome: Optional[str] = None
     curso_nome: Optional[str] = None
     notas_provas: Optional[List[NotaListResponse]] = []
-
-# ==================== SCHEMAS DE INSTITUIÇÃO ====================
-
-class InstituicaoBase(BaseModel):
-    nome_instituicao: str = Field(..., min_length=1)
-    cnpj: str = Field(..., min_length=14, max_length=18)
-    contato: str = Field(..., min_length=10)
-    endereco: str = Field(..., min_length=1)
-
-class InstituicaoCreate(InstituicaoBase):
-    email: EmailStr
-    nome_responsavel: Optional[str] = Field(default=None, min_length=1)
-    senha: str = Field(..., min_length=6)
-
-class InstituicaoUpdate(BaseModel):
-    nome_instituicao: Optional[str] = None
-    cnpj: Optional[str] = None
-    contato: Optional[str] = None
-    endereco: Optional[str] = None
-    ativo: Optional[bool] = None
-    aprovada: Optional[bool] = None
-    motivo_rejeicao: Optional[str] = None
-    observacoes: Optional[str] = None
-
-class InstituicaoResponse(InstituicaoBase):
-    id: int
-    ativo: bool
-    aprovada: bool
-    motivo_rejeicao: Optional[str] = None
-    observacoes: Optional[str] = None
-    data_criacao: datetime
-    
-    class Config:
-        from_attributes = True
-
-class InstituicaoDetailResponse(InstituicaoResponse):
-    data_atualizacao: datetime
 
 # Update forward references
 AulaResponse.model_rebuild()
