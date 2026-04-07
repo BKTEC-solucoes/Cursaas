@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   GoogleLoginProvider,
-  SocialAuthServiceConfig,
+  SOCIAL_AUTH_CONFIG,
 } from '@abacritt/angularx-social-login';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
@@ -22,7 +22,7 @@ bootstrapApplication(AppComponent, {
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
     {
-      provide: 'SocialAuthServiceConfig',
+      provide: SOCIAL_AUTH_CONFIG,
       useValue: {
         autoLogin: false,
         providers: googleClientIdConfigured
@@ -36,7 +36,7 @@ bootstrapApplication(AppComponent, {
         onError: (error: unknown) => {
           console.error('Erro na autenticacao social:', error);
         },
-      } as SocialAuthServiceConfig,
+      },
     },
   ],
 }).catch((err) => console.error(err));
