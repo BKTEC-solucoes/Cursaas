@@ -12,7 +12,7 @@ CREATE TABLE usuarios (
     email VARCHAR(255) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
     role ENUM('admin', 'aluno') NOT NULL DEFAULT 'aluno',
-    admin_role ENUM('super_admin', 'instrutor', 'financeiro', 'suporte') NULL DEFAULT NULL,
+    admin_role ENUM('super_admin', 'instrutor') NULL DEFAULT NULL,
     foto_perfil LONGTEXT NULL,
     instituicao_id INT NULL,
     ativo BOOLEAN DEFAULT TRUE,
@@ -31,12 +31,12 @@ CREATE TABLE instituicoes (
     cnpj VARCHAR(18) UNIQUE NOT NULL,
     contato VARCHAR(255) NOT NULL,
     endereco VARCHAR(500) NOT NULL,
-    ativo BOOLEAN DEFAULT FALSE,
+    ativa BOOLEAN DEFAULT FALSE,
     aprovada BOOLEAN DEFAULT FALSE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_cnpj (cnpj),
-    INDEX idx_ativo (ativo),
+    INDEX idx_ativa (ativa),
     INDEX idx_aprovada (aprovada)
 );
 
@@ -49,11 +49,19 @@ CREATE TABLE cursos (
     id INT PRIMARY KEY AUTO_INCREMENT,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
+    pago BOOLEAN DEFAULT FALSE NOT NULL,
+    valor DECIMAL(10, 2) NULL,
+    status ENUM('pendente', 'aprovado', 'recusado') DEFAULT 'aprovado' NOT NULL,
     percentual_presenca_minima INT DEFAULT 75,
     ativo BOOLEAN DEFAULT TRUE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    criado_por_id INT NULL,
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_ativo (ativo)
+    FOREIGN KEY (criado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_ativo (ativo),
+    INDEX idx_criado_por_id (criado_por_id),
+    INDEX idx_status (status),
+    INDEX idx_pago (pago)
 );
 
 -- Tabela de Vínculo Admin-Curso (controle de permissões por curso)

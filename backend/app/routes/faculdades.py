@@ -91,6 +91,7 @@ def aprovar(
     current_user: Usuario = Depends(get_current_super_admin),
 ):
     inst = InstituicaoService.aprovar(db, instituicao_id)
+    db.commit()
     return InstituicaoResponse.model_validate(inst)
 
 

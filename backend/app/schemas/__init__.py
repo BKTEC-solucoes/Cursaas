@@ -13,8 +13,6 @@ class RoleEnum(str, PyEnum):
 class AdminRoleEnum(str, PyEnum):
     super_admin = "super_admin"
     instrutor   = "instrutor"
-    financeiro  = "financeiro"
-    suporte     = "suporte"
 
 class CourseRequestStatusEnum(str, PyEnum):
     pending = "pending"
@@ -34,21 +32,24 @@ class StatusInstituicaoEnum(str, PyEnum):
 # ==================== SCHEMAS DE INSTITUIÇÃO ====================
 
 class InstituicaoCreate(BaseModel):
-    nome: str = Field(..., min_length=2, max_length=255)
+    nome_instituicao: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
     cnpj: str = Field(..., min_length=14, max_length=18, description="CNPJ com ou sem formatação")
-    descricao: Optional[str] = None
+    endereco: str = Field(..., min_length=5, max_length=500)
+    contato: str = Field(..., min_length=10, max_length=20)
+    nome_responsavel: Optional[str] = None
+    senha: str = Field(..., min_length=6, max_length=255)
 
 class InstituicaoResponse(BaseModel):
     id: int
-    nome: str
-    email: str
+    nome_instituicao: str
     cnpj: str
-    status: StatusInstituicaoEnum
+    contato: str
+    endereco: str
     ativa: bool
-    descricao: Optional[str] = None
-    data_solicitacao: datetime
-    data_aprovacao: Optional[datetime] = None
+    aprovada: bool
+    data_criacao: datetime
+    data_atualizacao: datetime
 
     class Config:
         from_attributes = True

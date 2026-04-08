@@ -269,7 +269,6 @@ def admin_registro(
 
     # Política de acesso por role:
     # - super_admin → irrestrito (não precisa de registros em admin_cursos)
-    # - financeiro / suporte → sem acesso a nenhum curso (nenhum registro)
     # - instrutor → sem cursos inicialmente; acesso auto-concedido ao criar cursos
     # - Cursos manuais via curso_ids só são aplicados se a role não for super_admin
     role_criada = user.admin_role

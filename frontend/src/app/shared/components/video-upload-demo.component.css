@@ -1,0 +1,300 @@
+.demo-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 0;
+}
+
+.demo-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.demo-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2rem;
+}
+
+.demo-header p {
+  margin: 0;
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.demo-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.demo-section {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.demo-section h2 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.feature-card {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.feature-card h3 {
+  margin: 10px 0 5px 0;
+  font-size: 1rem;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.component-wrapper {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  background: #f9f9f9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.stat-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.debug-box {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: monospace;
+}
+
+.debug-box pre {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.instructions {
+  display: grid;
+  gap: 20px;
+}
+
+.instruction-item h3 {
+  margin-top: 0;
+  color: #667eea;
+}
+
+.instruction-item ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.instruction-item li {
+  margin: 5px 0;
+}
+
+.test-urls {
+  background: #f0f7ff;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border-left: 4px solid #667eea;
+}
+
+.test-urls small {
+  display: block;
+  margin: 3px 0;
+  color: #666;
+}
+
+.note {
+  background: #fffbeb;
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 4px solid #f59e0b;
+  font-size: 0.85rem;
+}
+
+.note code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.features-list {
+  display: grid;
+  gap: 10px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-item input {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.feature-item label {
+  cursor: pointer;
+  margin: 0;
+}
+
+.api-reference pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.api-reference code {
+  font-family: monospace;
+}
+
+.test-scenarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.test-card {
+  padding: 15px;
+  background: #f0f7ff;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.test-card h3 {
+  margin: 0 0 10px 0;
+  color: #667eea;
+  font-size: 0.95rem;
+}
+
+.test-card p {
+  margin: 5px 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.faq {
+  display: grid;
+  gap: 10px;
+}
+
+.faq details {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 15px;
+  cursor: pointer;
+}
+
+.faq details[open] {
+  background: #f9f9f9;
+}
+
+.faq summary {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.faq details p {
+  margin: 10px 0 0 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.demo-footer {
+  background: #f0f7ff;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  border-left: 4px solid #667eea;
+}
+
+.demo-footer p {
+  margin: 5px 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.demo-footer code {
+  background: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .demo-header {
+    padding: 30px 15px;
+  }
+
+  .demo-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .demo-content {
+    padding: 20px 10px;
+  }
+
+  .demo-section {
+    padding: 20px;
+  }
+
+  .features-grid,
+  .stats-grid,
+  .test-scenarios {
+    grid-template-columns: 1fr;
+  }
+}

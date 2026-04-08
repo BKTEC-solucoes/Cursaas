@@ -26,8 +26,8 @@ class InstitutionRepository:
             cnpj=cnpj,
             contato=contato,
             endereco=endereco,
-            ativo=True,
-            aprovada=True,
+            ativa=False,
+            aprovada=False,
         )
         self.db.add(instituicao)
         self.db.flush()

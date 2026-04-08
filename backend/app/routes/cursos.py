@@ -88,18 +88,29 @@ def list_all_courses_for_admin(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_admin),
 ):
+    """Lista cursos para o admin. Instrutores veem apenas seus cursos, super admin vê todos."""
     try:
-        cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+        allowed = get_allowed_course_ids(db, current_user)
+        
+        if allowed is None:
+            # Super admin: retorna todos
+            cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+        else:
+            # Instrutor: retorna apenas seus cursos
+            if not allowed:
+                return []
+            cursos = db.query(Curso).filter(Curso.id.in_(allowed)).order_by(Curso.data_criacao.desc()).all()
+        
         result = []
         for curso in cursos:
             try:
                 result.append(CursoAdminResponse.model_validate(curso))
             except Exception as e:
-                print(f"\u26a0\ufe0f  Erro ao validar curso ID {curso.id}: {e}")
+                print(f"⚠️  Erro ao validar curso ID {curso.id}: {e}")
                 continue
         return result
     except Exception as e:
-        print(f"\u274c Erro ao listar cursos do admin: {e}")
+        print(f"❌ Erro ao listar cursos do admin: {e}")
         return []
 
 @router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)
@@ -129,16 +140,12 @@ def create_curso(
         status=initial_status,
         percentual_presenca_minima=curso_data.percentual_presenca_minima,
         ativo=True,
+        criado_por_id=current_user.id,
     )
 
     db.add(db_curso)
     db.commit()
     db.refresh(db_curso)
-
-    # Instrutor recebe acesso automático ao curso que criou
-    if current_user.admin_role == AdminRoleEnum.instrutor:
-        db.add(AdminCurso(admin_id=current_user.id, curso_id=db_curso.id))
-        db.commit()
 
     return CursoResponse.model_validate(db_curso)
 

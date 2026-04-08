@@ -13,10 +13,6 @@ class InstituicaoRepository:
         return db.query(Instituicao).filter(Instituicao.id == instituicao_id).first()
 
     @staticmethod
-    def get_by_email(db: Session, email: str) -> Optional[Instituicao]:
-        return db.query(Instituicao).filter(Instituicao.email == email).first()
-
-    @staticmethod
     def get_by_cnpj(db: Session, cnpj: str) -> Optional[Instituicao]:
         return db.query(Instituicao).filter(Instituicao.cnpj == cnpj).first()
 
@@ -24,7 +20,7 @@ class InstituicaoRepository:
     def list_all(db: Session) -> list[Instituicao]:
         return (
             db.query(Instituicao)
-            .order_by(Instituicao.data_solicitacao.desc())
+            .order_by(Instituicao.data_criacao.desc())
             .all()
         )
 
@@ -35,16 +31,21 @@ class InstituicaoRepository:
         page: int,
         limit: int,
     ) -> tuple[list[Instituicao], int]:
-        """Retorna (items, total) com filtro opcional de status e paginação."""
+        """Retorna (items, total) com filtro opcional de status (aprovado/recusado) e paginação."""
         query = db.query(Instituicao)
 
         if status is not None:
-            query = query.filter(Instituicao.status == status)
+            # Mapear enum para boolean: aprovado=True, recusado=False, pendente=não aprovada e not recusado
+            if status == StatusInstituicaoEnum.aprovado:
+                query = query.filter(Instituicao.aprovada == True)
+            elif status == StatusInstituicaoEnum.recusado:
+                query = query.filter(Instituicao.aprovada == False)
+            # else: pendente - não fazer filtro adicional
 
         total = query.count()
         items = (
             query
-            .order_by(Instituicao.data_solicitacao.desc())
+            .order_by(Instituicao.data_criacao.desc())
             .offset((page - 1) * limit)
             .limit(limit)
             .all()
@@ -55,8 +56,8 @@ class InstituicaoRepository:
     def list_pendentes(db: Session) -> list[Instituicao]:
         return (
             db.query(Instituicao)
-            .filter(Instituicao.status == StatusInstituicaoEnum.pendente)
-            .order_by(Instituicao.data_solicitacao.asc())
+            .filter(Instituicao.aprovada == False)
+            .order_by(Instituicao.data_criacao.asc())
             .all()
         )
 
@@ -69,12 +70,12 @@ class InstituicaoRepository:
         descricao: Optional[str],
     ) -> Instituicao:
         inst = Instituicao(
-            nome=nome,
-            email=email,
+            nome_instituicao=nome,
+            contato=email,  # Usar email como contato para compatibilidade
+            endereco=descricao or "",
             cnpj=cnpj,
-            descricao=descricao,
-            status=StatusInstituicaoEnum.pendente,
-            data_solicitacao=datetime.utcnow(),
+            ativa=True,
+            aprovada=False,
         )
         db.add(inst)
         db.commit()
@@ -87,9 +88,11 @@ class InstituicaoRepository:
         inst: Instituicao,
         novo_status: StatusInstituicaoEnum,
     ) -> Instituicao:
-        inst.status = novo_status
+        # Mapear status antigo para novo (aprovado = True, recusado = False)
         if novo_status == StatusInstituicaoEnum.aprovado:
-            inst.data_aprovacao = datetime.utcnow()
+            inst.aprovada = True
+        elif novo_status == StatusInstituicaoEnum.recusado:
+            inst.aprovada = False
         db.commit()
         db.refresh(inst)
         return inst

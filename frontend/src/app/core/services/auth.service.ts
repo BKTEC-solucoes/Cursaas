@@ -84,12 +84,30 @@ export class AuthService {
         this.currentUserSubject.next(decoded);
       } catch (error) {
         console.error('Error decoding token:', error);
+        // Token inválido, limpar do localStorage
+        localStorage.removeItem('access_token');
+        this.tokenSubject.next(null);
+        this.currentUserSubject.next(null);
       }
     }
   }
 
   private decodeToken(token: string): UserInfo {
-    const base64Url = token.split('.')[1];
+    // Validar se o token é um JWT válido com 3 partes
+    if (!token || typeof token !== 'string') {
+      throw new Error('Token inválido: não é uma string');
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Token inválido: não é um JWT válido');
+    }
+
+    const base64Url = parts[1];
+    if (!base64Url) {
+      throw new Error('Token inválido: payload vazio');
+    }
+
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -143,12 +161,15 @@ export class AuthService {
   }
 
   registrarInstituicao(dados: {
-    nome: string;
+    nome_instituicao: string;
     cnpj: string;
     email: string;
-    descricao: string;
+    endereco: string;
+    contato: string;
+    nome_responsavel?: string;
+    senha: string;
   }): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>(`${this.apiUrl}/faculdades`, dados).pipe(
+    return this.http.post<TokenResponse>(`${this.apiUrl}/instituicoes/registrar`, dados).pipe(
       tap(response => {
         localStorage.setItem('access_token', response.access_token);
         this.tokenSubject.next(response.access_token);

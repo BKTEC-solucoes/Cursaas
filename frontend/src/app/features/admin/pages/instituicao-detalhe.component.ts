@@ -3,18 +3,16 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
-type StatusInstituicao = 'pendente' | 'aprovado' | 'recusado';
-
 interface Instituicao {
   id: number;
-  nome: string;
-  email: string;
+  nome_instituicao: string;
   cnpj: string;
-  status: StatusInstituicao;
+  contato: string;
+  endereco: string;
   ativa: boolean;
-  descricao: string | null;
-  data_solicitacao: string;
-  data_aprovacao: string | null;
+  aprovada: boolean;
+  data_criacao: string;
+  data_atualizacao: string;
 }
 
 @Component({
@@ -40,16 +38,16 @@ interface Instituicao {
         <!-- Card principal -->
         <div class="detail-card">
           <div class="card-header">
-            <div class="card-title">{{ inst.nome }}</div>
-            <span class="badge" [ngClass]="'badge-' + inst.status">
-              {{ statusLabel(inst.status) }}
+            <div class="card-title">{{ inst.nome_instituicao }}</div>
+            <span class="badge" [ngClass]="'badge-' + getStatus(inst)">
+              {{ statusLabel(inst) }}
             </span>
           </div>
 
           <div class="fields-grid">
             <div class="field">
-              <div class="field-label">E-mail</div>
-              <div class="field-value">{{ inst.email }}</div>
+              <div class="field-label">Contato</div>
+              <div class="field-value">{{ inst.contato }}</div>
             </div>
             <div class="field">
               <div class="field-label">CNPJ</div>
@@ -57,35 +55,35 @@ interface Instituicao {
             </div>
             <div class="field">
               <div class="field-label">Solicitado em</div>
-              <div class="field-value">{{ inst.data_solicitacao | date:'dd/MM/yyyy HH:mm' }}</div>
+              <div class="field-value">{{ inst.data_criacao | date:'dd/MM/yyyy HH:mm' }}</div>
             </div>
             <div class="field">
               <div class="field-label">Aprovado em</div>
               <div class="field-value">
-                {{ inst.data_aprovacao ? (inst.data_aprovacao | date:'dd/MM/yyyy HH:mm') : '—' }}
+                {{ inst.aprovada ? (inst.data_atualizacao | date:'dd/MM/yyyy HH:mm') : '—' }}
               </div>
             </div>
-            <div class="field span2" *ngIf="inst.descricao">
-              <div class="field-label">Descrição / Informações adicionais</div>
-              <div class="field-value desc">{{ inst.descricao }}</div>
+            <div class="field span2">
+              <div class="field-label">Endereço / Informações adicionais</div>
+              <div class="field-value desc">{{ inst.endereco }}</div>
             </div>
           </div>
         </div>
 
         <!-- Ações -->
-        <div class="actions-card" *ngIf="inst.status === 'pendente'">
+        <div class="actions-card" *ngIf="!inst.aprovada">
           <p class="actions-hint">Esta solicitação está pendente de análise.</p>
           <div class="actions-row">
             <button
               class="btn-approve"
-              (click)="atualizarStatus('aprovado')"
+              (click)="atualizarStatus('aprovar')"
               [disabled]="processando"
             >
               {{ processando ? 'Processando...' : '✓ Aprovar Instituição' }}
             </button>
             <button
               class="btn-reject"
-              (click)="atualizarStatus('recusado')"
+              (click)="atualizarStatus('recusar')"
               [disabled]="processando"
             >
               ✕ Recusar
@@ -93,16 +91,12 @@ interface Instituicao {
           </div>
         </div>
 
-        <div class="status-card aprovado" *ngIf="inst.status === 'aprovado'">
-          ✓ Instituição aprovada em {{ inst.data_aprovacao | date:'dd/MM/yyyy' }}.
-        </div>
-
-        <div class="status-card recusado" *ngIf="inst.status === 'recusado'">
-          ✕ Solicitação recusada.
+        <div class="status-card aprovado" *ngIf="inst.aprovada">
+          ✓ Instituição aprovada em {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}.
         </div>
 
         <!-- Controle de Acesso -->
-        <div class="access-card" *ngIf="inst.status === 'aprovado'">
+        <div class="access-card" *ngIf="inst.aprovada">
           <div class="access-header">
             <div class="access-title">🔐 Controle de Acesso</div>
             <span class="badge" [ngClass]="inst.ativa ? 'badge-ativo' : 'badge-inativo'">
@@ -334,13 +328,13 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
       });
   }
 
-  atualizarStatus(status: StatusInstituicao): void {
+  atualizarStatus(acao: 'aprovar' | 'recusar'): void {
     if (!this.inst) return;
     this.processando = true;
 
     this.http
       .put<Instituicao>(
-        `${this.apiUrl}/faculdades/${this.inst.id}/${status === 'aprovado' ? 'aprovar' : 'recusar'}`,
+        `${this.apiUrl}/faculdades/${this.inst.id}/${acao}`,
         {},
         { headers: this.authHeaders() },
       )
@@ -382,13 +376,13 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
     this.router.navigate(['/admin/instituicoes']);
   }
 
-  statusLabel(status: StatusInstituicao): string {
-    const labels: Record<StatusInstituicao, string> = {
-      pendente: 'Pendente',
-      aprovado: 'Aprovado',
-      recusado: 'Recusado',
-    };
-    return labels[status] ?? status;
+  getStatus(inst: Instituicao): string {
+    if (!inst.aprovada) return 'pendente';
+    return 'aprovado';
+  }
+
+  statusLabel(inst: Instituicao): string {
+    return inst.aprovada ? 'Aprovado' : 'Pendente';
   }
 
   private authHeaders(): HttpHeaders {

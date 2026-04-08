@@ -23,11 +23,11 @@ interface BlocoRender {
 
       <!-- Topbar -->
       <div class="aula-topbar">
-        <button class="btn-voltar" (click)="voltar()">â† Voltar</button>
+        <button class="btn-voltar" (click)="voltar()">← Voltar</button>
         <div class="topbar-meta" *ngIf="aula">
-          <span class="topbar-curso" *ngIf="curso?.nome">ðŸ“š {{ curso.nome }}</span>
+          <span class="topbar-curso" *ngIf="curso?.nome">📚 {{ curso.nome }}</span>
           <span class="topbar-data" *ngIf="aula.data_aula">{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</span>
-          <span class="topbar-dur" *ngIf="aula.duracao_minutos">â± {{ aula.duracao_minutos }}min</span>
+          <span class="topbar-dur" *ngIf="aula.duracao_minutos">⏱ {{ aula.duracao_minutos }}min</span>
         </div>
       </div>
 
@@ -43,13 +43,13 @@ interface BlocoRender {
         <button (click)="carregarAula()">Tentar novamente</button>
       </div>
 
-      <!-- ConteÃºdo principal -->
+      <!-- Conteúdo principal -->
       <div class="aula-body" *ngIf="aula">
 
         <!-- Banner de curso pago bloqueado -->
         <div class="access-panel" *ngIf="!carregandoAcesso && curso?.pago && !acessoLiberado">
           <div class="access-panel-inner">
-            <span class="access-icon">ðŸ”’</span>
+            <span class="access-icon">🔒</span>
             <div>
               <strong>Curso pago</strong>
               <p>{{ mensagemAcesso }}</p>
@@ -63,22 +63,22 @@ interface BlocoRender {
           </div>
         </div>
 
-        <!-- TÃ­tulo da aula -->
+        <!-- Título da aula -->
         <h1 class="aula-titulo">{{ aula.titulo }}</h1>
 
-        <!-- Blocos de conteÃºdo -->
+        <!-- Blocos de conteúdo -->
         <div class="blocos">
 
           <ng-container *ngFor="let bloco of blocos">
 
-            <!-- VÃ­deo de upload -->
+            <!-- Vídeo de upload -->
             <div *ngIf="bloco.tipo === 'video-upload'" class="bloco-video-upload">
               <video
                 [src]="bloco.videoUrl"
                 controls
                 preload="metadata"
                 class="player"
-              >Seu navegador nÃ£o suporta reproduÃ§Ã£o de vÃ­deo.</video>
+              >Seu navegador não suporta reprodução de vídeo.</video>
             </div>
 
             <!-- Bloco de texto rico -->
@@ -102,10 +102,10 @@ interface BlocoRender {
 
           </ng-container>
 
-          <!-- Sem conteÃºdo -->
+          <!-- Sem conteúdo -->
           <div class="sem-conteudo" *ngIf="blocos.length === 0">
-            <span>ðŸ“„</span>
-            <p>Nenhum conteÃºdo disponÃ­vel para esta aula ainda.</p>
+            <span>🔄</span>
+            <p>Nenhum conteúdo disponível para esta aula ainda.</p>
           </div>
 
         </div>
@@ -116,7 +116,7 @@ interface BlocoRender {
   styles: [`
     :host { display: block; }
 
-    /* â”€â”€ Topbar â”€â”€ */
+    /* ── Topbar ── */
     .aula-topbar {
       display: flex;
       align-items: center;
@@ -147,7 +147,7 @@ interface BlocoRender {
     }
     .topbar-curso { font-weight: 600; color: #475569; }
 
-    /* â”€â”€ Loading / Erro â”€â”€ */
+    /* ── Loading / Erro ── */
     .aula-loading {
       display: flex;
       flex-direction: column;
@@ -176,14 +176,14 @@ interface BlocoRender {
       border: none; border-radius: 6px; cursor: pointer;
     }
 
-    /* â”€â”€ Body â”€â”€ */
+    /* ── Body ── */
     .aula-body {
       max-width: 860px;
       margin: 0 auto;
       padding: 32px 24px 60px;
     }
 
-    /* â”€â”€ Access panel â”€â”€ */
+    /* ── Access panel ── */
     .access-panel {
       background: #fffbeb;
       border: 1px solid #fcd34d;
@@ -209,7 +209,7 @@ interface BlocoRender {
     }
     .btn-request:disabled { opacity: .6; cursor: not-allowed; }
 
-    /* â”€â”€ TÃ­tulo â”€â”€ */
+    /* ── Título ── */
     .aula-titulo {
       font-size: 1.75rem;
       font-weight: 800;
@@ -218,14 +218,14 @@ interface BlocoRender {
       line-height: 1.25;
     }
 
-    /* â”€â”€ Blocos â”€â”€ */
+    /* ── Blocos ── */
     .blocos {
       display: flex;
       flex-direction: column;
       gap: 24px;
     }
 
-    /* VÃ­deo de upload */
+    /* Vídeo de upload */
     .bloco-video-upload {
       border-radius: 10px;
       overflow: hidden;
@@ -299,7 +299,7 @@ interface BlocoRender {
       inset: 0; width: 100%; height: 100%;
     }
 
-    /* Sem conteÃºdo */
+    /* Sem conteúdo */
     .sem-conteudo {
       display: flex;
       flex-direction: column;
@@ -358,20 +358,20 @@ export class AulaDetailsComponent implements OnInit {
 
     this.apiService.getAula(this.aulaId).subscribe({
       next: (aula) => {
-        if (!aula) { this.erro = 'Aula nÃ£o encontrada.'; return; }
+        if (!aula) { this.erro = 'Aula não encontrada.'; return; }
         this.aula = aula;
 
-        const blocos: BlocoRender[] = [];
+        const blocos: BlocoRender[] = this.parseBlocos(aula.descricao);
 
-        // VÃ­deo de upload (primeiro)
-        if (aula.videos?.length > 0) {
-          const video = aula.videos[0];
-          const nome = (video.caminho_arquivo as string).split('\\').pop() || video.arquivo_nome;
-          blocos.push({ tipo: 'video-upload', videoUrl: `http://localhost:8000/api/aulas/video/${nome}` });
+        // Fallback: se a descricao não contém uploads, usa aula.videos direto
+        if (!blocos.some(b => b.tipo === 'video-upload') && aula.videos?.length > 0) {
+          const uploads = (aula.videos as any[]).map((v: any) => {
+            const nome = (v.caminho_arquivo as string).split(/[\/\\]/).pop() || v.arquivo_nome;
+            return { tipo: 'video-upload' as const, videoUrl: `http://localhost:8000/api/aulas/video/${nome}` };
+          });
+          blocos.unshift(...uploads);
         }
 
-        // Blocos de conteÃºdo da descricao
-        blocos.push(...this.parseBlocos(aula.descricao));
         this.blocos = blocos;
 
         this.verificarAcessoCurso();
@@ -380,7 +380,7 @@ export class AulaDetailsComponent implements OnInit {
     });
   }
 
-  // â”€â”€ Acesso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Acesso ────────────────────────────────────────────────────────────────
 
   verificarAcessoCurso(): void {
     if (!this.aula?.curso_id) { this.acessoLiberado = true; return; }
@@ -408,7 +408,7 @@ export class AulaDetailsComponent implements OnInit {
     this.processandoSolicitacao = true;
     this.apiService.createCourseRequest(this.aula.curso_id).subscribe({
       next: (s) => { this.solicitacao = s; this.definirEstadoAcesso(); this.processandoSolicitacao = false; },
-      error: (e) => { this.processandoSolicitacao = false; this.erro = e?.error?.detail || 'NÃ£o foi possÃ­vel registrar a solicitaÃ§Ã£o.'; }
+      error: (e) => { this.processandoSolicitacao = false; this.erro = e?.error?.detail || 'Não foi possível registrar a solicitação.'; }
     });
   }
 
@@ -419,29 +419,46 @@ export class AulaDetailsComponent implements OnInit {
     const s = this.solicitacao?.status;
     if (s === 'approved') { this.acessoLiberado = true; this.mensagemAcesso = ''; return; }
     this.acessoLiberado = false;
-    if (s === 'pending')  { this.mensagemAcesso = 'Aguardando aprovaÃ§Ã£o do administrador.'; return; }
-    if (s === 'rejected') { this.mensagemAcesso = 'Sua solicitaÃ§Ã£o foi recusada. VocÃª pode solicitar novamente.'; return; }
-    this.mensagemAcesso = 'Este curso Ã© pago. Solicite acesso para liberar o conteÃºdo.';
+    if (s === 'pending')  { this.mensagemAcesso = 'Aguardando aprovação do administrador.'; return; }
+    if (s === 'rejected') { this.mensagemAcesso = 'Sua solicitação foi recusada. Você pode solicitar novamente.'; return; }
+    this.mensagemAcesso = 'Este curso é pago. Solicite acesso para liberar o conteúdo.';
   }
 
-  // â”€â”€ Parse de blocos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Parse de blocos ───────────────────────────────────────────────────────
 
   private parseBlocos(descricao: string): BlocoRender[] {
     if (!descricao) return [];
     try {
       const parsed = JSON.parse(descricao);
       if (Array.isArray(parsed)) {
-        return parsed.map((b: any) => {
+        return parsed.flatMap((b: any) => {
           if (b.tipo === 'texto') {
             const html = this.richToHtml(b.conteudo);
-            return html ? { tipo: 'texto' as const, html: this.sanitizer.bypassSecurityTrustHtml(html) } : null;
+            return html ? [{ tipo: 'texto' as const, html: this.sanitizer.bypassSecurityTrustHtml(html) }] : [];
           }
           if (b.tipo === 'video') {
+            // Formato novo: conteudo é um JSON array de {tipo, url, ...}
+            try {
+              const videos = JSON.parse(b.conteudo);
+              if (Array.isArray(videos)) {
+                return videos.flatMap((v: any) => {
+                  if (v.tipo === 'youtube') {
+                    const url = this.toEmbedUrl(v.url);
+                    return url ? [{ tipo: 'video' as const, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url) }] : [];
+                  }
+                  if (v.tipo === 'upload') {
+                    return [{ tipo: 'video-upload' as const, videoUrl: v.url }];
+                  }
+                  return [] as BlocoRender[];
+                });
+              }
+            } catch { /* não é JSON, tenta formato antigo */ }
+            // Formato antigo: URL simples
             const url = this.toEmbedUrl(b.conteudo);
-            return url ? { tipo: 'video' as const, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url) } : null;
+            return url ? [{ tipo: 'video' as const, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url) }] : [];
           }
-          return null;
-        }).filter(Boolean) as BlocoRender[];
+          return [] as BlocoRender[];
+        });
       }
       if (parsed?.type === 'doc') {
         return [{ tipo: 'texto', html: this.sanitizer.bypassSecurityTrustHtml(generateHTML(parsed, [StarterKit])) }];

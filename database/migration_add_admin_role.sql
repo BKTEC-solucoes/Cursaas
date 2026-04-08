@@ -5,7 +5,7 @@
 USE cursaas;
 
 ALTER TABLE usuarios
-  ADD COLUMN admin_role ENUM('super_admin', 'instrutor', 'financeiro', 'suporte')
+  ADD COLUMN admin_role ENUM('super_admin', 'instrutor')
     NULL DEFAULT NULL
     AFTER role,
   ADD INDEX idx_admin_role (admin_role);

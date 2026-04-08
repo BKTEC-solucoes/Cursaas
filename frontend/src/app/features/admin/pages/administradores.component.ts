@@ -416,8 +416,6 @@ interface ConviteItem {
               <option value="">Todos os tipos</option>
               <option value="super_admin">Super Admin</option>
               <option value="instrutor">Instrutor</option>
-              <option value="financeiro">Financeiro</option>
-              <option value="suporte">Suporte</option>
               <option value="legacy">Legado</option>
             </select>
             <select [(ngModel)]="filtroAtivo" (ngModelChange)="onFiltroSelectChange()" name="filtro_ativo" class="filtro-select">
@@ -780,8 +778,6 @@ interface ConviteItem {
     }
     .role-super_admin { background: #2c3e50; color: #fff; }
     .role-instrutor   { background: #2980b9; color: #fff; }
-    .role-financeiro  { background: #27ae60; color: #fff; }
-    .role-suporte     { background: #e67e22; color: #fff; }
     .role-legacy      { background: #95a5a6; color: #fff; }
 
     .photo-upload-container {
@@ -1354,8 +1350,6 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
   private readonly ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
     super_admin: 'Acesso total e irrestrito ao sistema e a todos os cursos.',
     instrutor:   'Gerencia cursos, aulas, provas, notas e presença. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
-    financeiro:  'Visualiza relatórios financeiros, alunos e notas. Não possui acesso a nenhum curso por padrão.',
-    suporte:     'Gerencia alunos e visualiza presença. Não possui acesso a nenhum curso por padrão.',
   };
 
   private readonly adminApiUrl  = 'http://localhost:8000/api/auth/admin-registro';

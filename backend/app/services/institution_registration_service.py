@@ -25,8 +25,6 @@ class InstitutionRegistrationService:
         cnpj = self._format_cnpj(dados.cnpj)
         contato = self._normalize_contact(dados.contato)
 
-        self._validate_cnpj(cnpj)
-
         if self.repository.get_user_by_email(email):
             raise InstitutionRegistrationError("Este email ja esta em uso.")
 
@@ -79,18 +77,6 @@ class InstitutionRegistrationService:
             usuario=UsuarioResponse.model_validate(usuario),
         )
 
-    def _validate_cnpj(self, cnpj: str) -> None:
-        digits = self._only_digits(cnpj)
-
-        if len(digits) != 14:
-            raise InstitutionRegistrationError("CNPJ invalido. Informe os 14 digitos do documento.")
-
-        if digits == digits[0] * 14:
-            raise InstitutionRegistrationError("CNPJ invalido.")
-
-        if not self._is_valid_cnpj_digits(digits):
-            raise InstitutionRegistrationError("CNPJ invalido.")
-
     def _normalize_contact(self, contato: str) -> str:
         value = contato.strip()
         if len(re.sub(r"\D", "", value)) < 10:
@@ -98,22 +84,15 @@ class InstitutionRegistrationService:
         return value
 
     def _format_cnpj(self, cnpj: str) -> str:
+        # Aceita qualquer CNPJ, apenas remove caracteres especiais
         digits = self._only_digits(cnpj)
-        if len(digits) != 14:
-            raise InstitutionRegistrationError("CNPJ invalido. Use um CNPJ com 14 digitos.")
-        return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
+        if not digits:
+            raise InstitutionRegistrationError("CNPJ nao pode estar vazio.")
+        # Se tiver 14 dígitos, formata; senão retorna como está
+        if len(digits) == 14:
+            return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
+        return cnpj.strip()
 
     @staticmethod
     def _only_digits(value: str) -> str:
         return re.sub(r"\D", "", value or "")
-
-    @staticmethod
-    def _is_valid_cnpj_digits(digits: str) -> bool:
-        def calc_digit(base: str, weights: list[int]) -> str:
-            total = sum(int(digit) * weight for digit, weight in zip(base, weights))
-            remainder = total % 11
-            return "0" if remainder < 2 else str(11 - remainder)
-
-        first = calc_digit(digits[:12], [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-        second = calc_digit(digits[:12] + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
-        return digits[-2:] == first + second

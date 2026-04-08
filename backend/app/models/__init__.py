@@ -11,8 +11,6 @@ class RoleEnum(str, enum.Enum):
 class AdminRoleEnum(str, enum.Enum):
     super_admin  = "super_admin"
     instrutor    = "instrutor"
-    financeiro   = "financeiro"
-    suporte      = "suporte"
 
 class StatusVideoEnum(str, enum.Enum):
     processando = "processando"
@@ -91,9 +89,11 @@ class Curso(Base):
     percentual_presenca_minima = Column(Integer, default=75)
     ativo = Column(Boolean, default=True, index=True)
     data_criacao = Column(DateTime, default=datetime.utcnow)
+    criado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
+    criado_por = relationship("Usuario", foreign_keys=[criado_por_id], backref="cursos_criados")
     inscricoes = relationship("InscricaoCurso", back_populates="curso", cascade="all, delete-orphan")
     admins_vinculados = relationship("AdminCurso", back_populates="curso", cascade="all, delete-orphan")
     solicitacoes = relationship("CourseRequest", back_populates="curso", cascade="all, delete-orphan")
@@ -340,19 +340,14 @@ class Instituicao(Base):
     __tablename__ = "instituicoes"
 
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String(255), nullable=False)
-    email = Column(String(255), unique=True, nullable=False, index=True)
+    nome_instituicao = Column(String(255), nullable=False)
     cnpj = Column(String(18), unique=True, nullable=False, index=True)
-    status = Column(
-        Enum(StatusInstituicaoEnum),
-        default=StatusInstituicaoEnum.pendente,
-        nullable=False,
-        index=True,
-    )
-    descricao = Column(Text, nullable=True)
-    data_solicitacao = Column(DateTime, default=datetime.utcnow, nullable=False)
-    data_aprovacao = Column(DateTime, nullable=True)
+    contato = Column(String(255), nullable=False)
+    endereco = Column(String(500), nullable=False)
     ativa = Column(Boolean, default=False, nullable=False, index=True)
+    aprovada = Column(Boolean, default=False, nullable=False, index=True)
+    data_criacao = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relacionamentos
     usuarios = relationship("Usuario", back_populates="instituicao", cascade="all, delete-orphan")
