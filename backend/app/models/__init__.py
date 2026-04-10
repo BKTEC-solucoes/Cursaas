@@ -4,9 +4,71 @@ from datetime import datetime
 import enum
 from app.database import Base
 
+
+# ---------------------------------------------------------------------------
+# MULTI-TENANT: Faculdade
+# ---------------------------------------------------------------------------
+
+class PlanoFaculdadeEnum(str, enum.Enum):
+    basico        = "basico"
+    profissional  = "profissional"
+    enterprise    = "enterprise"
+
+
+class VinculoStatusEnum(str, enum.Enum):
+    ativo     = "ativo"
+    suspenso  = "suspenso"
+    desligado = "desligado"
+
+
+class Faculdade(Base):
+    """Representa um tenant (faculdade/instituição de ensino)."""
+    __tablename__ = "faculdades"
+
+    id               = Column(Integer, primary_key=True, index=True)
+    nome             = Column(String(255), nullable=False)
+    slug             = Column(String(100), unique=True, nullable=False, index=True)
+    cnpj             = Column(String(18), unique=True, nullable=True)
+    email_contato    = Column(String(255), nullable=True)
+    telefone         = Column(String(20), nullable=True)
+    logo_url         = Column(String(500), nullable=True)
+    dominio_email    = Column(String(100), nullable=True,
+                              comment="Domínio de e-mail para auto-vínculo, ex: @faculdade.edu.br")
+    ativa            = Column(Boolean, default=True, nullable=False, index=True)
+    aprovada         = Column(Boolean, default=True, nullable=False, index=True)
+    plano            = Column(Enum(PlanoFaculdadeEnum), default=PlanoFaculdadeEnum.basico, nullable=False)
+    data_criacao     = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relacionamentos reversos
+    usuarios          = relationship("Usuario",              back_populates="faculdade",  lazy="dynamic")
+    cursos            = relationship("Curso",                back_populates="faculdade",  lazy="dynamic")
+    vinculos_alunos   = relationship("VinculoAlunoFaculdade", back_populates="faculdade", cascade="all, delete-orphan")
+
+
+class VinculoAlunoFaculdade(Base):
+    """Matrícula + status do vínculo de um aluno em uma faculdade."""
+    __tablename__ = "vinculos_aluno_faculdade"
+
+    id               = Column(Integer, primary_key=True, index=True)
+    usuario_id       = Column(Integer, ForeignKey("usuarios.id",   ondelete="CASCADE"),  nullable=False, index=True)
+    faculdade_id     = Column(Integer, ForeignKey("faculdades.id", ondelete="CASCADE"),  nullable=False, index=True)
+    matricula        = Column(String(50), nullable=True)
+    status           = Column(Enum(VinculoStatusEnum), default=VinculoStatusEnum.ativo, nullable=False)
+    data_vinculo     = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("usuario_id", "faculdade_id", name="uq_vinculo_usuario_faculdade"),
+    )
+
+    usuario   = relationship("Usuario",    back_populates="vinculos_faculdades")
+    faculdade = relationship("Faculdade",  back_populates="vinculos_alunos")
+
 class RoleEnum(str, enum.Enum):
-    admin = "admin"
-    aluno = "aluno"
+    admin      = "admin"
+    aluno      = "aluno"
+    instituicao = "instituicao"
 
 class AdminRoleEnum(str, enum.Enum):
     super_admin  = "super_admin"
@@ -59,6 +121,7 @@ class Usuario(Base):
     cep = Column(String(10), nullable=True)
     telefone = Column(String(20), nullable=True)
     instituicao_id = Column(Integer, ForeignKey("instituicoes.id", ondelete="SET NULL"), nullable=True, index=True)
+    faculdade_id   = Column(Integer, ForeignKey("faculdades.id",  ondelete="RESTRICT"),  nullable=True, index=True)
     # Responsável
     nome_responsavel = Column(String(255), nullable=True)
     # Dados escolares
@@ -75,12 +138,15 @@ class Usuario(Base):
     notas = relationship("Nota", back_populates="usuario", cascade="all, delete-orphan")
     notas_cursos = relationship("NotaCurso", back_populates="usuario", cascade="all, delete-orphan")
     instituicao = relationship("Instituicao", foreign_keys=[instituicao_id], back_populates="usuarios")
+    faculdade   = relationship("Faculdade",   foreign_keys=[faculdade_id],  back_populates="usuarios")
+    vinculos_faculdades = relationship("VinculoAlunoFaculdade", back_populates="usuario", cascade="all, delete-orphan")
 
 # Tabela de Cursos
 class Curso(Base):
     __tablename__ = "cursos"
     
     id = Column(Integer, primary_key=True, index=True)
+    faculdade_id = Column(Integer, ForeignKey("faculdades.id", ondelete="RESTRICT"), nullable=True, index=True)
     nome = Column(String(255), nullable=False)
     descricao = Column(Text)
     pago = Column(Boolean, default=False, nullable=False, index=True)
@@ -93,7 +159,8 @@ class Curso(Base):
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamentos
-    criado_por = relationship("Usuario", foreign_keys=[criado_por_id], backref="cursos_criados")
+    criado_por = relationship("Usuario",    foreign_keys=[criado_por_id], backref="cursos_criados")
+    faculdade  = relationship("Faculdade",  foreign_keys=[faculdade_id],  back_populates="cursos")
     inscricoes = relationship("InscricaoCurso", back_populates="curso", cascade="all, delete-orphan")
     admins_vinculados = relationship("AdminCurso", back_populates="curso", cascade="all, delete-orphan")
     solicitacoes = relationship("CourseRequest", back_populates="curso", cascade="all, delete-orphan")
@@ -229,6 +296,7 @@ class Prova(Base):
     __tablename__ = "provas"
     
     id = Column(Integer, primary_key=True, index=True)
+    faculdade_id = Column(Integer, ForeignKey("faculdades.id", ondelete="RESTRICT"), nullable=True, index=True)
     curso_id = Column(Integer, ForeignKey("cursos.id", ondelete="CASCADE"), nullable=False, index=True)
     titulo = Column(String(255), nullable=False)
     descricao = Column(Text)
@@ -351,3 +419,51 @@ class Instituicao(Base):
     
     # Relacionamentos
     usuarios = relationship("Usuario", back_populates="instituicao", cascade="all, delete-orphan")
+
+
+# =============================================================================
+# Solicitação de Cadastro
+# Fila de aprovação: candidato se auto-cadastra aqui.
+# O aluno real só é criado em `usuarios` após aprovação pelo super admin.
+# =============================================================================
+
+class SolicitacaoStatusEnum(str, enum.Enum):
+    pendente  = "pendente"
+    aprovada  = "aprovada"
+    recusada  = "recusada"
+
+
+class SolicitacaoCadastro(Base):
+    __tablename__ = "solicitacoes_cadastro"
+
+    id               = Column(Integer, primary_key=True, index=True)
+
+    # Dados informados pelo candidato
+    nome             = Column(String(255), nullable=False)
+    email            = Column(String(255), nullable=False, index=True)
+    telefone         = Column(String(20),  nullable=True)
+    cpf_rg           = Column(String(30),  nullable=True)
+    mensagem         = Column(Text,        nullable=True)
+
+    # Tenant desejado
+    faculdade_id     = Column(Integer, ForeignKey("faculdades.id", ondelete="RESTRICT"), nullable=False, index=True)
+
+    # Ciclo de vida
+    status           = Column(Enum(SolicitacaoStatusEnum), default=SolicitacaoStatusEnum.pendente, nullable=False, index=True)
+    motivo_recusa    = Column(Text, nullable=True)
+
+    # Referência ao usuário criado na aprovação
+    usuario_id       = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+
+    # Auditoria
+    criado_em        = Column(DateTime, default=datetime.utcnow, nullable=False)
+    revisado_em      = Column(DateTime, nullable=True)
+    revisado_por_id  = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("email", "faculdade_id", name="uq_solicitacao_email_faculdade"),
+    )
+
+    faculdade    = relationship("Faculdade", foreign_keys=[faculdade_id])
+    usuario      = relationship("Usuario",   foreign_keys=[usuario_id])
+    revisado_por = relationship("Usuario",   foreign_keys=[revisado_por_id])

@@ -125,6 +125,91 @@ export class ApiService {
     return this.http.delete<any>(`${this.apiUrl}/cursos/${id}`);
   }
 
+  // Cursos da Instituição
+  getInstituicaoCursos(): Observable<AdminCourse[]> {
+    return this.http.get<AdminCourse[] | null>(`${this.apiUrl}/instituicoes/minha/cursos`).pipe(
+      map((cursos) => Array.isArray(cursos) ? cursos.map((curso) => this.normalizeCurso(curso) as AdminCourse) : []),
+      catchError((error) => {
+        console.error('Erro ao buscar cursos da instituição:', error);
+        return of([]);
+      })
+    );
+  }
+
+  createInstituicaoCurso(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/instituicoes/minha/cursos`, data);
+  }
+
+  updateInstituicaoCurso(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/instituicoes/minha/cursos/${id}`, data);
+  }
+
+  deleteInstituicaoCurso(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/instituicoes/minha/cursos/${id}`);
+  }
+
+  createInstituicaoAula(cursoId: number, data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/instituicoes/minha/cursos/${cursoId}/aulas`, data);
+  }
+
+  // Aulas da Instituição
+  getInstituicaoAulas(cursoId?: number): Observable<any[]> {
+    let params = new HttpParams();
+    if (cursoId) params = params.set('curso_id', cursoId.toString());
+    return this.http.get<any[]>(`${this.apiUrl}/instituicoes/minha/aulas`, { params }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar aulas da instituição:', error);
+        return of([]);
+      })
+    );
+  }
+
+  getInstituicaoAula(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/instituicoes/minha/aulas/${id}`).pipe(
+      catchError(() => of(null))
+    );
+  }
+
+  updateInstituicaoAula(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/instituicoes/minha/aulas/${id}`, data);
+  }
+
+  deleteInstituicaoAula(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/instituicoes/minha/aulas/${id}`);
+  }
+
+  deleteInstituicaoVideo(aulaId: number, videoId: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/instituicoes/minha/aulas/${aulaId}/video/${videoId}`);
+  }
+
+  getInstituicaoAlunos(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/instituicoes/minha/alunos`);
+  }
+
+  createInstituicaoAluno(data: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/instituicoes/minha/alunos`, data);
+  }
+
+  updateInstituicaoAluno(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/instituicoes/minha/alunos/${id}`, data);
+  }
+
+  deleteInstituicaoAluno(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/instituicoes/minha/alunos/${id}`);
+  }
+
+  getInstituicaoNotas(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/instituicoes/minha/notas`);
+  }
+
+  updateInstituicaoNota(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/instituicoes/minha/notas/${id}`, data);
+  }
+
+  getInstituicaoRespostasAluno(provaId: number, usuarioId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/instituicoes/minha/notas/respostas/${provaId}/${usuarioId}`);
+  }
+
   inscreverCurso(cursoId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/cursos/${cursoId}/inscrever`, {});
   }

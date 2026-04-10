@@ -9,8 +9,8 @@ from sqlalchemy import inspect, text
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import CourseRequest, Instituicao
-from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades
+from app.models import CourseRequest, Instituicao, Faculdade, VinculoAlunoFaculdade, SolicitacaoCadastro
+from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,9 @@ def ensure_schema_updates():
     # Criar tabelas se não existirem
     CourseRequest.__table__.create(bind=engine, checkfirst=True)
     Instituicao.__table__.create(bind=engine, checkfirst=True)
+    Faculdade.__table__.create(bind=engine, checkfirst=True)
+    VinculoAlunoFaculdade.__table__.create(bind=engine, checkfirst=True)
+    SolicitacaoCadastro.__table__.create(bind=engine, checkfirst=True)
 
 
 Base.metadata.create_all(bind=engine)
@@ -74,6 +77,7 @@ app.include_router(requests.router, prefix="/api/requests", tags=["Solicitacoes"
 app.include_router(convites.router, prefix="/api/convites", tags=["Convites"])
 app.include_router(instituicao.router, prefix="/api", tags=["Instituições"])
 app.include_router(faculdades.router, prefix="/api/faculdades", tags=["Faculdades"])
+app.include_router(cadastro.router,   prefix="/api/cadastro",   tags=["Cadastro Público"])
 
 
 @app.get("/health", tags=["Health"])

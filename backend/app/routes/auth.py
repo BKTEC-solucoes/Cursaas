@@ -133,6 +133,35 @@ def get_current_super_admin(
         )
     return current_user
 
+
+def get_current_faculdade_id(
+    current_user: Usuario = Depends(get_current_user),
+) -> Optional[int]:
+    """
+    Retorna o faculdade_id do usuário autenticado.
+    Super admins retornam None (acesso a todos os tenants).
+    Qualquer outro usuário deve ter faculdade_id definido.
+    """
+    from app.models import AdminRoleEnum as ModelAdminRoleEnum
+    if current_user.admin_role == ModelAdminRoleEnum.super_admin:
+        return None
+    return current_user.faculdade_id
+
+
+def require_tenant(
+    faculdade_id: Optional[int] = Depends(get_current_faculdade_id),
+) -> int:
+    """
+    Dependency que garante que o usuário pertence a um tenant específico.
+    Rejeita super_admins sem faculdade (use get_current_faculdade_id para eles).
+    """
+    if faculdade_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operação requer vínculo com uma faculdade",
+        )
+    return faculdade_id
+
 @router.get("/check-email")
 def check_email(
     email: str,
@@ -172,6 +201,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
             "admin_role": user.admin_role.value if user.admin_role else None,
             "user_id": user.id,
             "nome": user.nome,
+            "faculdade_id": user.faculdade_id,
         }
     )
     
@@ -185,9 +215,12 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 def registro(usuario_data: UsuarioCreateSimples, db: Session = Depends(get_db)):
     """
     Endpoint para registro de novo usuário (aluno).
-    Aceita apenas: nome, email, senha.
-    Retorna um token JWT e informações do usuário criado.
+    Aceita: nome, email, senha, faculdade_id.
+    Cria o usuário e uma solicitação de cadastro pendente para o super admin aprovar.
+    Retorna um token JWT — o aluno pode fazer login, mas só verá cursos após aprovação.
     """
+    from app.models import Faculdade, SolicitacaoCadastro, SolicitacaoStatusEnum
+
     # Verificar se o email já existe
     existing_user = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
     if existing_user:
@@ -195,21 +228,44 @@ def registro(usuario_data: UsuarioCreateSimples, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email já registrado"
         )
-    
-    # Criar novo usuário
+
+    # Verificar se a faculdade existe e está ativa
+    faculdade = db.query(Faculdade).filter(
+        Faculdade.id == usuario_data.faculdade_id,
+        Faculdade.ativa == True,
+    ).first()
+    if not faculdade:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Faculdade não encontrada ou inativa",
+        )
+
+    # Criar novo usuário com faculdade_id (sem vínculo ativo ainda)
     user = AuthService.create_user(
         db=db,
         email=usuario_data.email,
         nome=usuario_data.nome,
         senha=usuario_data.senha,
-        role="aluno"
+        role="aluno",
+        faculdade_id=usuario_data.faculdade_id,
     )
-    
+
+    # Criar solicitação de cadastro para o super admin aprovar
+    solicitacao = SolicitacaoCadastro(
+        nome=user.nome,
+        email=user.email,
+        faculdade_id=usuario_data.faculdade_id,
+        usuario_id=user.id,
+        status=SolicitacaoStatusEnum.pendente,
+    )
+    db.add(solicitacao)
+    db.commit()
+
     # Criar token de acesso
     access_token = AuthService.create_access_token(
-        data={"sub": user.email, "role": user.role, "user_id": user.id, "nome": user.nome}
+        data={"sub": user.email, "role": user.role, "user_id": user.id, "nome": user.nome, "faculdade_id": user.faculdade_id}
     )
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -476,6 +532,34 @@ def editar_admin(
     db.refresh(admin)
     
     return UsuarioResponse.from_orm(admin)
+
+
+@router.delete("/admins/{admin_id}", status_code=status.HTTP_204_NO_CONTENT)
+def excluir_admin(
+    admin_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_super_admin),
+):
+    """
+    Remove permanentemente um administrador.
+    Apenas Super Admin pode executar. Não é possível excluir a si mesmo.
+    """
+    if current_user.id == admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Você não pode excluir sua própria conta"
+        )
+
+    admin = db.query(Usuario).filter(Usuario.id == admin_id, Usuario.role == RoleEnum.admin).first()
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Administrador não encontrado"
+        )
+
+    db.query(AdminCurso).filter(AdminCurso.admin_id == admin_id).delete()
+    db.delete(admin)
+    db.commit()
 
 
 @router.post("/upload-profile-picture")

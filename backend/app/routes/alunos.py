@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models import InscricaoCurso, Usuario, Curso, Aula, Prova, RoleEnum
 from app.schemas import CursoDetailResponse, UsuarioResponse, UsuarioDetailResponse, UsuarioCreate, UsuarioUpdate
 from app.routes.auth import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.auth_service import AuthService
 from app.services.admin_course_access import get_allowed_course_ids
 
@@ -20,18 +21,23 @@ def _require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario
 def list_alunos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
-    """Lista todos os alunos (admin)"""
+    """Lista alunos. Filtra pelo tenant do admin autenticado (super_admin vê todos)."""
     if current_user.role != RoleEnum.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
 
+    query = db.query(Usuario).filter(Usuario.role == RoleEnum.aluno)
+    query = tc.filter_query(query, Usuario.faculdade_id)
+
     allowed = get_allowed_course_ids(db, current_user)
-    if allowed is None:
-        return db.query(Usuario).filter(Usuario.role == RoleEnum.aluno).order_by(Usuario.nome).all()
-    if not allowed:
-        return []
-    aluno_ids = {aid for (aid,) in db.query(InscricaoCurso.usuario_id).filter(InscricaoCurso.curso_id.in_(allowed)).distinct().all()}
-    return db.query(Usuario).filter(Usuario.role == RoleEnum.aluno, Usuario.id.in_(aluno_ids)).order_by(Usuario.nome).all()
+    if allowed is not None:
+        if not allowed:
+            return []
+        aluno_ids = {aid for (aid,) in db.query(InscricaoCurso.usuario_id).filter(InscricaoCurso.curso_id.in_(allowed)).distinct().all()}
+        query = query.filter(Usuario.id.in_(aluno_ids))
+
+    return query.order_by(Usuario.nome).all()
 
 
 @router.post("/", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)

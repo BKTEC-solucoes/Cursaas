@@ -94,6 +94,7 @@ class AuthService:
         numero_matricula: str = None,
         turma: str = None,
         historico_escolar: str = None,
+        faculdade_id: Optional[int] = None,
     ) -> Usuario:
         """Cria um novo usuário"""
         hashed_password = AuthService.hash_password(senha)
@@ -128,6 +129,7 @@ class AuthService:
             numero_matricula=numero_matricula,
             turma=turma,
             historico_escolar=historico_escolar,
+            faculdade_id=faculdade_id,
         )
         
         db.add(db_user)

@@ -12,6 +12,7 @@ from app.schemas import (
     RespostaResponse, ProvaSubmitRequest, ProvaResultResponse
 )
 from app.routes.auth import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
@@ -24,6 +25,7 @@ router = APIRouter()
 async def list_provas(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
+    tc: TenantContext = Depends(tenant_context),
     curso_id: int = Query(None, description="Filtrar por ID do curso"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100)
@@ -57,6 +59,9 @@ async def list_provas(
     
     if curso_id:
         query = query.filter(Prova.curso_id == curso_id)
+
+    # Filtro de tenant
+    query = tc.filter_query(query, Prova.faculdade_id)
 
     if current_user.role == "admin":
         allowed = get_allowed_course_ids(db, current_user)
@@ -92,7 +97,8 @@ async def list_provas(
 async def create_prova(
     prova: ProvaCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Criar uma nova prova (apenas administrador).
@@ -136,6 +142,7 @@ async def create_prova(
     if not curso:
         raise HTTPException(status_code=404, detail=f"Curso {prova.curso_id} não encontrado")
 
+    tc.assert_access(curso.faculdade_id)
     ensure_admin_can_access_course(db, current_user, prova.curso_id)
     
     # Criar nova prova (sem questões)
@@ -176,7 +183,8 @@ async def create_prova(
 async def get_prova(
     prova_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obter detalhes de uma prova específica com todas as questões e opções.
@@ -196,6 +204,9 @@ async def get_prova(
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
 
+    # Bloqueia acesso cruzado entre tenants
+    tc.assert_access(prova.faculdade_id)
+
     if current_user.role == "admin":
         ensure_admin_can_access_course(db, current_user, prova.curso_id)
     
@@ -206,7 +217,8 @@ async def update_prova(
     prova_id: int,
     prova_update: ProvaUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Atualizar uma prova existente (apenas administrador).
@@ -245,6 +257,7 @@ async def update_prova(
     if not db_prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
 
+    tc.assert_access(db_prova.faculdade_id)
     ensure_admin_can_access_course(db, current_user, db_prova.curso_id)
     
     # Validar datas se fornecidas
@@ -307,7 +320,8 @@ async def update_prova(
 async def delete_prova(
     prova_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Deletar uma prova e todas as questões associadas (apenas administrador).
@@ -335,6 +349,7 @@ async def delete_prova(
     if not db_prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
 
+    tc.assert_access(db_prova.faculdade_id)
     ensure_admin_can_access_course(db, current_user, db_prova.curso_id)
     
     # Deletar (cascade delete remove questões, opções e respostas)
@@ -350,7 +365,8 @@ async def create_questao(
     prova_id: int,
     questao: QuestaoCreateRequest,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Criar uma nova questão em uma prova (apenas administrador).
@@ -384,6 +400,8 @@ async def create_questao(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     # Criar questão com prova_id
     questao_data = questao.model_dump()
@@ -401,7 +419,8 @@ async def update_questao(
     questao_id: int,
     questao_update: QuestaoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Atualizar uma questão (apenas administrador).
@@ -432,6 +451,8 @@ async def update_questao(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     # Buscar questão
     db_questao = db.query(Questao).filter(
@@ -457,7 +478,8 @@ async def delete_questao(
     prova_id: int,
     questao_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Deletar uma questão (apenas administrador).
@@ -482,6 +504,8 @@ async def delete_questao(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     # Buscar questão
     db_questao = db.query(Questao).filter(
@@ -509,7 +533,8 @@ async def create_opcao(
     questao_id: int,
     opcao: OpcaoRespostaCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Criar uma opção de resposta para uma questão (apenas administrador).
@@ -539,6 +564,8 @@ async def create_opcao(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     # Verificar questão
     questao = db.query(Questao).filter(
@@ -563,7 +590,8 @@ async def delete_opcao(
     questao_id: int,
     opcao_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Deletar uma opção de resposta (apenas administrador).
@@ -586,6 +614,8 @@ async def delete_opcao(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     # Verificar questão
     questao = db.query(Questao).filter(
@@ -617,7 +647,8 @@ async def submit_respostas(
     prova_id: int,
     submission: ProvaSubmitRequest,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Submeter respostas para uma prova (apenas alunos).
@@ -649,6 +680,8 @@ async def submit_respostas(
     prova = db.query(Prova).filter(Prova.id == prova_id).first()
     if not prova:
         raise HTTPException(status_code=404, detail=f"Prova {prova_id} não encontrada")
+
+    tc.assert_access(prova.faculdade_id)
     
     if not prova.ativo:
         raise HTTPException(status_code=400, detail="Prova não está ativa")

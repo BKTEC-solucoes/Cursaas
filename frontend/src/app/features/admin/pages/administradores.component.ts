@@ -479,6 +479,9 @@ interface ConviteItem {
                     >
                       📚 Cursos
                     </button>
+                    <button type="button" class="btn-delete" (click)="excluirAdmin(admin)" title="Excluir administrador">
+                      🗑️ Excluir
+                    </button>
                   </td>
                 </tr>
                 <!-- Painel inline de gerenciamento de cursos -->
@@ -936,6 +939,29 @@ interface ConviteItem {
 
     .btn-cursos.active {
       background: #6c3483;
+    }
+
+    .btn-delete {
+      padding: 6px 12px;
+      background: #b42318;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-left: 6px;
+    }
+
+    .btn-delete:hover {
+      background: #991b1b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(180, 35, 24, 0.3);
+    }
+
+    .btn-delete:active {
+      transform: translateY(0);
     }
 
     .cursos-panel-row td {
@@ -1688,6 +1714,25 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
           this.erroCursos = err?.error?.detail ?? 'Erro ao salvar cursos.';
         }
       });
+  }
+
+  excluirAdmin(admin: AdminResumo): void {
+    if (!confirm(`Excluir o administrador "${admin.nome}" permanentemente? Esta ação não pode ser desfeita.`)) return;
+
+    this.http.delete(
+      `http://localhost:8000/api/auth/admins/${admin.id}`,
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: () => {
+        this.admins = this.admins.filter(a => a.id !== admin.id);
+        if (this.editandoAdminId === admin.id) {
+          this.editandoAdminId = null;
+        }
+      },
+      error: (err) => {
+        alert(err?.error?.detail ?? 'Erro ao excluir administrador.');
+      }
+    });
   }
 
   editarAdmin(admin: AdminResumo): void {

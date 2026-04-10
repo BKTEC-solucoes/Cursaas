@@ -15,6 +15,7 @@ import { permissionGuard } from '../../core/guards/permission.guard';
 import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
 import { AdminInstituicoesComponent } from './pages/instituicoes.component';
 import { AdminInstituicaoDetalheComponent } from './pages/instituicao-detalhe.component';
+import { AdminCadastrosComponent } from './pages/cadastros.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -100,6 +101,10 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'solicitacoes',
         component: AdminSolicitacoesComponent
+      },
+      {
+        path: 'cadastros',
+        component: AdminCadastrosComponent
       },
       {
         path: 'instituicoes',

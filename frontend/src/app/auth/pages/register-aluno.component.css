@@ -42,7 +42,8 @@ label {
   font-size: 14px;
 }
 
-input {
+input,
+select {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -50,9 +51,11 @@ input {
   font-size: 14px;
   box-sizing: border-box;
   transition: border-color 0.3s;
+  background: white;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
@@ -126,7 +129,7 @@ input:focus {
 
 .success-icon {
   font-size: 60px;
-  color: #4caf50;
+  color: #f59e0b;
   margin-bottom: 20px;
 }
 
@@ -137,8 +140,14 @@ input:focus {
 }
 
 .success-message p {
-  color: #999;
+  color: #555;
   font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.redirect-info {
+  color: #999 !important;
+  font-size: 12px !important;
 }
 
 .back-link {

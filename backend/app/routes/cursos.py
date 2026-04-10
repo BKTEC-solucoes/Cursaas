@@ -1,10 +1,10 @@
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Curso, InscricaoCurso, Usuario, AdminCurso, AdminRoleEnum, StatusCursoEnum
+from app.models import Curso, InscricaoCurso, Usuario, AdminCurso, AdminRoleEnum, StatusCursoEnum, Aula, RoleEnum, VinculoAlunoFaculdade, VinculoStatusEnum
 from app.schemas import (
     CursoAdminResponse,
     CursoCreate,
@@ -12,8 +12,10 @@ from app.schemas import (
     CursoResponse,
     CursoDetailResponse,
     InscricaoCursoResponse,
+    AulaDetailResponse,
 )
-from app.routes.auth import get_current_user, get_current_admin
+from app.routes.auth import get_current_user, get_current_admin, _resolve_request_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
@@ -48,12 +50,25 @@ def _list_public_courses(db: Session) -> list[Curso]:
 def list_cursos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
-    """Lista todos os cursos ativos. Admin n\u00e3o-super enxerga apenas cursos vinculados."""
+    """Lista cursos ativos. Filtra pelo tenant do usuário autenticado."""
+    # Alunos sem vínculo ativo com a faculdade ainda não têm acesso liberado
+    if current_user.role == RoleEnum.aluno:
+        vinculo = db.query(VinculoAlunoFaculdade).filter(
+            VinculoAlunoFaculdade.usuario_id == current_user.id,
+            VinculoAlunoFaculdade.status == VinculoStatusEnum.ativo,
+        ).first()
+        if not vinculo:
+            return []
+
     query = db.query(Curso).filter(
         Curso.ativo == True,
         Curso.status == StatusCursoEnum.aprovado,
     )
+
+    # Filtro de tenant
+    query = tc.filter_query(query, Curso.faculdade_id)
 
     allowed = get_allowed_course_ids(db, current_user)
     if allowed is not None:
@@ -66,9 +81,19 @@ def list_cursos(
 
 
 @router.get("/catalogo", response_model=list[CursoResponse])
-def list_catalogo(db: Session = Depends(get_db)):
+def list_catalogo(
+    request: Request,
+    db: Session = Depends(get_db),
+):
     try:
-        cursos = _list_public_courses(db)
+        usuario = _resolve_request_user(request, db)
+        query = db.query(Curso).filter(Curso.ativo == True, Curso.status == StatusCursoEnum.aprovado)
+
+        # Filtra pelo tenant do aluno logado
+        if usuario is not None and usuario.role == RoleEnum.aluno and usuario.faculdade_id is not None:
+            query = query.filter(Curso.faculdade_id == usuario.faculdade_id)
+
+        cursos = query.order_by(Curso.data_criacao.desc()).all()
         print(f"[cursos] list_catalogo retornou {len(cursos)} curso(s)")
         result = []
         for curso in cursos:
@@ -151,7 +176,11 @@ def create_curso(
 
 
 @router.get("/{curso_id}", response_model=CursoDetailResponse)
-def get_curso(curso_id: int, db: Session = Depends(get_db)):
+def get_curso(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    tc: TenantContext = Depends(tenant_context),
+):
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
     if not curso:
         raise HTTPException(
@@ -164,6 +193,9 @@ def get_curso(curso_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Curso {curso_id} nao encontrado",
         )
+
+    # Bloqueia acesso cruzado entre tenants
+    tc.assert_access(curso.faculdade_id)
 
     return CursoDetailResponse.model_validate(curso)
 
@@ -278,3 +310,38 @@ def list_alunos_curso(
     current_user: Usuario = Depends(get_current_admin),
 ):
     return {"message": f"Listar alunos do curso {curso_id} - TODO"}
+
+
+@router.get("/{curso_id}/aulas", response_model=list[AulaDetailResponse])
+def list_aulas_do_curso(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
+):
+    """
+    Lista as aulas ativas de um curso.
+
+    - Valida se o curso existe (404 se não encontrado).
+    - Bloqueia acesso ao curso de outro tenant (403).
+    - Super admins vêem aulas de qualquer faculdade.
+    """
+    # 1. Verificar se o curso existe
+    curso = db.query(Curso).filter(Curso.id == curso_id).first()
+    if not curso:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Curso {curso_id} não encontrado",
+        )
+
+    # 2. Bloquear acesso cruzado entre tenants
+    tc.assert_access(curso.faculdade_id)
+
+    # 3. Buscar aulas do curso
+    aulas = (
+        db.query(Aula)
+        .filter(Aula.curso_id == curso_id, Aula.ativo == True)
+        .order_by(Aula.data_aula)
+        .all()
+    )
+    return [AulaDetailResponse.model_validate(a) for a in aulas]

@@ -31,6 +31,12 @@ export const routes: Routes = [
     loadChildren: () => import('./features/aluno/aluno.routes').then(m => m.ALUNO_ROUTES)
   },
   {
+    path: 'instituicao',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['instituicao'] },
+    loadChildren: () => import('./features/instituicao/instituicao.routes').then(m => m.INSTITUICAO_ROUTES)
+  },
+  {
     path: '**',
     redirectTo: '/auth/login'
   }

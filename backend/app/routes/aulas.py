@@ -9,6 +9,7 @@ import shutil
 from pathlib import Path
 from app.config import settings
 from app.routes.auth import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
@@ -18,6 +19,7 @@ def list_aulas(
     curso_id: int = None,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Lista todas as aulas ativas.
@@ -28,8 +30,16 @@ def list_aulas(
     **Retorna:**
     - Lista de aulas com ID, título, data, duração, status e vídeos associados
     """
-    query = db.query(Aula).filter(Aula.ativo == True)
-    
+    # Join com Curso para aplicar filtro de tenant (Aula não tem faculdade_id direto)
+    query = (
+        db.query(Aula)
+        .join(Curso, Aula.curso_id == Curso.id)
+        .filter(Aula.ativo == True)
+    )
+
+    # Filtro de tenant via Curso
+    query = tc.filter_query(query, Curso.faculdade_id)
+
     if curso_id:
         query = query.filter(Aula.curso_id == curso_id)
 
@@ -48,6 +58,7 @@ def create_aula(
     aula_data: AulaCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar aulas")
@@ -60,6 +71,7 @@ def create_aula(
             detail=f"Curso {aula_data.curso_id} não encontrado"
         )
 
+    tc.assert_access(curso.faculdade_id)
     ensure_admin_can_access_course(db, current_user, aula_data.curso_id)
 
     # Criar nova aula
@@ -83,6 +95,7 @@ def get_aula(
     aula_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém detalhes completos de uma aula incluindo vídeos.
@@ -103,7 +116,11 @@ def get_aula(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aula {aula_id} não encontrada"
         )
-    
+
+    # Bloquear acesso se o curso da aula pertence a outro tenant
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+    if curso:
+        tc.assert_access(curso.faculdade_id)
 
     if current_user.role == "admin":
         ensure_admin_can_access_course(db, current_user, aula.curso_id)
@@ -116,6 +133,7 @@ def update_aula(
     aula_data: AulaUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem atualizar aulas")
@@ -128,6 +146,9 @@ def update_aula(
             detail=f"Aula {aula_id} não encontrada"
         )
 
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+    if curso:
+        tc.assert_access(curso.faculdade_id)
     ensure_admin_can_access_course(db, current_user, aula.curso_id)
 
     # Atualizar apenas os campos fornecidos
@@ -145,6 +166,7 @@ def delete_aula(
     aula_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem deletar aulas")
@@ -157,6 +179,9 @@ def delete_aula(
             detail=f"Aula {aula_id} não encontrada"
         )
 
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+    if curso:
+        tc.assert_access(curso.faculdade_id)
     ensure_admin_can_access_course(db, current_user, aula.curso_id)
 
     db.delete(aula)
@@ -170,6 +195,7 @@ def upload_video(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem fazer upload de vídeo")
@@ -182,6 +208,9 @@ def upload_video(
             detail=f"Aula {aula_id} não encontrada"
         )
 
+    curso_aula = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+    if curso_aula:
+        tc.assert_access(curso_aula.faculdade_id)
     ensure_admin_can_access_course(db, current_user, aula.curso_id)
 
     # Validar extensão do arquivo

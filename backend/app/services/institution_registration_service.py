@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,6 +21,19 @@ class InstitutionRegistrationService:
         self.db = db
         self.repository = InstitutionRepository(db)
 
+    # ------------------------------------------------------------------
+    # Gera slug único a partir do nome da instituição
+    # ------------------------------------------------------------------
+    def _generate_slug(self, nome: str) -> str:
+        normalised = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
+        slug_base = re.sub(r"[^a-z0-9]+", "-", normalised.lower()).strip("-")
+        slug = slug_base
+        counter = 2
+        while self.repository.get_faculdade_by_slug(slug):
+            slug = f"{slug_base}-{counter}"
+            counter += 1
+        return slug
+
     async def register(self, dados: InstituicaoCreate) -> TokenResponse:
         email = dados.email.strip().lower()
         cnpj = self._format_cnpj(dados.cnpj)
@@ -31,13 +45,29 @@ class InstitutionRegistrationService:
         if self.repository.get_institution_by_cnpj(cnpj):
             raise InstitutionRegistrationError("Ja existe uma instituicao cadastrada com este CNPJ.")
 
+        if self.repository.get_faculdade_by_cnpj(cnpj):
+            raise InstitutionRegistrationError("Ja existe uma instituicao cadastrada com este CNPJ.")
+
         try:
             nome_admin = (dados.nome_responsavel or dados.nome_instituicao).strip()
+            nome_inst = dados.nome_instituicao.strip()
+
+            # Modelo legado (mantemos para compatibilidade)
             instituicao = self.repository.create_institution(
-                nome_instituicao=dados.nome_instituicao.strip(),
+                nome_instituicao=nome_inst,
                 cnpj=cnpj,
                 contato=contato,
                 endereco=dados.endereco.strip(),
+            )
+
+            # Novo modelo multi-tenant (exibido no painel admin)
+            slug = self._generate_slug(nome_inst)
+            faculdade = self.repository.create_faculdade(
+                nome=nome_inst,
+                slug=slug,
+                cnpj=cnpj,
+                email_contato=email,
+                telefone=contato,
             )
 
             senha_hash = AuthService.hash_password(dados.senha)
@@ -46,10 +76,12 @@ class InstitutionRegistrationService:
                 email=email,
                 senha_hash=senha_hash,
                 instituicao_id=instituicao.id,
+                faculdade_id=faculdade.id,
             )
 
             self.db.commit()
             self.db.refresh(instituicao)
+            self.db.refresh(faculdade)
             self.db.refresh(usuario)
         except IntegrityError:
             self.db.rollback()
@@ -68,6 +100,7 @@ class InstitutionRegistrationService:
                 "user_id": usuario.id,
                 "nome": usuario.nome,
                 "instituicao_id": usuario.instituicao_id,
+                "faculdade_id": usuario.faculdade_id,
             }
         )
 

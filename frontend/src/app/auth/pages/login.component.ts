@@ -44,6 +44,8 @@ export class LoginComponent {
           this.router.navigate(['/admin']);
         } else if (user?.role === 'aluno') {
           this.router.navigate(['/aluno']);
+        } else if (user?.role === 'instituicao') {
+          this.router.navigate(['/instituicao']);
         }
       },
       error: (err) => {

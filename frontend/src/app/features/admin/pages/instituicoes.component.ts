@@ -6,12 +6,15 @@ import { Router } from '@angular/router';
 
 export interface Instituicao {
   id: number;
-  nome_instituicao: string;
-  cnpj: string;
-  contato: string;
-  endereco: string;
+  nome: string;
+  slug: string;
+  cnpj: string | null;
+  email_contato: string | null;
+  telefone: string | null;
+  dominio_email: string | null;
   ativa: boolean;
   aprovada: boolean;
+  plano: string;
   data_criacao: string;
   data_atualizacao: string;
 }
@@ -82,10 +85,10 @@ interface PageResponse {
             <tr *ngFor="let inst of instituicoes">
               <td class="col-id">{{ inst.id }}</td>
               <td>
-                <div class="cell-nome">{{ inst.nome_instituicao }}</div>
-                <div class="cell-email">{{ inst.contato }}</div>
+                <div class="cell-nome">{{ inst.nome }}</div>
+                <div class="cell-email">{{ inst.email_contato }}</div>
               </td>
-              <td class="col-cnpj">{{ inst.cnpj }}</td>
+              <td class="col-cnpj">{{ inst.cnpj || '—' }}</td>
               <td>
                 <span class="badge" [ngClass]="'badge-' + (inst.aprovada ? 'aprovado' : 'pendente')">
                   {{ inst.aprovada ? 'Aprovado' : 'Pendente' }}

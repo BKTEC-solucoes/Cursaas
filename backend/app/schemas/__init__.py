@@ -7,8 +7,136 @@ from enum import Enum as PyEnum
 # ==================== ENUMS ====================
 
 class RoleEnum(str, PyEnum):
-    admin = "admin"
-    aluno = "aluno"
+    admin       = "admin"
+    aluno       = "aluno"
+    instituicao = "instituicao"
+
+class PlanoFaculdadeEnum(str, PyEnum):
+    basico       = "basico"
+    profissional = "profissional"
+    enterprise   = "enterprise"
+
+class VinculoStatusEnum(str, PyEnum):
+    ativo     = "ativo"
+    suspenso  = "suspenso"
+    desligado = "desligado"
+
+class SolicitacaoStatusEnum(str, PyEnum):
+    pendente = "pendente"
+    aprovada = "aprovada"
+    recusada = "recusada"
+
+# ==================== SCHEMAS DE SOLICITAÇÃO DE CADASTRO ====================
+
+class SolicitacaoCadastroCreate(BaseModel):
+    """Payload do auto-cadastro público. Não requer autenticação."""
+    nome:         str      = Field(..., min_length=2, max_length=255)
+    email:        EmailStr
+    faculdade_id: int      = Field(..., gt=0, description="ID da faculdade onde deseja ingressar")
+    telefone:     Optional[str] = Field(None, max_length=20)
+    cpf_rg:       Optional[str] = Field(None, max_length=30)
+    mensagem:     Optional[str] = Field(None, max_length=1000)
+
+class SolicitacaoCadastroResponse(BaseModel):
+    id:            int
+    nome:          str
+    email:         str
+    faculdade_id:  int
+    status:        SolicitacaoStatusEnum
+    criado_em:     datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SolicitacaoCadastroAdminResponse(BaseModel):
+    """Schema completo para listagem/detalhe pelo super admin."""
+    id:              int
+    nome:            str
+    email:           str
+    telefone:        Optional[str]
+    cpf_rg:          Optional[str]
+    mensagem:        Optional[str]
+    faculdade_id:    int
+    faculdade_nome:  Optional[str] = None
+    status:          SolicitacaoStatusEnum
+    motivo_recusa:   Optional[str]
+    usuario_id:      Optional[int]
+    criado_em:       datetime
+    revisado_em:     Optional[datetime]
+    revisado_por_id: Optional[int]
+
+    model_config = {"from_attributes": True}
+
+# ==================== SCHEMAS DE FACULDADE ====================
+
+class FaculdadeCreate(BaseModel):
+    nome: str = Field(..., min_length=2, max_length=255)
+    slug: str = Field(..., min_length=2, max_length=100, pattern=r'^[a-z0-9-]+$',
+                      description="Identificador único URL-friendly, apenas letras minúsculas, números e hífens")
+    cnpj: Optional[str] = Field(None, max_length=18)
+    email_contato: Optional[EmailStr] = None
+    telefone: Optional[str] = Field(None, max_length=20)
+    logo_url: Optional[str] = Field(None, max_length=500)
+    dominio_email: Optional[str] = Field(None, max_length=100,
+                                          description="Ex: @faculdade.edu.br")
+    plano: PlanoFaculdadeEnum = PlanoFaculdadeEnum.basico
+
+class FaculdadeUpdate(BaseModel):
+    nome: Optional[str] = Field(None, min_length=2, max_length=255)
+    cnpj: Optional[str] = Field(None, max_length=18)
+    email_contato: Optional[EmailStr] = None
+    telefone: Optional[str] = Field(None, max_length=20)
+    logo_url: Optional[str] = Field(None, max_length=500)
+    dominio_email: Optional[str] = Field(None, max_length=100)
+    ativa: Optional[bool] = None
+    aprovada: Optional[bool] = None
+    plano: Optional[PlanoFaculdadeEnum] = None
+
+class FaculdadeResponse(BaseModel):
+    id: int
+    nome: str
+    slug: str
+    cnpj: Optional[str] = None
+    email_contato: Optional[str] = None
+    telefone: Optional[str] = None
+    logo_url: Optional[str] = None
+    dominio_email: Optional[str] = None
+    ativa: bool
+    aprovada: bool
+    plano: str
+    data_criacao: datetime
+    data_atualizacao: datetime
+
+    class Config:
+        from_attributes = True
+
+class FaculdadePageResponse(BaseModel):
+    items: List[FaculdadeResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+# ==================== SCHEMAS DE VÍNCULO ====================
+
+class VinculoCreate(BaseModel):
+    usuario_id: int
+    matricula: Optional[str] = Field(None, max_length=50)
+
+class VinculoUpdate(BaseModel):
+    matricula: Optional[str] = Field(None, max_length=50)
+    status: Optional[VinculoStatusEnum] = None
+
+class VinculoResponse(BaseModel):
+    id: int
+    usuario_id: int
+    faculdade_id: int
+    matricula: Optional[str] = None
+    status: str
+    data_vinculo: datetime
+
+    class Config:
+        from_attributes = True
 
 class AdminRoleEnum(str, PyEnum):
     super_admin = "super_admin"
@@ -105,10 +233,11 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioCreateSimples(BaseModel):
-    """Schema para registro simplificado de alunos (apenas nome, email, senha)"""
+    """Schema para registro simplificado de alunos"""
     nome: str = Field(..., min_length=1)
     email: EmailStr
     senha: str = Field(..., min_length=6)
+    faculdade_id: int = Field(..., gt=0, description="ID da faculdade à qual o aluno deseja se vincular")
 
 
 class AdminCreate(BaseModel):
@@ -216,6 +345,7 @@ class UsuarioResponse(UsuarioBase):
     admin_role: Optional[AdminRoleEnum] = None
     foto_perfil: Optional[str] = None
     instituicao_id: Optional[int] = None
+    faculdade_id: Optional[int] = None
     ativo: bool
     data_criacao: datetime
     

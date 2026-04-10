@@ -19,9 +19,10 @@ export interface UserInfo {
   id: number;
   nome: string;
   email: string;
-  role: 'admin' | 'aluno';
+  role: 'admin' | 'aluno' | 'instituicao';
   admin_role?: string | null;
   instituicao_id?: number | null;
+  faculdade_id?: number | null;
 }
 
 export interface GoogleLoginResponse {
@@ -120,6 +121,7 @@ export class AuthService {
       role: payload.role ?? 'aluno',
       admin_role: payload.admin_role ?? null,
       instituicao_id: payload.instituicao_id ?? null,
+      faculdade_id: payload.faculdade_id ?? null,
     };
   }
 
@@ -134,11 +136,12 @@ export class AuthService {
     return roles.includes(user.role);
   }
 
-  register(nome: string, email: string, senha: string): Observable<TokenResponse> {
+  register(nome: string, email: string, senha: string, faculdade_id?: number): Observable<TokenResponse> {
     return this.http.post<TokenResponse>(`${this.apiUrl}/auth/registro`, {
       nome,
       email,
-      senha
+      senha,
+      ...(faculdade_id !== undefined ? { faculdade_id } : {})
     }).pipe(
       tap(response => {
         localStorage.setItem('access_token', response.access_token);

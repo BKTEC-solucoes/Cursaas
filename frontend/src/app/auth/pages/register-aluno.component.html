@@ -1,9 +1,25 @@
 <div class="register-container">
   <div class="register-box">
     <h1>Cadastro de Aluno</h1>
-    <p class="subtitle">Preencha seus dados para criar uma conta</p>
+    <p class="subtitle">Preencha seus dados para solicitar acesso à plataforma</p>
     
     <form (ngSubmit)="register()" *ngIf="!success">
+      <div class="form-group">
+        <label for="faculdade">Faculdade</label>
+        <select
+          id="faculdade"
+          [(ngModel)]="faculdadeId"
+          name="faculdadeId"
+          [disabled]="carregandoFaculdades"
+          required
+        >
+          <option [ngValue]="null" disabled>
+            {{ carregandoFaculdades ? 'Carregando...' : 'Selecione sua faculdade' }}
+          </option>
+          <option *ngFor="let f of faculdades" [ngValue]="f.id">{{ f.nome }}</option>
+        </select>
+      </div>
+
       <div class="form-group">
         <label for="nome">Nome Completo</label>
         <input
@@ -82,16 +98,17 @@
       <button 
         type="submit" 
         class="submit-button" 
-        [disabled]="loading || emailEmUso || validandoEmail"
+        [disabled]="loading || emailEmUso || validandoEmail || !faculdadeId"
       >
-        {{ loading ? 'Criando conta...' : 'Criar Conta' }}
+        {{ loading ? 'Enviando solicitação...' : 'Criar Conta' }}
       </button>
     </form>
 
     <div *ngIf="success" class="success-message">
-      <div class="success-icon">✓</div>
-      <h2>Bem-vindo!</h2>
-      <p>Redirecionando para o dashboard...</p>
+      <div class="success-icon">⏳</div>
+      <h2>Solicitação enviada!</h2>
+      <p>Sua conta foi criada. Aguarde a aprovação do administrador para acessar os cursos.</p>
+      <p class="redirect-info">Você será redirecionado ao catálogo em instantes...</p>
     </div>
 
     <div class="back-link">

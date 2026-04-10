@@ -5,12 +5,15 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 interface Instituicao {
   id: number;
-  nome_instituicao: string;
-  cnpj: string;
-  contato: string;
-  endereco: string;
+  nome: string;
+  slug: string;
+  cnpj: string | null;
+  email_contato: string | null;
+  telefone: string | null;
+  dominio_email: string | null;
   ativa: boolean;
   aprovada: boolean;
+  plano: string;
   data_criacao: string;
   data_atualizacao: string;
 }
@@ -38,7 +41,7 @@ interface Instituicao {
         <!-- Card principal -->
         <div class="detail-card">
           <div class="card-header">
-            <div class="card-title">{{ inst.nome_instituicao }}</div>
+            <div class="card-title">{{ inst.nome }}</div>
             <span class="badge" [ngClass]="'badge-' + getStatus(inst)">
               {{ statusLabel(inst) }}
             </span>
@@ -46,12 +49,12 @@ interface Instituicao {
 
           <div class="fields-grid">
             <div class="field">
-              <div class="field-label">Contato</div>
-              <div class="field-value">{{ inst.contato }}</div>
+              <div class="field-label">E-mail</div>
+              <div class="field-value">{{ inst.email_contato || '—' }}</div>
             </div>
             <div class="field">
               <div class="field-label">CNPJ</div>
-              <div class="field-value mono">{{ inst.cnpj }}</div>
+              <div class="field-value mono">{{ inst.cnpj || '—' }}</div>
             </div>
             <div class="field">
               <div class="field-label">Solicitado em</div>
@@ -64,8 +67,8 @@ interface Instituicao {
               </div>
             </div>
             <div class="field span2">
-              <div class="field-label">Endereço / Informações adicionais</div>
-              <div class="field-value desc">{{ inst.endereco }}</div>
+              <div class="field-label">Domínio de e-mail / Informações adicionais</div>
+              <div class="field-value desc">{{ inst.dominio_email || '—' }}</div>
             </div>
           </div>
         </div>
@@ -332,10 +335,12 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
     if (!this.inst) return;
     this.processando = true;
 
+    const payload = acao === 'aprovar' ? { aprovada: true } : { aprovada: false };
+
     this.http
-      .put<Instituicao>(
-        `${this.apiUrl}/faculdades/${this.inst.id}/${acao}`,
-        {},
+      .patch<Instituicao>(
+        `${this.apiUrl}/faculdades/${this.inst.id}`,
+        payload,
         { headers: this.authHeaders() },
       )
       .subscribe({
@@ -356,7 +361,7 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
 
     this.http
       .patch<Instituicao>(
-        `${this.apiUrl}/faculdades/${this.inst.id}/acesso`,
+        `${this.apiUrl}/faculdades/${this.inst.id}`,
         { ativa: !this.inst.ativa },
         { headers: this.authHeaders() },
       )
