@@ -240,7 +240,7 @@ interface QuestaoResposta {
       flex: 1; min-width: 220px; padding: 10px 14px;
       border: 1px solid #ddd; border-radius: 6px; font-size: 14px;
     }
-    .filtro-input:focus { outline: none; border-color: #1a6b3c; }
+    .filtro-input:focus { outline: none; border-color: var(--primary); }
     .filtro-select {
       padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px;
       font-size: 14px; background: white; cursor: pointer;
@@ -260,7 +260,7 @@ interface QuestaoResposta {
 
     .aluno-nome { font-weight: 600; }
     .nota-valor { font-weight: 700; font-size: 15px; }
-    .nivel-excelente { color: #1a6b3c; }
+    .nivel-excelente { color: var(--primary); }
     .nivel-bom      { color: #2980b9; }
     .nivel-regular  { color: #d68910; }
     .nivel-insuficiente { color: #e74c3c; }
@@ -272,11 +272,11 @@ interface QuestaoResposta {
     .actions { white-space: nowrap; display: flex; gap: 6px; }
 
     .btn-view {
-      background: #1a6b3c; color: white; border: none;
+      background: var(--primary); color: white; border: none;
       padding: 6px 14px; border-radius: 5px; cursor: pointer;
       font-size: 13px; font-weight: 600; transition: background 0.2s;
     }
-    .btn-view:hover { background: #155c32; }
+    .btn-view:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
 
     .btn-edit {
       background: #2980b9; color: white; border: none;
@@ -290,7 +290,7 @@ interface QuestaoResposta {
     .error-msg { background: #fdf2f2; color: #c0392b; padding: 15px; border-radius: 6px; text-align: center; }
     .error-msg button { margin-top: 10px; padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; }
 
-    .spinner { display: inline-block; width: 36px; height: 36px; border: 4px solid #f3f3f3; border-top: 4px solid #1a6b3c; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* Modal */
@@ -317,32 +317,32 @@ interface QuestaoResposta {
       width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px;
       font-size: 20px; font-weight: 700; text-align: center; box-sizing: border-box; transition: border-color 0.2s;
     }
-    .nota-input:focus { outline: none; border-color: #1a6b3c; }
+    .nota-input:focus { outline: none; border-color: var(--primary); }
 
     .obs-input {
       width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px;
       font-size: 14px; resize: vertical; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s;
     }
-    .obs-input:focus { outline: none; border-color: #1a6b3c; }
+    .obs-input:focus { outline: none; border-color: var(--primary); }
 
     .modal-error { background: #fdf2f2; color: #c0392b; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-top: 10px; }
 
     .btn-cancelar { padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #555; cursor: pointer; font-size: 14px; font-weight: 600; }
     .btn-cancelar:hover { background: #f5f5f5; }
-    .btn-salvar { padding: 10px 24px; border: none; border-radius: 6px; background: #1a6b3c; color: white; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-salvar:hover:not(:disabled) { background: #155c32; }
+    .btn-salvar { padding: 10px 24px; border: none; border-radius: 6px; background: var(--primary); color: white; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .btn-salvar:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
     .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
 
     /* Questões no modal de respostas */
     .questao-resposta { border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
     .questao-resp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-    .questao-num { background: #1a6b3c; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .questao-num { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
     .questao-tipo-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .questao-tipo-badge.mc { background: #e3f2fd; color: #1976d2; }
     .questao-tipo-badge.diss { background: #f3e5f5; color: #7b1fa2; }
     .questao-pts-label { background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
     .questao-status { margin-left: auto; font-size: 13px; }
-    .correta { color: #1a6b3c; font-weight: 600; }
+    .correta { color: var(--primary); font-weight: 600; }
     .incorreta { color: #e74c3c; font-weight: 600; }
     .sem-resp { color: #999; }
     .pendente-text { color: #856404; }
@@ -351,9 +351,9 @@ interface QuestaoResposta {
     .opcoes-lista { display: flex; flex-direction: column; gap: 6px; }
     .opcao-linha { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee; font-size: 13px; }
     .opcao-linha.selecionada { border-color: #2980b9; background: #ebf5fb; }
-    .opcao-linha.gabarito:not(.selecionada) { border-color: #1a6b3c; background: #eafaf1; }
-    .opcao-linha.selecionada.gabarito { border-color: #1a6b3c; background: #eafaf1; }
-    .gabarito-label { margin-left: auto; font-size: 11px; color: #1a6b3c; font-weight: 600; }
+    .opcao-linha.gabarito:not(.selecionada) { border-color: var(--primary); background: #eafaf1; }
+    .opcao-linha.selecionada.gabarito { border-color: var(--primary); background: #eafaf1; }
+    .gabarito-label { margin-left: auto; font-size: 11px; color: var(--primary); font-weight: 600; }
     .opcao-marcador { width: 20px; text-align: center; flex-shrink: 0; }
 
     .resposta-dissertativa { margin-top: 8px; }

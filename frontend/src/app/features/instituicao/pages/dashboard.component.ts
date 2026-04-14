@@ -95,7 +95,7 @@ interface InstituicaoInfo {
     .dashboard { max-width: 1100px; margin: 0 auto; }
 
     .header-greet {
-      background: linear-gradient(135deg, #1a6b3c 0%, #2d9e5f 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
       padding: 36px 30px;
       border-radius: 12px;
@@ -126,7 +126,7 @@ interface InstituicaoInfo {
     }
     .stat-card.highlight { border-color: #f59e0b; }
     .stat-icon  { font-size: 32px; margin-bottom: 8px; }
-    .stat-value { font-size: 32px; font-weight: 700; color: #1a6b3c; margin-bottom: 4px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
     .stat-label { font-size: 13px; color: #6b7280; }
 
     .quick-actions h2 { font-size: 18px; font-weight: 600; color: #1f2937; margin: 0 0 16px; }
@@ -138,7 +138,7 @@ interface InstituicaoInfo {
       text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
       transition: all 0.2s; border: 2px solid transparent;
     }
-    .action-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); border-color: #2d9e5f; }
+    .action-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); border-color: var(--secondary); }
     .action-icon  { font-size: 36px; }
     .action-title { font-size: 14px; font-weight: 600; color: #1f2937; }
     .action-desc  { font-size: 12px; color: #6b7280; text-align: center; }

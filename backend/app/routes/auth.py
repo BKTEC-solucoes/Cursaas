@@ -45,10 +45,16 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Buscar usuário no banco
-    email = payload.get("email")
-    user = db.query(Usuario).filter(Usuario.email == email).first()
-    
+    # Buscar usuário no banco pelo ID (não pelo email, para evitar inconsistências)
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token sem identificador de usuário",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(Usuario).filter(Usuario.id == user_id).first()
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

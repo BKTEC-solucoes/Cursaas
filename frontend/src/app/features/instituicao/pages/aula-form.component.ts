@@ -200,7 +200,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
     .btn-voltar {
       background: none;
       border: none;
-      color: #1a6b3c;
+      color: var(--primary);
       cursor: pointer;
       font-size: .9rem;
       padding: 6px 0;
@@ -212,7 +212,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
       align-items: center;
       gap: 6px;
       padding: 8px 18px;
-      background: #1a6b3c;
+      background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 6px;
@@ -220,7 +220,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
       font-size: .9rem;
       font-weight: 600;
     }
-    .btn-primary:hover:not(:disabled) { background: #155c31; }
+    .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
     .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
     .btn-secondary {
       padding: 8px 16px;
@@ -354,7 +354,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
       border-radius: 50%;
       border: 2px solid #bbf7d0;
       background: #fff;
-      color: #1a6b3c;
+      color: var(--primary);
       font-size: 1rem;
       line-height: 1;
       cursor: pointer;
@@ -367,9 +367,9 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
     }
     .bloco-sep:hover .sep-btn { opacity: 1; }
     .sep-btn:hover {
-      background: #1a6b3c;
+      background: var(--primary);
       color: #fff;
-      border-color: #1a6b3c;
+      border-color: var(--primary);
     }
     .sep-menu {
       position: absolute;
@@ -395,7 +395,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
       white-space: nowrap;
       transition: background .12s;
     }
-    .sep-menu button:hover { background: #f0fdf4; color: #1a6b3c; border-color: #bbf7d0; }
+    .sep-menu button:hover { background: #f0fdf4; color: var(--primary); border-color: #bbf7d0; }
 
     .blocos-vazio {
       color: #94a3b8;
@@ -450,8 +450,8 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
     }
     .meta-field input:focus,
     .meta-field select:focus {
-      box-shadow: 0 0 0 2px #1a6b3c;
-      border-color: #1a6b3c;
+      box-shadow: 0 0 0 2px var(--primary);
+      border-color: var(--primary);
     }
     .form-error.meta-erro {
       background: #fef2f2;

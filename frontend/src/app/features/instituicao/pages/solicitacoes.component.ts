@@ -146,8 +146,8 @@ interface Solicitacao {
     .filtro-label { font-size: 13px; font-weight: 600; color: #374151; }
     .filtro-btns { display: flex; gap: 8px; }
     .filtro-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #d1d5db; background: white; color: #6b7280; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-    .filtro-btn:hover { border-color: #1a6b3c; color: #1a6b3c; }
-    .filtro-btn.ativo { background: #1a6b3c; border-color: #1a6b3c; color: white; font-weight: 600; }
+    .filtro-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .filtro-btn.ativo { background: var(--primary); border-color: var(--primary); color: white; font-weight: 600; }
 
     .empty { text-align: center; padding: 48px 0; }
     .empty-icon { font-size: 48px; margin-bottom: 12px; }
@@ -160,11 +160,11 @@ interface Solicitacao {
       overflow: hidden; cursor: pointer;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .solicitacao-card:hover { border-color: #1a6b3c; box-shadow: 0 2px 8px rgba(26,107,60,0.08); }
-    .solicitacao-card.expandido { border-color: #1a6b3c; }
+    .solicitacao-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 10%, transparent); }
+    .solicitacao-card.expandido { border-color: var(--primary); }
 
     .sol-header { display: flex; align-items: center; gap: 14px; padding: 16px; }
-    .sol-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #1a6b3c, #2d9e5f); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+    .sol-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
     .sol-info { flex: 1; min-width: 0; }
     .sol-nome { font-weight: 600; color: #1f2937; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sol-email { font-size: 13px; color: #6b7280; }
@@ -191,8 +191,8 @@ interface Solicitacao {
 
     .acoes-row { display: flex; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #f3f4f6; }
     .btn-aprovar, .btn-recusar { padding: 8px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-aprovar { background: #1a6b3c; color: white; }
-    .btn-aprovar:hover:not(:disabled) { background: #155c31; }
+    .btn-aprovar { background: var(--primary); color: white; }
+    .btn-aprovar:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
     .btn-recusar { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
     .btn-recusar:hover:not(:disabled) { background: #fee2e2; }
     .btn-aprovar:disabled, .btn-recusar:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -202,7 +202,7 @@ interface Solicitacao {
     .modal h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #1f2937; }
     .modal-sub { margin: 0 0 16px; font-size: 14px; color: #6b7280; }
     .modal textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; resize: vertical; outline: none; }
-    .modal textarea:focus { border-color: #1a6b3c; box-shadow: 0 0 0 3px rgba(26,107,60,0.1); }
+    .modal textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
     .modal-erro { margin-top: 8px; font-size: 13px; color: #dc2626; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     .btn-cancelar { padding: 8px 18px; border-radius: 8px; border: 1px solid #d1d5db; background: white; color: #374151; font-size: 14px; cursor: pointer; }

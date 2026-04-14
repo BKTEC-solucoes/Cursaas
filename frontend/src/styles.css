@@ -1,20 +1,704 @@
-* {
+/* ============================================================
+   CURSAAS — Design Token System
+   Gerado pelo ThemeService. NÃO edite manualmente os valores
+   dentro de :root — eles são sobrescritos em runtime.
+   Para ajustes de layout use as classes utilitárias abaixo.
+   ============================================================ */
+
+/* ── 1. Tokens base (light mode) ─────────────────────────────
+   Sobrescritos pelo ThemeService via element.style.setProperty()
+   ──────────────────────────────────────────────────────────── */
+:root {
+  /* Paleta principal */
+  --primary:          #1a6b3c;
+  --primary-color:    #1a6b3c; /* alias legado */
+  --secondary:        #0f4b2a;
+  --secondary-color:  #0f4b2a; /* alias legado */
+  --background:       #f0fdf4;
+  --background-color: #f0fdf4; /* alias legado */
+
+  /* Paleta dark (src para o dark-mode swap) */
+  --dark-primary-color:    #34d399;
+  --dark-secondary-color:  #10b981;
+  --dark-background-color: #0f172a;
+
+  /* Tipografia */
+  --font-family: Inter, system-ui, sans-serif;
+  --font-size-xs:  0.75rem;   /*  12px */
+  --font-size-sm:  0.875rem;  /*  14px */
+  --font-size-md:  1rem;      /*  16px */
+  --font-size-lg:  1.125rem;  /*  18px */
+  --font-size-xl:  1.25rem;   /*  20px */
+  --font-size-2xl: 1.5rem;    /*  24px */
+  --font-size-3xl: 1.875rem;  /*  30px */
+
+  /* Border radius global — sobrescrito pelo ThemeService */
+  --radius:    8px;
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+
+  /* Espaçamento base — spacing="comfortable"
+     Escala 4-pt: 4 8 12 16 24 32 48 64
+     O ThemeService sobrescreve --space-unit para compacto/espaçado */
+  --space-unit: 1rem;       /* 16px — comfortable */
+  --space-1:  calc(var(--space-unit) * 0.25);   /*  4px */
+  --space-2:  calc(var(--space-unit) * 0.5);    /*  8px */
+  --space-3:  calc(var(--space-unit) * 0.75);   /* 12px */
+  --space-4:  var(--space-unit);                /* 16px */
+  --space-5:  calc(var(--space-unit) * 1.5);    /* 24px */
+  --space-6:  calc(var(--space-unit) * 2);      /* 32px */
+  --space-8:  calc(var(--space-unit) * 3);      /* 48px */
+  --space-10: calc(var(--space-unit) * 4);      /* 64px */
+
+  /* Sombras — shadow_level="soft" */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow:    0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -1px rgba(0,0,0,.05);
+  --shadow-md: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+  --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.10), 0 10px 10px -5px rgba(0,0,0,.04);
+
+  /* Cores semânticas — derivadas da paleta principal */
+  --color-text:         #1e293b;
+  --color-text-muted:   #64748b;
+  --color-text-inverse: #ffffff;
+  --color-surface:      #ffffff;
+  --color-surface-2:    #f8fafc;
+  --color-border:       #e2e8f0;
+  --color-border-focus: var(--primary);
+
+  /* Estado */
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger:  #dc2626;
+  --color-info:    #0284c7;
+
+  --color-success-bg: #f0fdf4;
+  --color-warning-bg: #fffbeb;
+  --color-danger-bg:  #fef2f2;
+  --color-info-bg:    #f0f9ff;
+
+  /* Transições */
+  --transition-fast:   150ms ease;
+  --transition-base:   250ms ease;
+  --transition-slow:   350ms ease;
+
+  /* Z-index */
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+
+  /* ── Densidade de UI — comfortable (padrão) ──────────────
+     Sobrescritos por body[data-density] via ThemeService.
+     Use .density-compact / .density-spacious para escopo local.
+     ─────────────────────────────────────────────────────── */
+  --density-input-h:     40px;   /* altura de inputs, selects e btns   */
+  --density-btn-h-sm:    30px;   /* altura de .btn-sm                  */
+  --density-btn-h-lg:    50px;   /* altura de .btn-lg                  */
+  --density-font-body:   var(--font-size-md);
+  --density-font-ui:     var(--font-size-sm);
+  --density-section-gap: var(--space-6);   /* gap entre seções         */
+  --density-item-gap:    var(--space-4);   /* gap entre itens de lista */
+}
+
+/* ── 2. Dark mode swap ────────────────────────────────────────
+   Ativado pelo ThemeService via document.documentElement
+   setAttribute('data-theme', 'dark')
+   ──────────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --primary:          var(--dark-primary-color);
+  --primary-color:    var(--dark-primary-color);
+  --secondary:        var(--dark-secondary-color);
+  --secondary-color:  var(--dark-secondary-color);
+  --background:       var(--dark-background-color);
+  --background-color: var(--dark-background-color);
+
+  --color-text:         #e2e8f0;
+  --color-text-muted:   #94a3b8;
+  --color-text-inverse: #0f172a;
+  --color-surface:      #1e293b;
+  --color-surface-2:    #0f172a;
+  --color-border:       #334155;
+  --color-border-focus: var(--dark-primary-color);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.30), 0 1px 2px rgba(0,0,0,.20);
+  --shadow:    0 4px 6px -1px rgba(0,0,0,.35), 0 2px 4px -1px rgba(0,0,0,.20);
+  --shadow-md: 0 10px 15px -3px rgba(0,0,0,.40), 0 4px 6px -2px rgba(0,0,0,.20);
+  --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.50), 0 10px 10px -5px rgba(0,0,0,.20);
+
+  --color-success-bg: #052e16;
+  --color-warning-bg: #451a03;
+  --color-danger-bg:  #450a0a;
+  --color-info-bg:    #082f49;
+
+  color-scheme: dark;
+}
+
+/* ── 2b. Densidade de UI ─────────────────────────────────────────
+   Ativado pelo ThemeService via body.setAttribute('data-density', ...)
+   Compact   → inputs menores, fonte menor, espaçamento reduzido
+   Spacious  → inputs maiores, fonte maior, espaçamento ampliado
+   ─────────────────────────────────────────────────────────────── */
+
+body[data-density="compact"] {
+  --density-input-h:     32px;
+  --density-btn-h-sm:    24px;
+  --density-btn-h-lg:    40px;
+  --density-font-body:   var(--font-size-sm);
+  --density-font-ui:     var(--font-size-xs);
+  --density-section-gap: var(--space-5);
+  --density-item-gap:    var(--space-3);
+}
+
+body[data-density="spacious"] {
+  --density-input-h:     50px;
+  --density-btn-h-sm:    38px;
+  --density-btn-h-lg:    62px;
+  --density-font-body:   var(--font-size-lg);
+  --density-font-ui:     var(--font-size-md);
+  --density-section-gap: var(--space-8);
+  --density-item-gap:    var(--space-5);
+}
+
+/* Escopo local — aplica densidade em um contêiner sem mudar o global.
+   Exemplo: <div class="density-compact"> → inputs menores neste bloco */
+.density-compact {
+  --space-unit:          0.75rem;
+  --density-input-h:     32px;
+  --density-btn-h-sm:    24px;
+  --density-btn-h-lg:    40px;
+  --density-font-body:   var(--font-size-sm);
+  --density-font-ui:     var(--font-size-xs);
+  --density-section-gap: var(--space-5);
+  --density-item-gap:    var(--space-3);
+}
+
+.density-spacious {
+  --space-unit:          1.25rem;
+  --density-input-h:     50px;
+  --density-btn-h-sm:    38px;
+  --density-btn-h-lg:    62px;
+  --density-font-body:   var(--font-size-lg);
+  --density-font-ui:     var(--font-size-md);
+  --density-section-gap: var(--space-8);
+  --density-item-gap:    var(--space-5);
+}
+
+/* ── 3. Reset & base ──────────────────────────────────────────  */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
 }
 
 html, body {
   height: 100%;
 }
 
+body {
+  font-family: var(--font-family), 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: var(--density-font-body);
+  line-height: 1.6;
+  color: var(--color-text);
+  background-color: var(--background);
+  transition: background-color var(--transition-base), color var(--transition-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 app-root {
   display: block;
   min-height: 100%;
+}
+
+/* ── 4. Classes utilitárias — Botões ─────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--density-input-h);
+  padding: var(--space-2) var(--space-5);
+  font-family: inherit;
+  font-size: var(--density-font-ui);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius);
+  transition:
+    background-color var(--transition-fast),
+    border-color     var(--transition-fast),
+    color            var(--transition-fast),
+    box-shadow       var(--transition-fast),
+    transform        var(--transition-fast);
+  text-decoration: none;
+  user-select: none;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Variantes de cor */
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+.btn-secondary:hover:not(:disabled) {
+  filter: brightness(1.15);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: var(--color-text-inverse);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-surface-2);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
+
+/* Tamanhos */
+.btn-sm {
+  min-height: var(--density-btn-h-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+}
+.btn-lg {
+  min-height: var(--density-btn-h-lg);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* button_style: pill */
+.btn-pill, [data-button-style="pill"] .btn {
+  border-radius: var(--radius-full);
+}
+
+/* button_style: square */
+.btn-square, [data-button-style="square"] .btn {
+  border-radius: 2px;
+}
+
+/* Gradiente (gradient_enabled) */
+[data-gradient="true"] .btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border-color: transparent;
+}
+[data-gradient="true"] .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* ── 5. Classes utilitárias — Inputs ─────────────────────────── */
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  min-height: var(--density-input-h);
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--density-font-ui);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow   var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* textarea cresce para ao menos 2.5× a altura de um input */
+.form-textarea {
+  min-height: calc(var(--density-input-h) * 2.5);
+  resize: vertical;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background-color: var(--color-surface-2);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+/* Input inválido */
+.form-input.is-invalid,
+.form-select.is-invalid {
+  border-color: var(--color-danger);
+}
+.form-input.is-invalid:focus,
+.form-select.is-invalid:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 20%, transparent);
+}
+
+/* ── 6. Classes utilitárias — Cards ──────────────────────────── */
+
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow   var(--transition-base),
+    border-color var(--transition-base),
+    transform    var(--transition-base);
+  animation: card-enter var(--transition-slow) ease both;
+}
+.card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+
+.card-flat {
+  box-shadow: none;
+  border-color: var(--color-border);
+}
+
+.card-elevated {
+  box-shadow: var(--shadow-md);
+  border-color: transparent;
+}
+.card-elevated:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.card-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+/* shadow_level modifiers (aplicadas via ThemeService no <body>) */
+[data-shadow="none"] .card,
+[data-shadow="none"] .btn-primary,
+[data-shadow="none"] .btn-secondary { box-shadow: none !important; }
+
+[data-shadow="none"] .card:hover   { box-shadow: none !important; }
+
+[data-shadow="strong"] .card       { box-shadow: var(--shadow-md); }
+[data-shadow="strong"] .card:hover { box-shadow: var(--shadow-lg); }
+
+/* ── 7. Badges e chips ───────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  line-height: 1.4;
+}
+
+.badge-primary  { background-color: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
+.badge-success  { background-color: var(--color-success-bg); color: var(--color-success); }
+.badge-warning  { background-color: var(--color-warning-bg); color: var(--color-warning); }
+.badge-danger   { background-color: var(--color-danger-bg);  color: var(--color-danger);  }
+.badge-info     { background-color: var(--color-info-bg);    color: var(--color-info);    }
+.badge-neutral  { background-color: var(--color-surface-2);  color: var(--color-text-muted); }
+
+/* ── 8. Tabelas ──────────────────────────────────────────────── */
+
+.table-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--color-border); }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  background-color: var(--color-surface);
+}
+
+.table thead {
+  background-color: var(--color-surface-2);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td { border-bottom: none; }
+
+.table tbody tr:hover { background-color: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+/* ── 9. Mensagens de estado ──────────────────────────────────── */
+
+.msg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.msg-success { background-color: var(--color-success-bg); color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+.msg-warning { background-color: var(--color-warning-bg); color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 30%, transparent); }
+.msg-error   { background-color: var(--color-danger-bg);  color: var(--color-danger);  border-color: color-mix(in srgb, var(--color-danger)  30%, transparent); }
+.msg-info    { background-color: var(--color-info-bg);    color: var(--color-info);    border-color: color-mix(in srgb, var(--color-info)    30%, transparent); }
+
+/* ── 10. Utilities ───────────────────────────────────────────── */
+
+.text-primary   { color: var(--primary); }
+.text-secondary { color: var(--secondary); }
+.text-muted     { color: var(--color-text-muted); }
+.text-inverse   { color: var(--color-text-inverse); }
+.text-success   { color: var(--color-success); }
+.text-danger    { color: var(--color-danger); }
+
+.bg-primary   { background-color: var(--primary); }
+.bg-secondary { background-color: var(--secondary); }
+.bg-surface   { background-color: var(--color-surface); }
+.bg-surface-2 { background-color: var(--color-surface-2); }
+
+.rounded    { border-radius: var(--radius); }
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-full { border-radius: var(--radius-full); }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow    { box-shadow: var(--shadow); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-none { box-shadow: none; }
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-4) 0;
+}
+
+/* Spinner genérico */
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 11. Spacing utilities ───────────────────────────────────────
+   Todas as classes escalm automaticamente com --space-unit,
+   portanto respondem à densidade definida pelo ThemeService.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Padding */
+.p-0  { padding: 0; }
+.p-1  { padding: var(--space-1); }
+.p-2  { padding: var(--space-2); }
+.p-3  { padding: var(--space-3); }
+.p-4  { padding: var(--space-4); }
+.p-5  { padding: var(--space-5); }
+.p-6  { padding: var(--space-6); }
+.p-8  { padding: var(--space-8); }
+
+.px-0 { padding-inline: 0; }
+.px-1 { padding-inline: var(--space-1); }
+.px-2 { padding-inline: var(--space-2); }
+.px-3 { padding-inline: var(--space-3); }
+.px-4 { padding-inline: var(--space-4); }
+.px-5 { padding-inline: var(--space-5); }
+.px-6 { padding-inline: var(--space-6); }
+
+.py-0 { padding-block: 0; }
+.py-1 { padding-block: var(--space-1); }
+.py-2 { padding-block: var(--space-2); }
+.py-3 { padding-block: var(--space-3); }
+.py-4 { padding-block: var(--space-4); }
+.py-5 { padding-block: var(--space-5); }
+
+.pt-0 { padding-top: 0; }
+.pt-1 { padding-top: var(--space-1); }
+.pt-2 { padding-top: var(--space-2); }
+.pt-3 { padding-top: var(--space-3); }
+.pt-4 { padding-top: var(--space-4); }
+.pt-5 { padding-top: var(--space-5); }
+
+.pb-0 { padding-bottom: 0; }
+.pb-1 { padding-bottom: var(--space-1); }
+.pb-2 { padding-bottom: var(--space-2); }
+.pb-3 { padding-bottom: var(--space-3); }
+.pb-4 { padding-bottom: var(--space-4); }
+.pb-5 { padding-bottom: var(--space-5); }
+
+/* Margin */
+.m-0    { margin: 0; }
+.m-1    { margin: var(--space-1); }
+.m-2    { margin: var(--space-2); }
+.m-3    { margin: var(--space-3); }
+.m-4    { margin: var(--space-4); }
+.m-auto { margin: auto; }
+
+.mx-auto { margin-inline: auto; }
+.mx-1    { margin-inline: var(--space-1); }
+.mx-2    { margin-inline: var(--space-2); }
+.mx-3    { margin-inline: var(--space-3); }
+.mx-4    { margin-inline: var(--space-4); }
+
+.my-0    { margin-block: 0; }
+.my-1    { margin-block: var(--space-1); }
+.my-2    { margin-block: var(--space-2); }
+.my-3    { margin-block: var(--space-3); }
+.my-4    { margin-block: var(--space-4); }
+.my-5    { margin-block: var(--space-5); }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+.mt-6 { margin-top: var(--space-6); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+/* Gap */
+.gap-0 { gap: 0; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-5 { gap: var(--space-5); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* Gaps semânticos — escalam com a densidade */
+.section-gap { gap: var(--density-section-gap); }
+.item-gap    { gap: var(--density-item-gap); }
+
+/* ── 12. Acessibilidade — motion reduzido ────────────────────
+   Respeita a preferência do sistema operacional.
+   Desativa animações/transições para usuários sensíveis.
+   ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

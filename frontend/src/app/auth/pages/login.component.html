@@ -1,6 +1,14 @@
 <div class="login-container">
   <div class="login-box">
-    <h1>Cursaas</h1>
+
+    <!-- Logo da instituição (carregada via ThemeService) -->
+    <ng-container *ngIf="logoUrl$ | async as logo; else defaultBrand">
+      <img [src]="logo" alt="Logo" class="login-logo" />
+    </ng-container>
+    <ng-template #defaultBrand>
+      <h1 class="login-title">Cursaas</h1>
+    </ng-template>
+
     <p class="subtitle">Portal EAD</p>
     
     <form (ngSubmit)="login()">

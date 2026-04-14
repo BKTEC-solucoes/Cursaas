@@ -138,7 +138,7 @@ interface InstituicaoInfo {
     }
     .inst-avatar {
       width: 64px; height: 64px; border-radius: 50%;
-      background: linear-gradient(135deg, #1a6b3c, #2d9e5f);
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white; display: flex; align-items: center; justify-content: center;
       font-size: 28px; font-weight: 700; flex-shrink: 0;
     }
@@ -166,17 +166,17 @@ interface InstituicaoInfo {
       padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
       font-size: 14px; color: #1f2937; outline: none; transition: border 0.2s;
     }
-    .form-group input:focus { border-color: #2d9e5f; box-shadow: 0 0 0 3px rgba(45,158,95,0.1); }
+    .form-group input:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 15%, transparent); }
 
     .feedback { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
     .feedback.success  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .feedback.erro-form { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 
     .card-footer { display: flex; gap: 12px; padding-top: 20px; margin-top: 8px; border-top: 1px solid #f3f4f6; }
-    .btn-edit { background: #1a6b3c; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-edit:hover { background: #145a32; }
-    .btn-save { background: #1a6b3c; color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-save:hover:not(:disabled) { background: #145a32; }
+    .btn-edit { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .btn-edit:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
+    .btn-save { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .btn-save:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
     .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-cancel { background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
     .btn-cancel:hover { background: #f3f4f6; }

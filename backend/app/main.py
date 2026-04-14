@@ -9,7 +9,8 @@ from sqlalchemy import inspect, text
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import CourseRequest, Instituicao, Faculdade, VinculoAlunoFaculdade, SolicitacaoCadastro
+from app.models import CourseRequest, Instituicao, Faculdade, VinculoAlunoFaculdade, SolicitacaoCadastro, TemaPreset
+from app.security.middleware import TenantMiddleware
 from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ def ensure_schema_updates():
     Faculdade.__table__.create(bind=engine, checkfirst=True)
     VinculoAlunoFaculdade.__table__.create(bind=engine, checkfirst=True)
     SolicitacaoCadastro.__table__.create(bind=engine, checkfirst=True)
+    TemaPreset.__table__.create(bind=engine, checkfirst=True)
 
 
 Base.metadata.create_all(bind=engine)
@@ -43,6 +45,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# TenantMiddleware adicionado após CORS (stack LIFO: executa antes do CORS)
+app.add_middleware(TenantMiddleware)
 
 # Garantir cabeçalhos CORS mesmo em respostas de erro não tratadas (500)
 @app.exception_handler(Exception)

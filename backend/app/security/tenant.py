@@ -111,6 +111,42 @@ class TenantContext:
                 detail="Acesso negado: recurso pertence a outro tenant",
             )
 
+    # ------------------------------------------------------------------
+    # Helpers para criação de recursos
+    # ------------------------------------------------------------------
+
+    def require_tenant(self) -> int:
+        """
+        Garante que o chamador está vinculado a um tenant.
+        Lança HTTP 403 se ``faculdade_id`` for None (super_admin sem contexto).
+
+        Exemplo::
+
+            fid = tc.require_tenant()   # retorna int ou levanta 403
+        """
+        if self.faculdade_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Esta operação requer vínculo com uma faculdade",
+            )
+        return self.faculdade_id
+
+    def stamp(self, obj: object, field: str = "faculdade_id") -> object:
+        """
+        Atribui ``obj.<field> = self.faculdade_id`` em novos objetos antes de
+        persistir no banco. Super admins não recebem o stamp (já devem definir
+        o campo manualmente).
+
+        Exemplo::
+
+            novo_curso = Curso(**dados)
+            tc.stamp(novo_curso)        # define novo_curso.faculdade_id
+            db.add(novo_curso)
+        """
+        if not self.is_super_admin:
+            setattr(obj, field, self.faculdade_id)
+        return obj
+
 
 def tenant_context(
     faculdade_id: Optional[int] = Depends(get_current_faculdade_id),

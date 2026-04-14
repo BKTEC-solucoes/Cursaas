@@ -265,11 +265,11 @@ type CursoFormValue = number | string | null;
     .radio-option:hover { border-color: #b0b7c3; background: #f5f6f8; }
     .radio-input { position: absolute; opacity: 0; width: 0; height: 0; cursor: pointer; }
     .radio-input:checked + .radio-custom {
-      background: linear-gradient(135deg, #1a6b3c 0%, #2d9e5f 100%);
-      border-color: #1a6b3c;
-      box-shadow: 0 0 0 3px rgba(26,107,60,0.1);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
     }
-    .radio-input:checked ~ .option-content .option-title { color: #1a6b3c; font-weight: 700; }
+    .radio-input:checked ~ .option-content .option-title { color: var(--primary); font-weight: 700; }
     .radio-custom {
       flex-shrink: 0; width: 20px; height: 20px; border: 2px solid #d0d5dd;
       border-radius: 50%; background: #fff; transition: all 0.3s ease; margin-top: 2px;
@@ -280,12 +280,12 @@ type CursoFormValue = number | string | null;
 
     .valor-row { margin-bottom: 16px; }
     .valor-input-group { position: relative; display: flex; align-items: center; }
-    .valor-prefix { position: absolute; left: 12px; font-weight: 700; color: #1a6b3c; font-size: 15px; pointer-events: none; }
+    .valor-prefix { position: absolute; left: 12px; font-weight: 700; color: var(--primary); font-size: 15px; pointer-events: none; }
     .valor-input {
       width: 100%; border: 2px solid #d0d5dd; border-radius: 10px;
       padding: 10px 12px 10px 40px !important; font-size: 14px; font-weight: 500; transition: all 0.3s ease;
     }
-    .valor-input:focus { border-color: #1a6b3c; outline: none; box-shadow: 0 0 0 3px rgba(26,107,60,0.1); }
+    .valor-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
 
     .info-box {
       display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
@@ -295,15 +295,15 @@ type CursoFormValue = number | string | null;
     .info-icon { font-size: 18px; flex-shrink: 0; }
     .info-text { color: #065f46; font-size: 14px; line-height: 1.5; }
     .form-hint { color: #667085; font-size: 12px; }
-    .form-hint.info { color: #1a6b3c; font-weight: 500; }
+    .form-hint.info { color: var(--primary); font-weight: 500; }
     .required { color: #b42318; }
 
     .form-actions { display: flex; gap: 12px; margin-top: 18px; }
     .btn-primary, .btn-secondary {
       border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 600;
     }
-    .btn-primary { background: #1a6b3c; color: #fff; }
-    .btn-primary:hover { background: #155a32; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
     .btn-secondary { background: #eaecf0; color: #344054; }
     .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.7; cursor: not-allowed; }
 
@@ -341,8 +341,8 @@ type CursoFormValue = number | string | null;
     .btn-sm:hover { transform: scale(1.05); }
     .btn-edit { background: #e8f4fd; color: #1a6b9c; }
     .btn-delete { background: #fef2f2; color: #e74c3c; }
-    .btn-aula { background: #1a6b3c; color: white; }
-    .btn-aula:hover { background: #155a32; transform: none; }
+    .btn-aula { background: var(--primary); color: white; }
+    .btn-aula:hover { background: color-mix(in srgb, var(--primary) 80%, black); transform: none; }
 
     .no-data {
       background: white; padding: 60px 20px; text-align: center;
@@ -352,7 +352,7 @@ type CursoFormValue = number | string | null;
     .loading { text-align: center; padding: 60px 20px; color: #999; }
     .spinner {
       display: inline-block; width: 40px; height: 40px;
-      border: 4px solid #f3f3f3; border-top: 4px solid #1a6b3c;
+      border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
       border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

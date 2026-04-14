@@ -1,8 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
 from enum import Enum as PyEnum
+import re
 
 # ==================== ENUMS ====================
 
@@ -25,6 +26,25 @@ class SolicitacaoStatusEnum(str, PyEnum):
     pendente = "pendente"
     aprovada = "aprovada"
     recusada = "recusada"
+
+class SpacingEnum(str, PyEnum):
+    compact     = "compact"
+    comfortable = "comfortable"
+    spacious    = "spacious"
+
+class ButtonStyleEnum(str, PyEnum):
+    rounded = "rounded"
+    square  = "square"
+    pill    = "pill"
+
+class ShadowLevelEnum(str, PyEnum):
+    none   = "none"
+    soft   = "soft"
+    strong = "strong"
+
+class LayoutTypeEnum(str, PyEnum):
+    topbar  = "topbar"
+    sidebar = "sidebar"
 
 # ==================== SCHEMAS DE SOLICITAÇÃO DE CADASTRO ====================
 
@@ -91,6 +111,138 @@ class FaculdadeUpdate(BaseModel):
     ativa: Optional[bool] = None
     aprovada: Optional[bool] = None
     plano: Optional[PlanoFaculdadeEnum] = None
+
+class FaculdadeTemaResponse(BaseModel):
+    """Resposta pública do tema ativo de uma faculdade."""
+    faculdade_id: int
+    nome: str
+    logo_url: Optional[str] = None
+    # Modo claro
+    primary_color:    str = '#1a6b3c'
+    secondary_color:  str = '#0f4b2a'
+    background_color: str = '#f0fdf4'
+    font_family:      str = 'Inter, system-ui, sans-serif'
+    # Dark mode
+    dark_mode:             bool = False
+    dark_primary_color:    str = '#34d399'
+    dark_secondary_color:  str = '#10b981'
+    dark_background_color: str = '#0f172a'
+    # Favicon
+    favicon_url: Optional[str] = None
+    # Identidade visual avançada
+    border_radius:    str             = '8px'
+    spacing:          SpacingEnum     = SpacingEnum.comfortable
+    button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
+    shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
+    layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    gradient_enabled: bool            = False
+    page_overrides:   Optional[dict]  = None
+
+    class Config:
+        from_attributes = True
+
+class FaculdadeTemaListItem(BaseModel):
+    """Item resumido para listagem dos temas da instituição."""
+    id: int
+    nome: str
+    primary_color: str
+    secondary_color: str
+    background_color: str
+    dark_mode: bool
+    favicon_url: Optional[str] = None
+    border_radius:    str             = '8px'
+    spacing:          SpacingEnum     = SpacingEnum.comfortable
+    button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
+    shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
+    layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    gradient_enabled: bool            = False
+    ativo: bool = False        # calculado na rota
+    criado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+class FaculdadeTemaCreate(BaseModel):
+    """Payload para criar um novo tema."""
+    nome:             str  = Field('Novo Tema', max_length=100)
+    primary_color:    str  = Field('#1a6b3c', max_length=20)
+    secondary_color:  str  = Field('#0f4b2a', max_length=20)
+    background_color: str  = Field('#f0fdf4', max_length=20)
+    font_family:      str  = Field('Inter, system-ui, sans-serif', max_length=150)
+    logo_url_override: Optional[str] = Field(None, max_length=500)
+    dark_mode:             bool = False
+    dark_primary_color:    str  = Field('#34d399', max_length=20)
+    dark_secondary_color:  str  = Field('#10b981', max_length=20)
+    dark_background_color: str  = Field('#0f172a', max_length=20)
+    favicon_url: Optional[str] = Field(None, max_length=500)
+    # Identidade visual avançada
+    border_radius:    str             = Field('8px', max_length=10)
+    spacing:          SpacingEnum     = SpacingEnum.comfortable
+    button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
+    shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
+    layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    gradient_enabled: bool            = False
+
+    @field_validator('logo_url_override', 'favicon_url', mode='before')
+    @classmethod
+    def validate_image_url(cls, v):
+        if v and isinstance(v, str) and v.startswith('data:'):
+            if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
+                raise ValueError('Formato de imagem data: não permitido. Use PNG, JPEG, GIF ou WebP.')
+        return v
+
+class FaculdadeTemaUpdate(BaseModel):
+    """Payload para atualizar um tema existente (todos os campos opcionais)."""
+    nome:             Optional[str] = Field(None, max_length=100)
+    primary_color:    Optional[str] = Field(None, max_length=20)
+    secondary_color:  Optional[str] = Field(None, max_length=20)
+    background_color: Optional[str] = Field(None, max_length=20)
+    font_family:      Optional[str] = Field(None, max_length=150)
+    logo_url_override: Optional[str] = Field(None, max_length=500)
+    dark_mode:             Optional[bool]  = None
+    dark_primary_color:    Optional[str]   = Field(None, max_length=20)
+    dark_secondary_color:  Optional[str]   = Field(None, max_length=20)
+    dark_background_color: Optional[str]   = Field(None, max_length=20)
+    favicon_url: Optional[str] = Field(None, max_length=500)
+    # Identidade visual avançada
+    border_radius:    Optional[str]             = Field(None, max_length=10)
+    spacing:          Optional[SpacingEnum]     = None
+    button_style:     Optional[ButtonStyleEnum] = None
+    shadow_level:     Optional[ShadowLevelEnum] = None
+    layout_type:      Optional[LayoutTypeEnum]  = None
+    gradient_enabled: Optional[bool]            = None
+    page_overrides:   Optional[dict]            = None
+
+    @field_validator('logo_url_override', 'favicon_url', mode='before')
+    @classmethod
+    def validate_image_url(cls, v):
+        if v and isinstance(v, str) and v.startswith('data:'):
+            if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
+                raise ValueError('Formato de imagem data: não permitido. Use PNG, JPEG, GIF ou WebP.')
+        return v
+
+class TemaPresetResponse(BaseModel):
+    """Preset de tema para seleção rápida no painel."""
+    id: int
+    nome: str
+    preview_color: str
+    primary_color: str
+    secondary_color: str
+    background_color: str
+    font_family: str
+    dark_primary_color: str
+    dark_secondary_color: str
+    dark_background_color: str
+
+    class Config:
+        from_attributes = True
+
+class InstituicaoPerfilUpdate(BaseModel):
+    """Payload tipado para PATCH /instituicoes/minha — apenas campos públicos editáveis."""
+    nome:           Optional[str]      = Field(None, min_length=2, max_length=255)
+    email_contato:  Optional[EmailStr] = None
+    telefone:       Optional[str]      = Field(None, max_length=20)
+    dominio_email:  Optional[str]      = Field(None, max_length=100)
 
 class FaculdadeResponse(BaseModel):
     id: int

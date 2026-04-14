@@ -394,11 +394,11 @@ interface CursoItem {
     .btn-delete { color: #95a5a6; }
 
     .btn-primary {
-      background: #1a6b3c; color: white; border: none;
+      background: var(--primary); color: white; border: none;
       padding: 10px 20px; border-radius: 10px; cursor: pointer;
       font-size: 14px; font-weight: 600; transition: background 0.2s;
     }
-    .btn-primary:hover { background: #155a32; }
+    .btn-primary:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
 
     .no-data {
       background: #fff; padding: 60px 20px; text-align: center;
@@ -407,7 +407,7 @@ interface CursoItem {
     .loading { text-align: center; padding: 60px 20px; color: #999; }
     .spinner {
       display: inline-block; width: 40px; height: 40px;
-      border: 4px solid #f3f3f3; border-top: 4px solid #1a6b3c;
+      border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
       border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -467,7 +467,7 @@ interface CursoItem {
     .btn-cancelar:hover:not(:disabled) { background: #e4e7ec; }
     .btn-cancelar:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-enviar {
-      padding: 10px 20px; background: #1a6b3c; color: white; border: none;
+      padding: 10px 20px; background: var(--primary); color: white; border: none;
       border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;
     }
     .btn-enviar:hover:not(:disabled) { background: #155a32; }
@@ -518,21 +518,21 @@ interface CursoItem {
       border: 2px dashed #d0d5dd; border-radius: 10px; padding: 30px;
       text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 14px;
     }
-    .upload-area:hover, .upload-area.dragover { border-color: #1a6b3c; background: #f0fdf4; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--primary); background: #f0fdf4; }
     .upload-content p { margin: 8px 0; color: #333; }
     .upload-icon { font-size: 44px; display: block; margin-bottom: 8px; }
     .small-text { font-size: 12px; color: #999; }
     .btn-selecionar {
-      display: inline-block; background: #1a6b3c; color: white; padding: 9px 18px;
+      display: inline-block; background: var(--primary); color: white; padding: 9px 18px;
       border-radius: 8px; cursor: pointer; font-weight: 600;
     }
-    .btn-selecionar:hover { background: #155a32; }
+    .btn-selecionar:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
     .formatos { margin: 10px 0 0; color: #999; font-size: 12px; }
     .arquivo-info { background: #f2f4f7; padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
     .arquivo-info p { margin: 4px 0; }
     .progresso { margin-bottom: 14px; }
     .progress-bar { height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, #1a6b3c, #2d9e5f); transition: width 0.3s; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.3s; }
     .progresso p { margin: 0; font-size: 13px; color: #666; }
 
     @media (max-width: 900px) {

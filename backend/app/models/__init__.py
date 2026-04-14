@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Text, Enum, ForeignKey, DECIMAL, BigInteger, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Text, Enum, ForeignKey, DECIMAL, BigInteger, UniqueConstraint, Index, JSON
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 from app.database import Base
@@ -39,11 +40,104 @@ class Faculdade(Base):
     plano            = Column(Enum(PlanoFaculdadeEnum), default=PlanoFaculdadeEnum.basico, nullable=False)
     data_criacao     = Column(DateTime, default=datetime.utcnow, nullable=False)
     data_atualizacao = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    # FK para o tema ativo (pode ser NULL se nenhum tema criado ainda)
+    tema_ativo_id    = Column(Integer, ForeignKey("faculdade_temas.id", use_alter=True,
+                              name="fk_faculdades_tema_ativo", ondelete="SET NULL"), nullable=True)
 
     # Relacionamentos reversos
-    usuarios          = relationship("Usuario",              back_populates="faculdade",  lazy="dynamic")
-    cursos            = relationship("Curso",                back_populates="faculdade",  lazy="dynamic")
-    vinculos_alunos   = relationship("VinculoAlunoFaculdade", back_populates="faculdade", cascade="all, delete-orphan")
+    usuarios          = relationship("Usuario",               back_populates="faculdade",  lazy="dynamic")
+    cursos            = relationship("Curso",                 back_populates="faculdade",  lazy="dynamic")
+    vinculos_alunos   = relationship("VinculoAlunoFaculdade", back_populates="faculdade",  cascade="all, delete-orphan")
+    temas             = relationship("FaculdadeTema",         back_populates="faculdade",
+                                     foreign_keys="FaculdadeTema.faculdade_id",
+                                     cascade="all, delete-orphan")
+    tema_ativo        = relationship("FaculdadeTema",         foreign_keys=[tema_ativo_id],
+                                     post_update=True)
+
+
+class SpacingEnum(str, enum.Enum):
+    compact     = "compact"
+    comfortable = "comfortable"
+    spacious    = "spacious"
+
+class ButtonStyleEnum(str, enum.Enum):
+    rounded = "rounded"
+    square  = "square"
+    pill    = "pill"
+
+class ShadowLevelEnum(str, enum.Enum):
+    none   = "none"
+    soft   = "soft"
+    strong = "strong"
+
+class LayoutTypeEnum(str, enum.Enum):
+    topbar  = "topbar"
+    sidebar = "sidebar"
+
+
+class FaculdadeTema(Base):
+    """Tema visual white-label de um tenant. Relação 1:N com Faculdade."""
+    __tablename__ = "faculdade_temas"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    faculdade_id     = Column(Integer, ForeignKey("faculdades.id", ondelete="CASCADE", onupdate="CASCADE"),
+                              nullable=False, index=True)
+    nome             = Column(String(100), nullable=False, default="Tema Padrão")
+
+    # ── Cores — modo claro ────────────────────────────────────────────────────
+    primary_color    = Column(String(20),  nullable=False, default="#1a6b3c")
+    secondary_color  = Column(String(20),  nullable=False, default="#0f4b2a")
+    background_color = Column(String(20),  nullable=False, default="#f0fdf4")
+    font_family      = Column(String(150), nullable=False, default="Inter, system-ui, sans-serif")
+    logo_url_override = Column(String(500), nullable=True,
+                               comment="Override de logo; se NULL usa faculdades.logo_url")
+
+    # ── Dark mode ─────────────────────────────────────────────────────────────
+    dark_mode             = Column(Boolean, nullable=False, default=False)
+    dark_primary_color    = Column(String(20), nullable=False, default="#34d399")
+    dark_secondary_color  = Column(String(20), nullable=False, default="#10b981")
+    dark_background_color = Column(String(20), nullable=False, default="#0f172a")
+
+    # ── Favicon ───────────────────────────────────────────────────────────────
+    favicon_url      = Column(String(500), nullable=True)
+
+    # ── Identidade visual avançada ────────────────────────────────────────────
+    border_radius    = Column(String(10),  nullable=False, default="8px",
+                              comment="Raio de borda global (ex: 4px, 8px, 12px, 50%)")
+    spacing          = Column(Enum(SpacingEnum),     nullable=False, default=SpacingEnum.comfortable)
+    button_style     = Column(Enum(ButtonStyleEnum), nullable=False, default=ButtonStyleEnum.rounded)
+    shadow_level     = Column(Enum(ShadowLevelEnum), nullable=False, default=ShadowLevelEnum.soft)
+    layout_type      = Column(Enum(LayoutTypeEnum),  nullable=False, default=LayoutTypeEnum.topbar)
+    gradient_enabled = Column(Boolean, nullable=False, default=False)
+
+    # ── Overrides por página ─────────────────────────────────────────────────
+    # Estrutura: { "dashboard": {primary_color, secondary_color, ...}, "alunos": {...} }
+    # Campos suportados por override: primary_color, secondary_color, background_color,
+    #   border_radius, button_style, shadow_level, gradient_enabled
+    page_overrides   = Column(JSON, nullable=True,
+                              comment="Overrides visuais por página: dashboard, alunos, cursos, aulas, notas, perfil")
+
+    criado_em     = Column(DateTime, server_default=func.now(), nullable=False)
+    atualizado_em = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    faculdade = relationship("Faculdade", back_populates="temas",
+                             foreign_keys=[faculdade_id])
+
+
+class TemaPreset(Base):
+    """Presets de tema para seleção rápida. Somente leitura via seed."""
+    __tablename__ = "tema_presets"
+
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    nome                  = Column(String(100), nullable=False)
+    preview_color         = Column(String(20),  nullable=False)
+    primary_color         = Column(String(20),  nullable=False)
+    secondary_color       = Column(String(20),  nullable=False)
+    background_color      = Column(String(20),  nullable=False)
+    font_family           = Column(String(150), nullable=False, default="Inter, system-ui, sans-serif")
+    dark_primary_color    = Column(String(20),  nullable=False, default="#34d399")
+    dark_secondary_color  = Column(String(20),  nullable=False, default="#10b981")
+    dark_background_color = Column(String(20),  nullable=False, default="#0f172a")
 
 
 class VinculoAlunoFaculdade(Base):

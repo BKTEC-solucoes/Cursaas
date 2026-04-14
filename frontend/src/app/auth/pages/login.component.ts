@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -23,9 +24,13 @@ export class LoginComponent {
   error = '';
   googleConfigured = this.hasValidGoogleClientId();
 
+  /** Emite a URL do logo quando o tema é carregado */
+  readonly logoUrl$ = this.themeService.logoUrl$;
+
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private themeService: ThemeService,
   ) {}
 
   login(): void {
@@ -39,14 +44,18 @@ export class LoginComponent {
 
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
-        const user = this.authService.getCurrentUser();
-        if (user?.role === 'admin') {
-          this.router.navigate(['/admin']);
-        } else if (user?.role === 'aluno') {
-          this.router.navigate(['/aluno']);
-        } else if (user?.role === 'instituicao') {
-          this.router.navigate(['/instituicao']);
-        }
+        const token = this.authService.getToken() ?? '';
+        // Busca e aplica o tema da faculdade antes de navegar
+        this.themeService.carregarEAplicar(token).subscribe(() => {
+          const user = this.authService.getCurrentUser();
+          if (user?.role === 'admin') {
+            this.router.navigate(['/admin']);
+          } else if (user?.role === 'aluno') {
+            this.router.navigate(['/aluno']);
+          } else if (user?.role === 'instituicao') {
+            this.router.navigate(['/instituicao']);
+          }
+        });
       },
       error: (err) => {
         this.error = err.error?.detail || 'Erro ao fazer login';

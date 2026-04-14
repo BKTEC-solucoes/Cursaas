@@ -1,16 +1,21 @@
 from math import ceil
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Faculdade, VinculoAlunoFaculdade, Usuario, RoleEnum
+from app.models import Faculdade, FaculdadeTema, TemaPreset, VinculoAlunoFaculdade, Usuario, RoleEnum
 from app.routes.auth import get_current_super_admin, get_current_user
 from app.schemas import (
     FaculdadeCreate,
     FaculdadeUpdate,
     FaculdadeResponse,
+    FaculdadeTemaResponse,
+    FaculdadeTemaCreate,
+    FaculdadeTemaUpdate,
+    FaculdadeTemaListItem,
+    TemaPresetResponse,
     FaculdadePageResponse,
     VinculoCreate,
     VinculoUpdate,
@@ -78,6 +83,15 @@ def listar_faculdades(
         limit=limit,
         total_pages=ceil(total / limit) if total else 0,
     )
+
+
+@router.get(
+    "/presets",
+    response_model=List[TemaPresetResponse],
+    summary="Listar presets de tema (público)",
+)
+def listar_presets(db: Session = Depends(get_db)):
+    return db.query(TemaPreset).order_by(TemaPreset.id).all()
 
 
 @router.post(
@@ -278,3 +292,308 @@ def _guard_tenant(user: Usuario, faculdade_id: int) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso negado: você não pertence a esta faculdade",
         )
+
+
+# ---------------------------------------------------------------------------
+# White-label: helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_faculdade(db: Session, user: Usuario) -> Faculdade:
+    """Retorna a Faculdade do usuário, criando uma nova se ainda não existir.
+    Isso cobre usuários de instituição criados antes da migração multi-tenant.
+    """
+    import re, unicodedata
+    from app.models import Instituicao
+
+    if user.faculdade_id:
+        return _get_or_404(db, user.faculdade_id)
+
+    # Tenta obter dados da Instituicao legada para nomear a Faculdade
+    inst = db.query(Instituicao).filter(Instituicao.id == user.instituicao_id).first() if user.instituicao_id else None
+    nome = inst.nome_instituicao if inst else (user.nome or f"Instituição {user.id}")
+    cnpj = inst.cnpj if inst else None
+    email = inst.contato if inst else user.email
+
+    # Gera slug único
+    def _slug(texto: str) -> str:
+        s = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+        return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+    slug_base = _slug(nome)
+    slug = slug_base
+    counter = 2
+    while db.query(Faculdade).filter(Faculdade.slug == slug).first():
+        slug = f"{slug_base}-{counter}"
+        counter += 1
+
+    faculdade = Faculdade(
+        nome=nome,
+        slug=slug,
+        cnpj=cnpj,
+        email_contato=email,
+        ativa=True,
+        aprovada=True,
+    )
+    db.add(faculdade)
+    db.flush()
+
+    user.faculdade_id = faculdade.id
+    db.flush()
+
+    return faculdade
+
+def _build_tema_response(f: Faculdade, t: Optional[FaculdadeTema]) -> FaculdadeTemaResponse:
+    """Monta FaculdadeTemaResponse a partir da faculdade e seu tema ativo."""
+    logo = (t.logo_url_override if t and t.logo_url_override else f.logo_url)
+    return FaculdadeTemaResponse(
+        faculdade_id      = f.id,
+        nome              = f.nome,
+        logo_url          = logo,
+        primary_color     = t.primary_color    if t else '#1a6b3c',
+        secondary_color   = t.secondary_color  if t else '#0f4b2a',
+        background_color  = t.background_color if t else '#f0fdf4',
+        font_family       = t.font_family      if t else 'Inter, system-ui, sans-serif',
+        dark_mode             = t.dark_mode             if t else False,
+        dark_primary_color    = t.dark_primary_color    if t else '#34d399',
+        dark_secondary_color  = t.dark_secondary_color  if t else '#10b981',
+        dark_background_color = t.dark_background_color if t else '#0f172a',
+        favicon_url       = t.favicon_url if t else None,
+        border_radius     = t.border_radius    if t else '8px',
+        spacing           = t.spacing          if t else 'comfortable',
+        button_style      = t.button_style     if t else 'rounded',
+        shadow_level      = t.shadow_level     if t else 'soft',
+        layout_type       = t.layout_type      if t else 'topbar',
+        gradient_enabled  = t.gradient_enabled if t else False,
+        page_overrides    = t.page_overrides   if t else None,
+    )
+
+
+def _tema_response(f: Faculdade) -> FaculdadeTemaResponse:
+    """Compatível com código legado. Usa tema_ativo se disponível."""
+    return _build_tema_response(f, f.tema_ativo)
+
+
+def _assert_tema_owner(tema: FaculdadeTema, faculdade_id: int) -> None:
+    if tema.faculdade_id != faculdade_id:
+        raise HTTPException(status_code=403, detail="Acesso negado: tema pertence a outra faculdade")
+
+
+# ---------------------------------------------------------------------------
+# White-label: endpoints do tema ativo (compat. 1:1 anterior)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/minha/tema",
+    response_model=FaculdadeTemaResponse,
+    summary="Obter tema ativo da faculdade do usuário autenticado",
+)
+def obter_meu_tema(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    from app.models import AdminRoleEnum as ModelAdminRoleEnum, RoleEnum as ModelRoleEnum
+    is_admin = (
+        current_user.admin_role == ModelAdminRoleEnum.super_admin
+        or current_user.role in (ModelRoleEnum.admin, ModelRoleEnum.instituicao)
+    )
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar o tema")
+    f = _ensure_faculdade(db, current_user)
+    db.commit()
+    db.refresh(f)
+    return _tema_response(f)
+
+
+@router.put(
+    "/minha/tema",
+    response_model=FaculdadeTemaResponse,
+    summary="Atualizar tema ativo (admin)",
+)
+def atualizar_meu_tema(
+    payload: FaculdadeTemaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    from app.models import AdminRoleEnum as ModelAdminRoleEnum, RoleEnum as ModelRoleEnum
+    is_admin = (
+        current_user.admin_role == ModelAdminRoleEnum.super_admin
+        or current_user.role in (ModelRoleEnum.admin, ModelRoleEnum.instituicao)
+    )
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem alterar o tema")
+
+    f = _ensure_faculdade(db, current_user)
+
+    # Usa o tema ativo ou cria um novo
+    tema = f.tema_ativo
+    if not tema:
+        tema = FaculdadeTema(faculdade_id=f.id, nome="Tema Padrão")
+        db.add(tema)
+        db.flush()
+        f.tema_ativo_id = tema.id
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(tema, field, value)
+
+    db.commit()
+    db.refresh(f)
+    return _tema_response(f)
+
+
+# ---------------------------------------------------------------------------
+# White-label: múltiplos temas por faculdade
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/minha/temas",
+    response_model=List[FaculdadeTemaListItem],
+    summary="Listar todos os temas da minha faculdade",
+)
+def listar_meus_temas(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.faculdade_id:
+        raise HTTPException(status_code=404, detail="Sem faculdade vinculada")
+    f = _get_or_404(db, current_user.faculdade_id)
+    temas = db.query(FaculdadeTema).filter(FaculdadeTema.faculdade_id == f.id).order_by(FaculdadeTema.criado_em).all()
+    return [
+        FaculdadeTemaListItem(
+            id=t.id, nome=t.nome,
+            primary_color=t.primary_color, secondary_color=t.secondary_color,
+            background_color=t.background_color, dark_mode=t.dark_mode,
+            favicon_url=t.favicon_url, criado_em=t.criado_em,
+            ativo=(t.id == f.tema_ativo_id),
+        )
+        for t in temas
+    ]
+
+
+@router.post(
+    "/minha/temas",
+    response_model=FaculdadeTemaListItem,
+    status_code=201,
+    summary="Criar novo tema",
+)
+def criar_tema(
+    payload: FaculdadeTemaCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    from app.models import RoleEnum as ModelRoleEnum
+    if current_user.role not in (ModelRoleEnum.admin, ModelRoleEnum.instituicao) \
+            and not current_user.admin_role:
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    if not current_user.faculdade_id:
+        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
+
+    f = _get_or_404(db, current_user.faculdade_id)
+    tema = FaculdadeTema(faculdade_id=f.id, **payload.model_dump())
+    db.add(tema)
+    db.flush()
+    # Primeiro tema criado vira ativo automaticamente
+    if f.tema_ativo_id is None:
+        f.tema_ativo_id = tema.id
+    db.commit()
+    db.refresh(tema)
+    return FaculdadeTemaListItem(
+        id=tema.id, nome=tema.nome,
+        primary_color=tema.primary_color, secondary_color=tema.secondary_color,
+        background_color=tema.background_color, dark_mode=tema.dark_mode,
+        favicon_url=tema.favicon_url, criado_em=tema.criado_em,
+        ativo=(tema.id == f.tema_ativo_id),
+    )
+
+
+@router.put(
+    "/minha/temas/{tema_id}",
+    response_model=FaculdadeTemaListItem,
+    summary="Atualizar tema específico",
+)
+def atualizar_tema(
+    tema_id: int,
+    payload: FaculdadeTemaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.faculdade_id:
+        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
+    f = _get_or_404(db, current_user.faculdade_id)
+    tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
+    if not tema:
+        raise HTTPException(status_code=404, detail="Tema não encontrado")
+    _assert_tema_owner(tema, f.id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(tema, field, value)
+    db.commit()
+    db.refresh(tema)
+    db.refresh(f)
+    return FaculdadeTemaListItem(
+        id=tema.id, nome=tema.nome,
+        primary_color=tema.primary_color, secondary_color=tema.secondary_color,
+        background_color=tema.background_color, dark_mode=tema.dark_mode,
+        favicon_url=tema.favicon_url, criado_em=tema.criado_em,
+        ativo=(tema.id == f.tema_ativo_id),
+    )
+
+
+@router.post(
+    "/minha/temas/{tema_id}/ativar",
+    response_model=FaculdadeTemaResponse,
+    summary="Ativar tema (trocar tema em uso)",
+)
+def ativar_tema(
+    tema_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.faculdade_id:
+        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
+    f = _get_or_404(db, current_user.faculdade_id)
+    tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
+    if not tema:
+        raise HTTPException(status_code=404, detail="Tema não encontrado")
+    _assert_tema_owner(tema, f.id)
+    f.tema_ativo_id = tema.id
+    db.commit()
+    db.refresh(f)
+    return _tema_response(f)
+
+
+@router.delete(
+    "/minha/temas/{tema_id}",
+    status_code=204,
+    summary="Excluir tema (não pode ser o ativo)",
+)
+def excluir_tema(
+    tema_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if not current_user.faculdade_id:
+        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
+    f = _get_or_404(db, current_user.faculdade_id)
+    tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
+    if not tema:
+        raise HTTPException(status_code=404, detail="Tema não encontrado")
+    _assert_tema_owner(tema, f.id)
+    if f.tema_ativo_id == tema_id:
+        raise HTTPException(status_code=400, detail="Não é possível excluir o tema ativo. Ative outro tema primeiro.")
+    db.delete(tema)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# White-label: tema público por slug (sem autenticação)
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/publica/tema/{slug}",
+    response_model=FaculdadeTemaResponse,
+    summary="Tema público por slug (sem autenticação)",
+)
+def obter_tema_por_slug(slug: str, db: Session = Depends(get_db)):
+    f = db.query(Faculdade).filter(Faculdade.slug == slug, Faculdade.ativa == True).first()
+    if not f:
+        raise HTTPException(status_code=404, detail="Faculdade não encontrada")
+    return _tema_response(f)

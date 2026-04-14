@@ -1,0 +1,452 @@
+/* ============================================================
+   PagePreviewComponent — Preview isolado por página
+   Todas as cores usam variáveis CSS definidas inline no host
+   para garantir isolamento total do tema global.
+   ============================================================ */
+
+/* ── Variáveis de fallback ────────────────────────────────── */
+.preview-host {
+  --preview-primary:   var(--primary,   #1a6b3c);
+  --preview-secondary: var(--secondary, #0f4b2a);
+  --preview-bg:        var(--background, #f0fdf4);
+  --preview-radius:    var(--radius, 8px);
+  --preview-font:      var(--font-family, Inter, system-ui, sans-serif);
+  --preview-space:     1rem;
+
+  /* Derivados */
+  --preview-primary-light: color-mix(in srgb, var(--preview-primary) 12%, #fff);
+  --preview-primary-soft:  color-mix(in srgb, var(--preview-primary) 20%, transparent);
+}
+
+/* ── Shell base ───────────────────────────────────────────── */
+.preview-host {
+  font-family: var(--preview-font);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0 0 0 / 0.08);
+  background: var(--preview-bg);
+  user-select: none;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  min-height: 180px;
+}
+
+.mock-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mock-shell--topbar {
+  flex-direction: column;
+}
+
+/* ── Sidebar mini ─────────────────────────────────────────── */
+.mock-sidebar-mini {
+  width: 72px;
+  background: var(--preview-primary);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.mock-sidebar-logo {
+  width: 32px;
+  height: 8px;
+  background: rgba(255 255 255 / 0.6);
+  border-radius: 4px;
+  margin: 0 auto 10px;
+  flex-shrink: 0;
+}
+
+.mock-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  margin: 0 4px;
+  cursor: default;
+  transition: background 0.15s;
+}
+
+.mock-sidebar-item.active {
+  background: rgba(255 255 255 / 0.18);
+}
+
+.mock-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255 255 255 / 0.6);
+  flex-shrink: 0;
+}
+
+.mock-item-label {
+  font-size: 6px;
+  color: rgba(255 255 255 / 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Topbar mock ──────────────────────────────────────────── */
+.mock-topbar {
+  height: 30px;
+  background: var(--preview-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.mock-topbar-title {
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255 255 255 / 0.95);
+}
+
+/* ── Content área ─────────────────────────────────────────── */
+.mock-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--preview-bg);
+}
+
+.mock-content--pad {
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+/* ── Welcome card (dashboard) ───────────────────────────── */
+.mock-welcome-card {
+  background: linear-gradient(135deg, var(--preview-primary), var(--preview-secondary));
+  border-radius: calc(var(--preview-radius) * 0.6);
+  padding: 10px 12px;
+  margin: 8px;
+  color: #fff;
+}
+
+.mock-welcome-title {
+  font-size: 9px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.mock-welcome-sub {
+  font-size: 6px;
+  opacity: 0.8;
+}
+
+/* ── Dashboard stat row ───────────────────────────────────── */
+.mock-stat-row {
+  display: flex;
+  gap: 5px;
+  padding: 0 8px;
+}
+
+.mock-stat-card {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  padding: 6px 5px;
+  text-align: center;
+}
+
+.mock-stat-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--preview-primary);
+}
+
+.mock-stat-label {
+  font-size: 5px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+/* ── Dashboard quick actions ──────────────────────────────── */
+.mock-quick-actions {
+  padding: 5px 8px;
+}
+
+.mock-section-title {
+  font-size: 6px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mock-action-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.mock-action-chip {
+  background: var(--preview-primary-light);
+  color: var(--preview-primary);
+  border-radius: calc(var(--preview-radius) * 0.5);
+  padding: 3px 7px;
+  font-size: 5.5px;
+  font-weight: 600;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.mock-btn-primary {
+  background: var(--preview-primary);
+  color: #fff;
+  border-radius: calc(var(--preview-radius) * 0.7);
+  font-size: 6px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.mock-btn-primary.mock-btn-sm {
+  padding: 3px 7px;
+  font-size: 6px;
+}
+
+.mock-btn-primary.mock-btn-save {
+  margin-top: 4px;
+  padding: 5px 14px;
+  display: inline-flex;
+  font-size: 6.5px;
+}
+
+.mock-btn-ghost {
+  background: transparent;
+  color: var(--preview-primary);
+  border: 1px solid var(--preview-primary);
+  border-radius: calc(var(--preview-radius) * 0.5);
+  padding: 2px 6px;
+  font-size: 5.5px;
+  font-weight: 600;
+}
+
+.mock-btn-ghost.mock-btn-xs {
+  padding: 1.5px 5px;
+  font-size: 5px;
+}
+
+/* ── Search bar (alunos) ──────────────────────────────────── */
+.mock-search-bar {
+  height: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  flex-shrink: 0;
+}
+
+/* ── Table ────────────────────────────────────────────────── */
+.mock-table {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  overflow: hidden;
+  flex: 1;
+}
+
+.mock-table-header {
+  display: flex;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 4px 6px;
+}
+
+.mock-th {
+  flex: 1;
+  font-size: 5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mock-table-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.mock-table-row:last-child { border-bottom: none; }
+
+.mock-td {
+  flex: 1;
+  font-size: 5.5px;
+  color: #475569;
+}
+
+.mock-td--bold { font-weight: 600; color: #0f172a; }
+.mock-td--primary { color: var(--preview-primary); font-weight: 700; font-size: 7px; }
+
+/* ── Badge ────────────────────────────────────────────────── */
+.mock-badge {
+  display: inline-block;
+  padding: 1.5px 5px;
+  border-radius: 99px;
+  font-size: 5px;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.mock-badge--ok {
+  background: var(--preview-primary-soft);
+  color: var(--preview-primary);
+}
+
+/* ── Cursos grid ──────────────────────────────────────────── */
+.mock-course-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.mock-course-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  overflow: hidden;
+}
+
+.mock-course-cover {
+  height: 28px;
+  background: linear-gradient(135deg, var(--preview-primary), var(--preview-secondary));
+}
+
+.mock-course-info {
+  padding: 4px 5px;
+}
+
+.mock-course-name {
+  font-size: 5.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mock-course-meta {
+  font-size: 4.5px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+
+/* ── Aulas list ───────────────────────────────────────────── */
+.mock-aulas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.mock-aula-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+}
+
+.mock-aula-thumb {
+  width: 28px;
+  height: 22px;
+  background: linear-gradient(135deg, var(--preview-primary), var(--preview-secondary));
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.mock-aula-info { flex: 1; min-width: 0; }
+
+.mock-aula-titulo {
+  font-size: 5.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.mock-aula-curso {
+  font-size: 4.5px;
+  color: #94a3b8;
+}
+
+/* ── Notas ────────────────────────────────────────────────── */
+.mock-notas-header { margin-bottom: 4px; }
+
+.mock-select-bar {
+  height: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  width: 60%;
+}
+
+/* ── Perfil ───────────────────────────────────────────────── */
+.mock-perfil-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.6);
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+.mock-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--preview-primary), var(--preview-secondary));
+  flex-shrink: 0;
+}
+
+.mock-perfil-nome {
+  font-size: 6.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mock-perfil-email {
+  font-size: 5px;
+  color: #94a3b8;
+}
+
+.mock-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mock-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mock-form-label {
+  font-size: 5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.mock-form-input {
+  height: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: calc(var(--preview-radius) * 0.4);
+}

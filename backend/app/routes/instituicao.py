@@ -8,7 +8,7 @@ import time
 from app.database import get_db
 from decimal import Decimal
 from app.models import (
-    Instituicao, RoleEnum, Faculdade, Usuario,
+    Instituicao, RoleEnum, Faculdade, FaculdadeTema, Usuario,
     VinculoAlunoFaculdade, SolicitacaoCadastro, SolicitacaoStatusEnum,
     Curso, Aula, StatusCursoEnum, Video,
     Nota, Prova, Questao, Resposta, OpcaoResposta,
@@ -21,6 +21,8 @@ from app.schemas import (
     AulaCreate, AulaUpdate, AulaResponse, AulaDetailResponse, VideoResponse,
     UsuarioCreate, UsuarioUpdate, UsuarioDetailResponse,
     NotaListResponse, NotaUpdate,
+    FaculdadeTemaResponse, FaculdadeTemaUpdate,
+    InstituicaoPerfilUpdate,
 )
 from app.services.auth_service import AuthService
 from app.config import settings
@@ -39,6 +41,11 @@ def get_current_instituicao_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso exclusivo para contas de instituição",
+        )
+    if not current_user.faculdade_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Conta de instituição sem faculdade vinculada",
         )
     return current_user
 
@@ -110,16 +117,15 @@ def minha_instituicao(
 
 @router.patch("/minha", summary="Atualizar perfil da minha instituição")
 def atualizar_minha_instituicao(
-    payload: dict,
+    payload: InstituicaoPerfilUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_instituicao_user),
 ):
     faculdade = _get_faculdade(db, current_user)
 
-    CAMPOS_PERMITIDOS = {"nome", "email_contato", "telefone", "dominio_email"}
-    for campo, valor in payload.items():
-        if campo in CAMPOS_PERMITIDOS:
-            setattr(faculdade, campo, valor)
+    dados = payload.model_dump(exclude_unset=True)
+    for campo, valor in dados.items():
+        setattr(faculdade, campo, valor)
 
     db.commit()
     db.refresh(faculdade)
@@ -135,6 +141,85 @@ def atualizar_minha_instituicao(
         "aprovada": faculdade.aprovada,
         "data_criacao": faculdade.data_criacao,
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /minha/tema — tema ativo da instituição
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/minha/tema",
+    response_model=FaculdadeTemaResponse,
+    summary="Obter tema visual da minha instituição",
+)
+def obter_tema_instituicao(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_instituicao_user),
+) -> FaculdadeTemaResponse:
+    faculdade = _get_faculdade(db, current_user)
+    tema = faculdade.tema_ativo
+    logo = (tema.logo_url_override if tema and tema.logo_url_override else faculdade.logo_url)
+    return FaculdadeTemaResponse(
+        faculdade_id      = faculdade.id,
+        nome              = faculdade.nome,
+        logo_url          = logo,
+        primary_color     = tema.primary_color     if tema else "#1a6b3c",
+        secondary_color   = tema.secondary_color   if tema else "#0f4b2a",
+        background_color  = tema.background_color  if tema else "#f0fdf4",
+        font_family       = tema.font_family        if tema else "Inter, system-ui, sans-serif",
+        dark_mode             = tema.dark_mode             if tema else False,
+        dark_primary_color    = tema.dark_primary_color    if tema else "#34d399",
+        dark_secondary_color  = tema.dark_secondary_color  if tema else "#10b981",
+        dark_background_color = tema.dark_background_color if tema else "#0f172a",
+        favicon_url       = tema.favicon_url if tema else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# PUT /minha/tema — atualizar tema ativo
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/minha/tema",
+    response_model=FaculdadeTemaResponse,
+    summary="Atualizar tema visual da minha instituição",
+)
+def atualizar_tema_instituicao(
+    payload: FaculdadeTemaUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_instituicao_user),
+) -> FaculdadeTemaResponse:
+    faculdade = _get_faculdade(db, current_user)
+
+    tema = faculdade.tema_ativo
+    if tema is None:
+        tema = FaculdadeTema(faculdade_id=faculdade.id, nome="Tema Padrão")
+        db.add(tema)
+        db.flush()
+        faculdade.tema_ativo_id = tema.id
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(tema, field, value)
+
+    db.commit()
+    db.refresh(tema)
+    db.refresh(faculdade)
+
+    logo = tema.logo_url_override or faculdade.logo_url
+    return FaculdadeTemaResponse(
+        faculdade_id      = faculdade.id,
+        nome              = faculdade.nome,
+        logo_url          = logo,
+        primary_color     = tema.primary_color,
+        secondary_color   = tema.secondary_color,
+        background_color  = tema.background_color,
+        font_family       = tema.font_family,
+        dark_mode             = tema.dark_mode,
+        dark_primary_color    = tema.dark_primary_color,
+        dark_secondary_color  = tema.dark_secondary_color,
+        dark_background_color = tema.dark_background_color,
+        favicon_url       = tema.favicon_url,
+    )
 
 
 # ---------------------------------------------------------------------------
