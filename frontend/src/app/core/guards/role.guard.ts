@@ -13,6 +13,6 @@ export const roleGuard: CanActivateFn = (route, state) => {
   }
 
   console.warn('Access denied: insufficient permissions. Redirecting to login.');
-  router.navigate(['/auth/login']);
+  router.navigate(['/login']);
   return false;
 };

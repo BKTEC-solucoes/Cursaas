@@ -386,21 +386,42 @@ def _assert_tema_owner(tema: FaculdadeTema, faculdade_id: int) -> None:
     "/minha/tema",
     response_model=FaculdadeTemaResponse,
     summary="Obter tema ativo da faculdade do usuário autenticado",
+    description=(
+        "Retorna o tema ativo da instituição à qual o usuário pertence. "
+        "Acessível por qualquer role autenticado (aluno, instrutor, admin, instituicao). "
+        "O tenant é resolvido exclusivamente via faculdade_id do JWT — nunca por parâmetro de URL."
+    ),
 )
 def obter_meu_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    from app.models import AdminRoleEnum as ModelAdminRoleEnum, RoleEnum as ModelRoleEnum
-    is_admin = (
+    from app.models import AdminRoleEnum as ModelAdminRoleEnum
+
+    # Super admin sem faculdade_id vinculado não tem tema próprio
+    is_super_admin_sem_tenant = (
         current_user.admin_role == ModelAdminRoleEnum.super_admin
-        or current_user.role in (ModelRoleEnum.admin, ModelRoleEnum.instituicao)
+        and not current_user.faculdade_id
     )
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="Apenas administradores podem acessar o tema")
-    f = _ensure_faculdade(db, current_user)
-    db.commit()
-    db.refresh(f)
+    if is_super_admin_sem_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Super admins sem faculdade vinculada não possuem tema próprio",
+        )
+
+    if not current_user.faculdade_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não está vinculado a nenhuma faculdade",
+        )
+
+    f = db.query(Faculdade).filter(Faculdade.id == current_user.faculdade_id).first()
+    if not f:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Faculdade não encontrada",
+        )
+
     return _tema_response(f)
 
 
@@ -422,7 +443,48 @@ def atualizar_meu_tema(
     if not is_admin:
         raise HTTPException(status_code=403, detail="Apenas administradores podem alterar o tema")
 
+    from app.services.color_palette import generate_palette, validate_contrast
+
     f = _ensure_faculdade(db, current_user)
+
+    data = payload.model_dump(exclude_unset=True)
+
+    # ── Enriquecimento automático de paleta ──────────────────────────────────
+    # Se o admin enviou primary_color, geramos automaticamente:
+    #   - secondary_color (se não enviado pelo admin)
+    #   - dark_primary_color / dark_secondary_color / dark_background_color (se não enviados)
+    #   - background_color (se não enviado e era o padrão)
+    # O admin ainda pode sobrescrever qualquer campo — enriquecemos apenas o que falta.
+    if "primary_color" in data:
+        palette = generate_palette(data["primary_color"])
+        tokens  = palette.tokens
+        a11y    = palette.accessibility
+
+        # Bloqueia cores que não passam nem no AA Large (3:1 mínimo para UI components)
+        if not a11y.aa_large_pass:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Contraste insuficiente: {max(a11y.white_on_primary, a11y.black_on_primary):.1f}:1. "
+                    "A cor primária precisa ter pelo menos 3.0:1 de contraste com branco ou preto."
+                ),
+            )
+
+        # Preenche apenas os campos que o admin NÃO enviou explicitamente.
+        # Isso garante que overrides manuais do admin sempre prevalecem.
+        auto_fields = {
+            "secondary_color":      tokens.secondary_hex,
+            "dark_primary_color":   tokens.dark_interactive_default,
+            "dark_secondary_color": tokens.dark_interactive_active,
+            "dark_background_color": tokens.dark_background,
+        }
+        # background_color: só auto-preenche se o admin não enviou
+        if "background_color" not in data:
+            auto_fields["background_color"] = tokens.background_light
+
+        for key, auto_val in auto_fields.items():
+            if key not in data:
+                data[key] = auto_val
 
     # Usa o tema ativo ou cria um novo
     tema = f.tema_ativo
@@ -432,8 +494,8 @@ def atualizar_meu_tema(
         db.flush()
         f.tema_ativo_id = tema.id
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(tema, field, value)
+    for key, value in data.items():
+        setattr(tema, key, value)
 
     db.commit()
     db.refresh(f)
@@ -487,8 +549,39 @@ def criar_tema(
     if not current_user.faculdade_id:
         raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
 
+    from app.services.color_palette import generate_palette
+
     f = _get_or_404(db, current_user.faculdade_id)
-    tema = FaculdadeTema(faculdade_id=f.id, **payload.model_dump())
+
+    data = payload.model_dump()
+    if data.get("primary_color"):
+        palette = generate_palette(data["primary_color"])
+        tokens  = palette.tokens
+        a11y    = palette.accessibility
+        if not a11y.aa_large_pass:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Contraste insuficiente: {max(a11y.white_on_primary, a11y.black_on_primary):.1f}:1. "
+                    "Mínimo 3.0:1 exigido."
+                ),
+            )
+        # Enriquece apenas campos cujo valor ainda é o default (não personalizado)
+        defaults = {"secondary_color": "#0f4b2a", "dark_primary_color": "#34d399",
+                    "dark_secondary_color": "#10b981", "dark_background_color": "#0f172a",
+                    "background_color": "#f0fdf4"}
+        auto_map = {
+            "secondary_color":       tokens.secondary_hex,
+            "dark_primary_color":    tokens.dark_interactive_default,
+            "dark_secondary_color":  tokens.dark_interactive_active,
+            "dark_background_color": tokens.dark_background,
+            "background_color":      tokens.background_light,
+        }
+        for key, auto_val in auto_map.items():
+            if data.get(key) == defaults.get(key) or not data.get(key):
+                data[key] = auto_val
+
+    tema = FaculdadeTema(faculdade_id=f.id, **data)
     db.add(tema)
     db.flush()
     # Primeiro tema criado vira ativo automaticamente
@@ -522,9 +615,37 @@ def atualizar_tema(
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
         raise HTTPException(status_code=404, detail="Tema não encontrado")
+    from app.services.color_palette import generate_palette
+
     _assert_tema_owner(tema, f.id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(tema, field, value)
+
+    data = payload.model_dump(exclude_unset=True)
+    if "primary_color" in data:
+        palette = generate_palette(data["primary_color"])
+        tokens  = palette.tokens
+        a11y    = palette.accessibility
+        if not a11y.aa_large_pass:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Contraste insuficiente: {max(a11y.white_on_primary, a11y.black_on_primary):.1f}:1. "
+                    "Mínimo 3.0:1 exigido."
+                ),
+            )
+        auto_fields = {
+            "secondary_color":       tokens.secondary_hex,
+            "dark_primary_color":    tokens.dark_interactive_default,
+            "dark_secondary_color":  tokens.dark_interactive_active,
+            "dark_background_color": tokens.dark_background,
+        }
+        if "background_color" not in data:
+            auto_fields["background_color"] = tokens.background_light
+        for key, auto_val in auto_fields.items():
+            if key not in data:
+                data[key] = auto_val
+
+    for key, value in data.items():
+        setattr(tema, key, value)
     db.commit()
     db.refresh(tema)
     db.refresh(f)

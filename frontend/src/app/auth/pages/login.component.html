@@ -1,78 +1,123 @@
-<div class="login-container">
-  <div class="login-box">
+<!-- ═══════════════════════════════════════════════════════════════════════
+     login.component.html
+     Suporta 3 layouts via classe CSS:
+       login-page--centered    → card centralizado sobre background de cor/gradiente/imagem
+       login-page--split-left  → esquerda = branding, direita = formulário
+       login-page--split-right → esquerda = formulário, direita = branding
+     ══════════════════════════════════════════════════════════════════════ -->
+<div class="login-page" [class]="'login-page--' + loginLayout()">
 
-    <!-- Logo da instituição (carregada via ThemeService) -->
-    <ng-container *ngIf="logoUrl$ | async as logo; else defaultBrand">
-      <img [src]="logo" alt="Logo" class="login-logo" />
-    </ng-container>
-    <ng-template #defaultBrand>
-      <h1 class="login-title">Cursaas</h1>
-    </ng-template>
+  <!-- ── PAINEL DE BRANDING ─────────────────────────────────────────────── -->
+  <!-- Em layout centered: funciona como background de tela cheia.          -->
+  <!-- Em layout split-*: painel lateral com logo + mensagem institucional. -->
+  <section
+    class="login-branding"
+    [style.background]="brandingBg()"
+    aria-hidden="true"
+  >
+    <!-- Overlay de contraste (obrigatório em imagens para WCAG) -->
+    <div class="branding-overlay" [class.branding-overlay--visible]="brandingIsImage()"></div>
 
-    <p class="subtitle">Portal EAD</p>
-    
-    <form (ngSubmit)="login()">
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          [(ngModel)]="email"
-          name="email"
-          placeholder="seu@email.com"
-          required
-        />
+    <div class="branding-content">
+      @if (logoUrl()) {
+        <img [src]="logoUrl()!" alt="{{ institutionName() }}" class="branding-logo" />
+      } @else {
+        <span class="branding-wordmark">{{ institutionName() }}</span>
+      }
+      @if (messageTitle()) {
+        <h2 class="branding-title">{{ messageTitle() }}</h2>
+      }
+      <p class="branding-body">{{ messageBody() }}</p>
+    </div>
+  </section>
+
+  <!-- ── PAINEL DE FORMULÁRIO ───────────────────────────────────────────── -->
+  <section class="login-panel">
+    <div class="login-card">
+
+      <!-- Logo dentro do card (exibido apenas em layout centered) -->
+      <div class="card-brand">
+        @if (logoUrl()) {
+          <img [src]="logoUrl()!" alt="{{ institutionName() }}" class="card-logo" />
+        } @else {
+          <span class="card-wordmark">{{ institutionName() }}</span>
+        }
       </div>
 
-      <div class="form-group">
-        <label for="password">Senha</label>
-        <div class="password-field">
+      <h1 class="card-heading">Entrar</h1>
+      <p class="card-sub">Acesse sua conta para continuar</p>
+
+      <form (ngSubmit)="login()" novalidate>
+
+        <div class="form-field">
+          <label class="form-label" for="email">Email</label>
           <input
-            [type]="showPassword ? 'text' : 'password'"
-            id="password"
-            [(ngModel)]="password"
-            name="password"
-            placeholder="Sua senha"
+            class="form-input"
+            type="email"
+            id="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="seu@email.com"
+            autocomplete="email"
             required
           />
-          <button type="button" class="toggle-password" (click)="showPassword = !showPassword">
-            {{ showPassword ? 'Ocultar' : 'Mostrar' }}
-          </button>
         </div>
-      </div>
 
-      <div *ngIf="error" class="error-message">{{ error }}</div>
+        <div class="form-field">
+          <label class="form-label" for="password">Senha</label>
+          <div class="input-with-action">
+            <input
+              class="form-input"
+              [type]="showPassword ? 'text' : 'password'"
+              id="password"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Sua senha"
+              autocomplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              class="input-action"
+              (click)="showPassword = !showPassword"
+              [attr.aria-label]="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
+            >{{ showPassword ? 'Ocultar' : 'Mostrar' }}</button>
+          </div>
+        </div>
 
-      <button type="submit" class="submit-button" [disabled]="loading">
-        {{ loading ? 'Entrando...' : 'Entrar' }}
-      </button>
+        @if (error) {
+          <p class="form-error login-error" role="alert">{{ error }}</p>
+        }
 
-      <div class="divider">
-        <span>ou</span>
-      </div>
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+          [disabled]="loading"
+        >{{ loading ? 'Entrando…' : 'Entrar' }}</button>
+
+      </form>
+
+      <div class="divider"><span>ou</span></div>
 
       <button
         type="button"
-        class="google-button"
+        class="btn btn-google btn-full"
         [disabled]="googleLoading || !googleConfigured"
         (click)="loginWithGoogle()"
       >
         {{
           googleConfigured
-            ? (googleLoading ? 'Conectando com Google...' : 'Entrar com Google')
+            ? (googleLoading ? 'Conectando…' : 'Entrar com Google')
             : 'Configure o Google Client ID'
         }}
       </button>
-    </form>
 
-    <div class="register-link">
-      <p>Não tem uma conta? <a routerLink="/auth/register">Criar conta</a></p>
-    </div>
+      <p class="register-link">
+        Não tem uma conta?
+        <a routerLink="/auth/register">Criar conta</a>
+      </p>
 
-    <div class="demo-credentials">
-      <p><strong>Demo Credentials:</strong></p>
-      <p>Admin: admin&#64;example.com / senha123</p>
-      <p>Aluno: aluno1&#64;example.com / senha123</p>
     </div>
-  </div>
+  </section>
+
 </div>

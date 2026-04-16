@@ -1,13 +1,29 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { publicGuard } from './core/guards/public.guard';
 import { roleGuard } from './core/guards/role.guard';
 import { LojasComponent } from './lojas/lojas.component';
+import { themeResolver } from './core/resolvers/theme.resolver';
+import { LandingPageComponent } from './landing-page/landing-page.component';
+import { LoginComponent } from './auth/pages/login.component';
+import { DashboardRedirectComponent } from './core/components/dashboard-redirect.component';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/auth/login',
+    component: LandingPageComponent,
+    canActivate: [publicGuard],
     pathMatch: 'full'
+  },
+  {
+    path: 'login',
+    component: LoginComponent,
+    canActivate: [publicGuard]
+  },
+  {
+    path: 'dashboard',
+    component: DashboardRedirectComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'auth',
@@ -27,6 +43,7 @@ export const routes: Routes = [
   {
     path: 'aluno',
     canActivate: [authGuard, roleGuard],
+    resolve: { theme: themeResolver },
     data: { roles: ['aluno'] },
     loadChildren: () => import('./features/aluno/aluno.routes').then(m => m.ALUNO_ROUTES)
   },
@@ -38,6 +55,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/auth/login'
+    redirectTo: '/login'
   }
 ];

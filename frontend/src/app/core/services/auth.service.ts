@@ -67,7 +67,7 @@ export class AuthService {
     localStorage.removeItem('tenant_theme');
     this.tokenSubject.next(null);
     this.currentUserSubject.next(null);
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {

@@ -46,6 +46,60 @@ class LayoutTypeEnum(str, PyEnum):
     topbar  = "topbar"
     sidebar = "sidebar"
 
+class ContentWidthEnum(str, PyEnum):
+    full  = "full"
+    boxed = "boxed"
+
+class AnimIntensityEnum(str, PyEnum):
+    none       = "none"
+    reduced    = "reduced"
+    normal     = "normal"
+    expressive = "expressive"
+
+class TransitionTypeEnum(str, PyEnum):
+    instant = "instant"
+    fade    = "fade"
+    slide   = "slide"
+    spring  = "spring"
+
+# ── Helpers de validação de tema ──────────────────────────────────────────────
+# Regex
+_HEX_RE      = re.compile(r'^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$')
+_CSS_LEN_RE  = re.compile(r'^\d{1,3}(\.\d{1,2})?(px|rem|em|%)$')
+_FONT_INJECT = re.compile(r'[;{}@<>\\]')
+
+# Limites
+_MAX_BORDER_RADIUS_PX = 32  # acima disso os layouts quebram
+_MIN_COLOR_CONTRAST   = 1.2  # primary × background: previne tokens invisíveis
+
+# page_overrides: páginas e campos autorizados
+_ALLOWED_PAGE_OVERRIDE_PAGES  = frozenset({
+    'dashboard', 'alunos', 'cursos', 'aulas', 'notas', 'perfil',
+})
+_ALLOWED_PAGE_OVERRIDE_FIELDS = frozenset({
+    'primary_color', 'secondary_color', 'background_color',
+    'border_radius', 'button_style', 'shadow_level', 'gradient_enabled',
+})
+
+
+def _luminance(hex_color: str) -> float:
+    """Luminância relativa WCAG 2.1 (0 = preto absoluto, 1 = branco)."""
+    h = hex_color.lstrip('#')
+    if len(h) == 3:
+        h = ''.join(c * 2 for c in h)
+    r, g, b = int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255
+    def _lin(c: float) -> float:
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * _lin(r) + 0.7152 * _lin(g) + 0.0722 * _lin(b)
+
+
+def _contrast_ratio(c1: str, c2: str) -> float:
+    """Razão de contraste WCAG 2.1 entre duas cores hex."""
+    l1, l2 = _luminance(c1), _luminance(c2)
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
 # ==================== SCHEMAS DE SOLICITAÇÃO DE CADASTRO ====================
 
 class SolicitacaoCadastroCreate(BaseModel):
@@ -135,8 +189,18 @@ class FaculdadeTemaResponse(BaseModel):
     button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
     shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
     layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    content_width:    ContentWidthEnum = ContentWidthEnum.boxed
+    sidebar_collapsible: bool         = True
+    anim_intensity:   AnimIntensityEnum  = AnimIntensityEnum.normal
+    transition_type:  TransitionTypeEnum = TransitionTypeEnum.fade
     gradient_enabled: bool            = False
     page_overrides:   Optional[dict]  = None
+    # Tela de login
+    login_layout:           str           = 'centered'
+    login_background_type:  str           = 'gradient'
+    login_background_value: Optional[str] = None
+    login_message_title:    Optional[str] = None
+    login_message_body:     Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -155,6 +219,10 @@ class FaculdadeTemaListItem(BaseModel):
     button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
     shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
     layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    content_width:    ContentWidthEnum = ContentWidthEnum.boxed
+    sidebar_collapsible: bool         = True
+    anim_intensity:   AnimIntensityEnum  = AnimIntensityEnum.normal
+    transition_type:  TransitionTypeEnum = TransitionTypeEnum.fade
     gradient_enabled: bool            = False
     ativo: bool = False        # calculado na rota
     criado_em: datetime
@@ -181,15 +249,125 @@ class FaculdadeTemaCreate(BaseModel):
     button_style:     ButtonStyleEnum = ButtonStyleEnum.rounded
     shadow_level:     ShadowLevelEnum = ShadowLevelEnum.soft
     layout_type:      LayoutTypeEnum  = LayoutTypeEnum.topbar
+    content_width:    ContentWidthEnum = ContentWidthEnum.boxed
+    sidebar_collapsible: bool         = True
+    anim_intensity:   AnimIntensityEnum  = AnimIntensityEnum.normal
+    transition_type:  TransitionTypeEnum = TransitionTypeEnum.fade
     gradient_enabled: bool            = False
+    page_overrides:   Optional[dict]  = None
+    # Tela de login
+    login_layout:           str           = Field('centered', max_length=20)
+    login_background_type:  str           = Field('gradient', max_length=20)
+    login_background_value: Optional[str] = Field(None, max_length=500)
+    login_message_title:    Optional[str] = Field(None, max_length=120)
+    login_message_body:     Optional[str] = Field(None, max_length=300)
+
+    # ── Validadores de restrição ──────────────────────────────────────────
+    @field_validator(
+        'primary_color', 'secondary_color', 'background_color',
+        'dark_primary_color', 'dark_secondary_color', 'dark_background_color',
+        mode='before',
+    )
+    @classmethod
+    def _validate_hex_color(cls, v):
+        if v is None:
+            return v
+        sv = str(v).strip()
+        if not _HEX_RE.match(sv):
+            raise ValueError(f'Cor "{sv}" inválida — use formato hex #RGB ou #RRGGBB.')
+        return sv.lower()
+
+    @field_validator('border_radius', mode='before')
+    @classmethod
+    def _validate_border_radius(cls, v):
+        if v is None:
+            return v
+        sv = str(v).strip()
+        if not _CSS_LEN_RE.match(sv):
+            raise ValueError('border_radius deve ser CSS válido (ex: 8px, 0.5rem, 50%).')
+        m = re.match(r'^(\d+(?:\.\d+)?)px$', sv)
+        if m and float(m.group(1)) > _MAX_BORDER_RADIUS_PX:
+            raise ValueError(
+                f'border_radius não pode exceder {_MAX_BORDER_RADIUS_PX}px. '
+                'Para bordas pill completas use button_style="pill".'
+            )
+        return sv
+
+    @field_validator('font_family', mode='before')
+    @classmethod
+    def _validate_font_family(cls, v):
+        if v is None:
+            return v
+        if _FONT_INJECT.search(str(v)):
+            raise ValueError(
+                'font_family contém caracteres não permitidos. '
+                'Use nomes separados por vírgula (ex: "Inter, system-ui, sans-serif").'
+            )
+        return v
+
+    @field_validator('page_overrides', mode='before')
+    @classmethod
+    def _validate_page_overrides(cls, v):
+        if v is None:
+            return v
+        if not isinstance(v, dict):
+            raise ValueError('page_overrides deve ser um objeto JSON.')
+        invalid_pages = set(v.keys()) - _ALLOWED_PAGE_OVERRIDE_PAGES
+        if invalid_pages:
+            raise ValueError(
+                f'page_overrides: páginas desconhecidas {sorted(invalid_pages)}. '
+                f'Permitidas: {sorted(_ALLOWED_PAGE_OVERRIDE_PAGES)}.'
+            )
+        for page, overrides in v.items():
+            if not isinstance(overrides, dict):
+                raise ValueError(f'page_overrides["{page}"] deve ser um objeto.')
+            invalid_fields = set(overrides.keys()) - _ALLOWED_PAGE_OVERRIDE_FIELDS
+            if invalid_fields:
+                raise ValueError(
+                    f'page_overrides["{page}"]: campos não permitidos: {sorted(invalid_fields)}. '
+                    'Aceitos: primary_color, secondary_color, background_color, '
+                    'border_radius, button_style, shadow_level, gradient_enabled.'
+                )
+        return v
 
     @field_validator('logo_url_override', 'favicon_url', mode='before')
     @classmethod
     def validate_image_url(cls, v):
-        if v and isinstance(v, str) and v.startswith('data:'):
-            if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
-                raise ValueError('Formato de imagem data: não permitido. Use PNG, JPEG, GIF ou WebP.')
+        if v and isinstance(v, str):
+            if v.startswith('data:'):
+                if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
+                    raise ValueError('Formato data: URI inválido. Use PNG, JPEG, GIF ou WebP.')
+            elif v.startswith('http://'):
+                raise ValueError('URLs de imagem devem usar HTTPS (http:// não é aceito).')
         return v
+
+    @field_validator('login_background_value', mode='before')
+    @classmethod
+    def _validate_login_bg(cls, v):
+        if v and isinstance(v, str) and v.startswith('http://'):
+            raise ValueError('login_background_value deve usar HTTPS quando for URL de imagem.')
+        return v
+
+    @model_validator(mode='after')
+    def _check_brand_contrast(self) -> 'FaculdadeTemaCreate':
+        try:
+            ratio = _contrast_ratio(self.primary_color, self.background_color)
+            if ratio < _MIN_COLOR_CONTRAST:
+                raise ValueError(
+                    f'primary_color e background_color têm contraste insuficiente '
+                    f'({ratio:.2f}:1, mínimo {_MIN_COLOR_CONTRAST}:1). O sistema não '
+                    'conseguirá derivar tokens de texto legíveis automaticamente.'
+                )
+        except ValueError as exc:
+            if 'contraste' in str(exc):
+                raise
+        return self
+
+    @model_validator(mode='after')
+    def _check_anim_consistency(self) -> 'FaculdadeTemaCreate':
+        if self.anim_intensity == AnimIntensityEnum.none:
+            self.transition_type = TransitionTypeEnum.instant
+        return self
 
 class FaculdadeTemaUpdate(BaseModel):
     """Payload para atualizar um tema existente (todos os campos opcionais)."""
@@ -210,16 +388,126 @@ class FaculdadeTemaUpdate(BaseModel):
     button_style:     Optional[ButtonStyleEnum] = None
     shadow_level:     Optional[ShadowLevelEnum] = None
     layout_type:      Optional[LayoutTypeEnum]  = None
+    content_width:    Optional[ContentWidthEnum] = None
+    sidebar_collapsible: Optional[bool]          = None
+    anim_intensity:   Optional[AnimIntensityEnum]  = None
+    transition_type:  Optional[TransitionTypeEnum] = None
     gradient_enabled: Optional[bool]            = None
     page_overrides:   Optional[dict]            = None
+    # Tela de login
+    login_layout:           Optional[str] = Field(None, max_length=20)
+    login_background_type:  Optional[str] = Field(None, max_length=20)
+    login_background_value: Optional[str] = Field(None, max_length=500)
+    login_message_title:    Optional[str] = Field(None, max_length=120)
+    login_message_body:     Optional[str] = Field(None, max_length=300)
+
+    # ── Validadores de restrição ──────────────────────────────────────────
+    @field_validator(
+        'primary_color', 'secondary_color', 'background_color',
+        'dark_primary_color', 'dark_secondary_color', 'dark_background_color',
+        mode='before',
+    )
+    @classmethod
+    def _validate_hex_color(cls, v):
+        if v is None:
+            return v
+        sv = str(v).strip()
+        if not _HEX_RE.match(sv):
+            raise ValueError(f'Cor "{sv}" inválida — use formato hex #RGB ou #RRGGBB.')
+        return sv.lower()
+
+    @field_validator('border_radius', mode='before')
+    @classmethod
+    def _validate_border_radius(cls, v):
+        if v is None:
+            return v
+        sv = str(v).strip()
+        if not _CSS_LEN_RE.match(sv):
+            raise ValueError('border_radius deve ser CSS válido (ex: 8px, 0.5rem, 50%).')
+        m = re.match(r'^(\d+(?:\.\d+)?)px$', sv)
+        if m and float(m.group(1)) > _MAX_BORDER_RADIUS_PX:
+            raise ValueError(
+                f'border_radius não pode exceder {_MAX_BORDER_RADIUS_PX}px. '
+                'Para bordas pill completas use button_style="pill".'
+            )
+        return sv
+
+    @field_validator('font_family', mode='before')
+    @classmethod
+    def _validate_font_family(cls, v):
+        if v is None:
+            return v
+        if _FONT_INJECT.search(str(v)):
+            raise ValueError(
+                'font_family contém caracteres não permitidos. '
+                'Use nomes separados por vírgula (ex: "Inter, system-ui, sans-serif").'
+            )
+        return v
+
+    @field_validator('page_overrides', mode='before')
+    @classmethod
+    def _validate_page_overrides(cls, v):
+        if v is None:
+            return v
+        if not isinstance(v, dict):
+            raise ValueError('page_overrides deve ser um objeto JSON.')
+        invalid_pages = set(v.keys()) - _ALLOWED_PAGE_OVERRIDE_PAGES
+        if invalid_pages:
+            raise ValueError(
+                f'page_overrides: páginas desconhecidas {sorted(invalid_pages)}. '
+                f'Permitidas: {sorted(_ALLOWED_PAGE_OVERRIDE_PAGES)}.'
+            )
+        for page, overrides in v.items():
+            if not isinstance(overrides, dict):
+                raise ValueError(f'page_overrides["{page}"] deve ser um objeto.')
+            invalid_fields = set(overrides.keys()) - _ALLOWED_PAGE_OVERRIDE_FIELDS
+            if invalid_fields:
+                raise ValueError(
+                    f'page_overrides["{page}"]: campos não permitidos: {sorted(invalid_fields)}. '
+                    'Aceitos: primary_color, secondary_color, background_color, '
+                    'border_radius, button_style, shadow_level, gradient_enabled.'
+                )
+        return v
 
     @field_validator('logo_url_override', 'favicon_url', mode='before')
     @classmethod
     def validate_image_url(cls, v):
-        if v and isinstance(v, str) and v.startswith('data:'):
-            if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
-                raise ValueError('Formato de imagem data: não permitido. Use PNG, JPEG, GIF ou WebP.')
+        if v and isinstance(v, str):
+            if v.startswith('data:'):
+                if not re.match(r'^data:image/(png|jpeg|jpg|gif|webp);base64,', v):
+                    raise ValueError('Formato data: URI inválido. Use PNG, JPEG, GIF ou WebP.')
+            elif v.startswith('http://'):
+                raise ValueError('URLs de imagem devem usar HTTPS (http:// não é aceito).')
         return v
+
+    @field_validator('login_background_value', mode='before')
+    @classmethod
+    def _validate_login_bg(cls, v):
+        if v and isinstance(v, str) and v.startswith('http://'):
+            raise ValueError('login_background_value deve usar HTTPS quando for URL de imagem.')
+        return v
+
+    @model_validator(mode='after')
+    def _check_brand_contrast(self) -> 'FaculdadeTemaUpdate':
+        # Somente valida se ambas as cores foram enviadas nesta atualização
+        if self.primary_color and self.background_color:
+            try:
+                ratio = _contrast_ratio(self.primary_color, self.background_color)
+                if ratio < _MIN_COLOR_CONTRAST:
+                    raise ValueError(
+                        f'primary_color e background_color têm contraste insuficiente '
+                        f'({ratio:.2f}:1, mínimo {_MIN_COLOR_CONTRAST}:1).'
+                    )
+            except ValueError as exc:
+                if 'contraste' in str(exc):
+                    raise
+        return self
+
+    @model_validator(mode='after')
+    def _check_anim_consistency(self) -> 'FaculdadeTemaUpdate':
+        if self.anim_intensity == AnimIntensityEnum.none:
+            self.transition_type = TransitionTypeEnum.instant
+        return self
 
 class TemaPresetResponse(BaseModel):
     """Preset de tema para seleção rápida no painel."""

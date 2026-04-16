@@ -74,6 +74,22 @@ class LayoutTypeEnum(str, enum.Enum):
     topbar  = "topbar"
     sidebar = "sidebar"
 
+class ContentWidthEnum(str, enum.Enum):
+    full  = "full"   # ocupa 100% da viewport
+    boxed = "boxed"  # max-width centralizado (padrão: 1400px)
+
+class AnimIntensityEnum(str, enum.Enum):
+    none       = "none"       # sem animações/transições
+    reduced    = "reduced"    # suave — acessível
+    normal     = "normal"     # padrão
+    expressive = "expressive" # pronunciado — destaque
+
+class TransitionTypeEnum(str, enum.Enum):
+    instant = "instant"  # snap imediato (0ms)
+    fade    = "fade"     # ease suave (padrão)
+    slide   = "slide"    # ease-out físico
+    spring  = "spring"   # cubic-bezier com overshoot
+
 
 class FaculdadeTema(Base):
     """Tema visual white-label de um tenant. Relação 1:N com Faculdade."""
@@ -107,7 +123,15 @@ class FaculdadeTema(Base):
     spacing          = Column(Enum(SpacingEnum),     nullable=False, default=SpacingEnum.comfortable)
     button_style     = Column(Enum(ButtonStyleEnum), nullable=False, default=ButtonStyleEnum.rounded)
     shadow_level     = Column(Enum(ShadowLevelEnum), nullable=False, default=ShadowLevelEnum.soft)
-    layout_type      = Column(Enum(LayoutTypeEnum),  nullable=False, default=LayoutTypeEnum.topbar)
+    layout_type      = Column(Enum(LayoutTypeEnum),      nullable=False, default=LayoutTypeEnum.topbar)
+    content_width    = Column(Enum(ContentWidthEnum),    nullable=False, default=ContentWidthEnum.boxed,
+                              comment="Largura do conteúdo: full ou boxed")
+    sidebar_collapsible = Column(Boolean, nullable=False, default=True,
+                                 comment="Se true, sidebar pode ser recolhida para ícones pelo usuário")
+    anim_intensity  = Column(Enum(AnimIntensityEnum),  nullable=False, default=AnimIntensityEnum.normal,
+                             comment="Intensidade das microinterações: none | reduced | normal | expressive")
+    transition_type = Column(Enum(TransitionTypeEnum), nullable=False, default=TransitionTypeEnum.fade,
+                             comment="Curva de transição: instant | fade | slide | spring")
     gradient_enabled = Column(Boolean, nullable=False, default=False)
 
     # ── Overrides por página ─────────────────────────────────────────────────
@@ -116,6 +140,18 @@ class FaculdadeTema(Base):
     #   border_radius, button_style, shadow_level, gradient_enabled
     page_overrides   = Column(JSON, nullable=True,
                               comment="Overrides visuais por página: dashboard, alunos, cursos, aulas, notas, perfil")
+
+    # ── Tela de login ─────────────────────────────────────────────────────────
+    login_layout           = Column(String(20),  nullable=False, default="centered",
+                                    comment="Layout: centered | split-left | split-right")
+    login_background_type  = Column(String(20),  nullable=False, default="gradient",
+                                    comment="Tipo de background do painel: gradient | color | image")
+    login_background_value = Column(String(500), nullable=True,
+                                    comment="Hex ou URL de imagem; NULL = derivar de primary/secondary")
+    login_message_title    = Column(String(120), nullable=True,
+                                    comment="Título do painel de branding; NULL = nome da faculdade")
+    login_message_body     = Column(String(300), nullable=True,
+                                    comment="Subtítulo/mensagem do painel; NULL = texto padrão")
 
     criado_em     = Column(DateTime, server_default=func.now(), nullable=False)
     atualizado_em = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

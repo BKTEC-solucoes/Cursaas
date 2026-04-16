@@ -78,10 +78,47 @@
   --color-danger-bg:  #fef2f2;
   --color-info-bg:    #f0f9ff;
 
-  /* Transições */
-  --transition-fast:   150ms ease;
-  --transition-base:   250ms ease;
-  --transition-slow:   350ms ease;
+  /* ── Motion system — Layer 0: primitivos ─────────────────────
+     Controlados por body[data-anim] (intensidade) e
+     body[data-transition] (curva de easing).
+     Componentes referenciam apenas --motion-* — nunca durações
+     ou easings literais diretos.
+     ──────────────────────────────────────────────────────────── */
+
+  /* Durações base — escalam com body[data-anim] */
+  --motion-duration-fast:   150ms;  /* micro: hover bg, icon color   */
+  --motion-duration-base:   250ms;  /* base: maioria das transições  */
+  --motion-duration-slow:   400ms;  /* expansão, collapse, slide     */
+  --motion-duration-enter:  350ms;  /* entrada de elemento na tela   */
+  --motion-duration-exit:   180ms;  /* saída (mais rápida que entrada)*/
+
+  /* Curva de easing — sobrescrita por body[data-transition] */
+  --motion-easing:        ease;
+  --motion-easing-enter:  ease-out;
+  --motion-easing-exit:   ease-in;
+
+  /* Transitions compostas: componentes usam estes tokens */
+  --motion-transition-fast:   var(--motion-duration-fast)  var(--motion-easing);
+  --motion-transition-base:   var(--motion-duration-base)  var(--motion-easing);
+  --motion-transition-slow:   var(--motion-duration-slow)  var(--motion-easing);
+  --motion-transition-enter:  var(--motion-duration-enter) var(--motion-easing-enter);
+  --motion-transition-exit:   var(--motion-duration-exit)  var(--motion-easing-exit);
+
+  /* Aliases de retrocompatibilidade — código existente continua funcional */
+  --transition-fast:  var(--motion-transition-fast);
+  --transition-base:  var(--motion-transition-base);
+  --transition-slow:  var(--motion-transition-slow);
+
+  /* Feedback hover */
+  --motion-hover-lift:    2px;    /* translateY negativo no hover  */
+  --motion-hover-scale:   1.02;   /* escala de hover (cards etc.)  */
+
+  /* Feedback active/click */
+  --motion-click-depth:   1px;    /* translateY positivo no :active */
+  --motion-click-scale:   0.97;   /* escala ao pressionar          */
+
+  /* Entrada de elemento */
+  --motion-enter-y:       10px;   /* deslocamento vertical inicial */
 
   /* Z-index */
   --z-dropdown: 100;
@@ -101,6 +138,105 @@
   --density-font-ui:     var(--font-size-sm);
   --density-section-gap: var(--space-6);   /* gap entre seções         */
   --density-item-gap:    var(--space-4);   /* gap entre itens de lista */
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     TOKENS SEMÂNTICOS DE INTERAÇÃO
+     Escritos em runtime por ThemeService.applyPaletteToRoot().
+     Os valores abaixo são fallbacks para antes do ThemeService carregar.
+     ═════════════════════════════════════════════════════════════════════════ */
+  --color-interactive:           var(--primary);
+  --color-interactive-hover:     var(--primary);
+  --color-interactive-active:    var(--secondary);
+  --color-interactive-disabled:  color-mix(in srgb, var(--primary) 35%, white);
+  --color-on-interactive:        #ffffff;
+  --color-focus-ring:            var(--primary);
+  --color-brand-tint:            var(--background);
+  --color-nav-indicator:         rgba(255, 255, 255, 0.6);
+  /* Variantes dark — escritas por applyPaletteToRoot, usadas em [data-theme="dark"] */
+  --color-interactive-dark:         var(--dark-primary-color);
+  --color-interactive-hover-dark:   var(--dark-primary-color);
+  --color-interactive-active-dark:  var(--dark-secondary-color);
+  --color-on-interactive-dark:      #000000;
+  --color-nav-indicator-dark:       rgba(255, 255, 255, 0.7);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     CAMADA 2 — TOKENS DE COMPONENTE
+     Regra: CSS de componentes referencia APENAS estes tokens.
+     Estes tokens referenciam Camada 1 (semânticos) — nunca hex direto.
+     Sobrescrever um token aqui afeta apenas o componente — escopo seguro.
+     ═════════════════════════════════════════════════════════════════════════ */
+
+  /* ── Botão — estrutura ──────────────────────────────────────────────────── */
+  --btn-radius:               var(--radius);
+  --btn-font-size:            var(--density-font-ui);
+  --btn-font-weight:          600;
+  --btn-gap:                  var(--space-2);
+  --btn-border-width:         1.5px;
+  --btn-focus-ring-size:      3px;
+  --btn-focus-ring-color:     var(--color-focus-ring);
+  --btn-hover-lift:           var(--motion-hover-lift);
+
+  /* ── Botão primary ──────────────────────────────────────────────────────── */
+  --btn-primary-bg:            var(--color-interactive);
+  --btn-primary-bg-hover:      var(--color-interactive-hover);
+  --btn-primary-bg-active:     var(--color-interactive-active);
+  --btn-primary-bg-disabled:   var(--color-interactive-disabled);
+  --btn-primary-color:         var(--color-on-interactive);
+  --btn-primary-shadow:        var(--shadow-sm);
+  --btn-primary-shadow-hover:  var(--shadow-md);
+
+  /* ── Botão secondary ────────────────────────────────────────────────────── */
+  --btn-secondary-bg:          var(--secondary);
+  --btn-secondary-bg-hover:    color-mix(in srgb, var(--secondary) 75%, #000000);
+  --btn-secondary-bg-active:   color-mix(in srgb, var(--secondary) 65%, #000000);
+  --btn-secondary-color:       var(--color-on-interactive);
+  --btn-secondary-shadow:      var(--shadow-sm);
+
+  /* ── Botão outline ──────────────────────────────────────────────────────── */
+  --btn-outline-bg:            transparent;
+  --btn-outline-bg-hover:      var(--color-interactive);
+  --btn-outline-color:         var(--color-interactive);
+  --btn-outline-color-hover:   var(--color-on-interactive);
+  --btn-outline-border:        var(--color-interactive);
+
+  /* ── Botão ghost ────────────────────────────────────────────────────────── */
+  --btn-ghost-bg:              transparent;
+  --btn-ghost-bg-hover:        var(--color-surface-2);
+  --btn-ghost-color:           var(--color-text);
+  --btn-ghost-border:          var(--color-border);
+
+  /* ── Botão danger ───────────────────────────────────────────────────────── */
+  --btn-danger-bg:             var(--color-danger);
+  --btn-danger-bg-hover:       color-mix(in srgb, var(--color-danger) 80%, #000000);
+  --btn-danger-color:          #ffffff;
+
+  /* ── Input ──────────────────────────────────────────────────────────────── */
+  --input-radius:              var(--radius);
+  --input-border-width:        1.5px;
+  --input-focus-ring-size:     3px;
+  --input-bg:                  var(--color-surface);
+  --input-bg-disabled:         var(--color-surface-2);
+  --input-color:               var(--color-text);
+  --input-color-placeholder:   var(--color-text-muted);
+  --input-border:              var(--color-border);
+  --input-border-hover:        var(--color-border-focus);
+  --input-border-focus:        var(--color-interactive);
+  --input-focus-ring-color:    color-mix(in srgb, var(--color-interactive) 20%, transparent);
+  --input-border-error:        var(--color-danger);
+  --input-error-ring-color:    color-mix(in srgb, var(--color-danger) 20%, transparent);
+  --input-border-success:      var(--color-success);
+
+  /* ── Card ───────────────────────────────────────────────────────────────── */
+  --card-bg:                    var(--color-surface);
+  --card-border:                var(--color-border);
+  --card-radius:                var(--radius-lg);
+  --card-padding:               var(--space-5);
+  --card-shadow:                var(--shadow-sm);
+  --card-shadow-hover:          var(--shadow);
+  --card-hover-lift:            var(--motion-hover-lift);
+  --card-elevated-shadow:       var(--shadow-md);
+  --card-elevated-shadow-hover: var(--shadow-lg);
+  --card-elevated-hover-lift:   calc(var(--motion-hover-lift) * 2);
 }
 
 /* ── 2. Dark mode swap ────────────────────────────────────────
@@ -134,6 +270,19 @@
   --color-info-bg:    #082f49;
 
   color-scheme: dark;
+
+  /* ── Reaponta interativos para variantes dark ──────────────────────────────
+     applyPaletteToRoot() escreve --color-interactive-*-dark antes do dark
+     mode ser ativado, então estas vars estão sempre definidas neste contexto.
+     ─────────────────────────────────────────────────────────────────────── */
+  --color-interactive:          var(--color-interactive-dark);
+  --color-interactive-hover:    var(--color-interactive-hover-dark);
+  --color-interactive-active:   var(--color-interactive-active-dark);
+  --color-on-interactive:       var(--color-on-interactive-dark);
+  --color-nav-indicator:        var(--color-nav-indicator-dark);
+  /* Focus rings com opacidade ajustada para dark */
+  --input-focus-ring-color:     color-mix(in srgb, var(--color-interactive) 25%, transparent);
+  --btn-focus-ring-color:       var(--color-interactive);
 }
 
 /* ── 2b. Densidade de UI ─────────────────────────────────────────
@@ -184,6 +333,78 @@ body[data-density="spacious"] {
   --density-font-ui:     var(--font-size-md);
   --density-section-gap: var(--space-8);
   --density-item-gap:    var(--space-5);
+}
+
+/* ── 2c. Motion — intensidade body[data-anim] ────────────────
+   none        → zero durations; sem efeitos visuais
+   reduced     → metade da duração; lift/scale mínimos (acessibilidade)
+   normal      → padrão definido em :root (sem override)
+   expressive  → durations amplificadas; lift/scale pronunciados
+   ─────────────────────────────────────────────────────────── */
+body[data-anim="none"] {
+  --motion-duration-fast:   0ms;
+  --motion-duration-base:   0ms;
+  --motion-duration-slow:   0ms;
+  --motion-duration-enter:  0ms;
+  --motion-duration-exit:   0ms;
+  --motion-hover-lift:      0px;
+  --motion-hover-scale:     1;
+  --motion-click-depth:     0px;
+  --motion-click-scale:     1;
+  --motion-enter-y:         0px;
+}
+
+body[data-anim="reduced"] {
+  --motion-duration-fast:   80ms;
+  --motion-duration-base:   130ms;
+  --motion-duration-slow:   200ms;
+  --motion-duration-enter:  180ms;
+  --motion-duration-exit:   100ms;
+  --motion-hover-lift:      1px;
+  --motion-hover-scale:     1.01;
+  --motion-click-depth:     0px;
+  --motion-click-scale:     0.99;
+  --motion-enter-y:         5px;
+}
+
+body[data-anim="expressive"] {
+  --motion-duration-fast:   200ms;
+  --motion-duration-base:   360ms;
+  --motion-duration-slow:   560ms;
+  --motion-duration-enter:  500ms;
+  --motion-duration-exit:   280ms;
+  --motion-hover-lift:      4px;
+  --motion-hover-scale:     1.04;
+  --motion-click-depth:     2px;
+  --motion-click-scale:     0.94;
+  --motion-enter-y:         20px;
+}
+
+/* ── 2d. Motion — tipo de transição body[data-transition] ────
+   Aplicado APÓS data-anim na cascata — sobrescreve a curva.
+   instant → snap (durations → 0ms; curva sem efeito)
+   fade    → ease suave (padrão — sem override)
+   slide   → ease-out físico (entrada planar)
+   spring  → cubic-bezier com overshoot (orgânico)
+   ─────────────────────────────────────────────────────────── */
+body[data-transition="instant"] {
+  --motion-duration-fast:   0ms;
+  --motion-duration-base:   0ms;
+  --motion-duration-slow:   0ms;
+  --motion-duration-enter:  0ms;
+  --motion-duration-exit:   0ms;
+}
+
+body[data-transition="slide"] {
+  --motion-easing:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-easing-enter:  cubic-bezier(0.0,  0.0,  0.2,  1.0);
+  --motion-easing-exit:   cubic-bezier(0.4,  0.0,  1.0,  1.0);
+}
+
+body[data-transition="spring"] {
+  --motion-easing:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-easing-enter:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-easing-exit:   cubic-bezier(0.55, 0.0,  0.45, 1.0);
 }
 
 /* ── 3. Reset & base ──────────────────────────────────────────  */
@@ -240,10 +461,10 @@ app-root {
   user-select: none;
 }
 .btn:focus-visible {
-  outline: 3px solid var(--primary);
+  outline: var(--btn-focus-ring-size) solid var(--btn-focus-ring-color);
   outline-offset: 2px;
 }
-.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:active:not(:disabled) { transform: translateY(var(--motion-click-depth)); }
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -252,54 +473,64 @@ app-root {
 
 /* Variantes de cor */
 .btn-primary {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: var(--color-text-inverse);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-color);
+  box-shadow: var(--btn-primary-shadow);
 }
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.12);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  background-color: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
+  box-shadow: var(--btn-primary-shadow-hover);
+  transform: translateY(calc(-1 * var(--btn-hover-lift)));
+}
+.btn-primary:active:not(:disabled) {
+  background-color: var(--btn-primary-bg-active);
+  border-color: var(--btn-primary-bg-active);
 }
 
 .btn-secondary {
-  background-color: var(--secondary);
-  border-color: var(--secondary);
-  color: var(--color-text-inverse);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--btn-secondary-bg);
+  border-color: var(--btn-secondary-bg);
+  color: var(--btn-secondary-color);
+  box-shadow: var(--btn-secondary-shadow);
 }
 .btn-secondary:hover:not(:disabled) {
-  filter: brightness(1.15);
+  background-color: var(--btn-secondary-bg-hover);
+  border-color: var(--btn-secondary-bg-hover);
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  transform: translateY(calc(-1 * var(--btn-hover-lift)));
 }
 
 .btn-outline {
-  background-color: transparent;
-  border-color: var(--primary);
-  color: var(--primary);
+  background-color: var(--btn-outline-bg);
+  border-color: var(--btn-outline-border);
+  color: var(--btn-outline-color);
 }
 .btn-outline:hover:not(:disabled) {
-  background-color: var(--primary);
-  color: var(--color-text-inverse);
+  background-color: var(--btn-outline-bg-hover);
+  border-color: var(--btn-outline-bg-hover);
+  color: var(--btn-outline-color-hover);
 }
 
 .btn-ghost {
-  background-color: transparent;
-  border-color: var(--color-border);
-  color: var(--color-text);
+  background-color: var(--btn-ghost-bg);
+  border-color: var(--btn-ghost-border);
+  color: var(--btn-ghost-color);
 }
 .btn-ghost:hover:not(:disabled) {
-  background-color: var(--color-surface-2);
+  background-color: var(--btn-ghost-bg-hover);
 }
 
 .btn-danger {
-  background-color: var(--color-danger);
-  border-color: var(--color-danger);
-  color: #fff;
+  background-color: var(--btn-danger-bg);
+  border-color: var(--btn-danger-bg);
+  color: var(--btn-danger-color);
 }
-.btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--btn-danger-bg-hover);
+  border-color: var(--btn-danger-bg-hover);
+}
 
 /* Tamanhos */
 .btn-sm {
@@ -331,7 +562,8 @@ app-root {
   border-color: transparent;
 }
 [data-gradient="true"] .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.1);
+  background: linear-gradient(135deg, var(--btn-primary-bg-hover) 0%, var(--btn-primary-bg-active) 100%);
+  filter: none;
 }
 
 /* ── 5. Classes utilitárias — Inputs ─────────────────────────── */
@@ -356,10 +588,10 @@ app-root {
   padding: var(--space-2) var(--space-3);
   font-family: inherit;
   font-size: var(--density-font-ui);
-  color: var(--color-text);
-  background-color: var(--color-surface);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius);
+  color: var(--input-color);
+  background-color: var(--input-bg);
+  border: var(--input-border-width) solid var(--input-border);
+  border-radius: var(--input-radius);
   outline: none;
   transition:
     border-color var(--transition-fast),
@@ -377,17 +609,17 @@ app-root {
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 var(--input-focus-ring-size) var(--input-focus-ring-color);
 }
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: var(--color-text-muted);
+  color: var(--input-color-placeholder);
 }
 .form-input:disabled,
 .form-select:disabled,
 .form-textarea:disabled {
-  background-color: var(--color-surface-2);
+  background-color: var(--input-bg-disabled);
   opacity: 0.7;
   cursor: not-allowed;
 }
@@ -409,24 +641,24 @@ app-root {
 }
 .form-input.is-invalid:focus,
 .form-select.is-invalid:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 20%, transparent);
+  box-shadow: 0 0 0 var(--input-focus-ring-size) var(--input-error-ring-color);
 }
 
 /* ── 6. Classes utilitárias — Cards ──────────────────────────── */
 
 .card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
   transition:
     box-shadow   var(--transition-base),
     border-color var(--transition-base),
     transform    var(--transition-base);
-  animation: card-enter var(--transition-slow) ease both;
+  animation: card-enter var(--motion-transition-enter) both;
 }
-.card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+.card:hover { box-shadow: var(--card-shadow-hover); transform: translateY(calc(-1 * var(--card-hover-lift))); }
 
 .card-flat {
   box-shadow: none;
@@ -434,10 +666,10 @@ app-root {
 }
 
 .card-elevated {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--card-elevated-shadow);
   border-color: transparent;
 }
-.card-elevated:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+.card-elevated:hover { box-shadow: var(--card-elevated-shadow-hover); transform: translateY(calc(-1 * var(--card-elevated-hover-lift))); }
 
 .card-header {
   display: flex;
@@ -590,8 +822,17 @@ app-root {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+@keyframes ripple-expand {
+  to { transform: scale(1); opacity: 0; }
+}
+
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(var(--motion-enter-y)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes card-enter {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(var(--motion-enter-y)); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -690,9 +931,35 @@ app-root {
 .section-gap { gap: var(--density-section-gap); }
 .item-gap    { gap: var(--density-item-gap); }
 
-/* ── 12. Acessibilidade — motion reduzido ────────────────────
+/* ── 12. Motion utilities ───────────────────────────────────
+   Classes utilitárias que consomem os tokens de motion.
+   Aplique em elementos que precisam de animação de entrada.
+   ─────────────────────────────────────────────────────────── */
+
+/* Animação de entrada: fade + slide up */
+.motion-enter {
+  animation: enter-up var(--motion-transition-enter) both;
+}
+
+/* Atraso escalonado para listas — aplique via [style="--i:N"] */
+.motion-enter-stagger {
+  animation: enter-up var(--motion-transition-enter) calc(var(--i, 0) * 40ms) both;
+}
+
+/* Feedback hover personalizado para wrappers não-btn/card */
+.interactive {
+  transition:
+    transform  var(--motion-transition-fast),
+    box-shadow var(--motion-transition-fast),
+    opacity    var(--motion-transition-fast);
+  cursor: pointer;
+}
+.interactive:hover  { transform: translateY(calc(-1 * var(--motion-hover-lift))); }
+.interactive:active { transform: translateY(var(--motion-click-depth)); }
+
+/* ── 13. Acessibilidade — motion reduzido ────────────────────
    Respeita a preferência do sistema operacional.
-   Desativa animações/transições para usuários sensíveis.
+   Tem prioridade máxima — sobrescreve body[data-anim].
    ─────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
