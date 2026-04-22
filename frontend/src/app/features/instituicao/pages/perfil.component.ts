@@ -24,10 +24,10 @@ interface InstituicaoInfo {
   template: `
     <div class="perfil-page">
       <div class="page-header">
-        <h1>ðŸ›ï¸ Perfil da InstituiÃ§Ã£o</h1>
+        <h1>🏛️ Perfil da Instituição</h1>
       </div>
 
-      <div class="loading" *ngIf="carregando">Carregando informaÃ§Ãµes...</div>
+      <div class="loading" *ngIf="carregando">Carregando informações...</div>
       <div class="erro" *ngIf="erro && !carregando">{{ erro }}</div>
 
       <ng-container *ngIf="instituicao && !carregando">
@@ -40,13 +40,13 @@ interface InstituicaoInfo {
               <h2>{{ instituicao.nome }}</h2>
               <div class="badges">
                 <span class="badge" [class.badge-ok]="instituicao.aprovada" [class.badge-pending]="!instituicao.aprovada">
-                  {{ instituicao.aprovada ? 'âœ… Aprovada' : 'â³ Aguardando aprovaÃ§Ã£o' }}
+                  {{ instituicao.aprovada ? '✅ Aprovada' : '⏳ Aguardando aprovação' }}
                 </span>
                 <span class="badge" [class.badge-ok]="instituicao.ativa" [class.badge-inactive]="!instituicao.ativa">
-                  {{ instituicao.ativa ? 'ðŸŸ¢ Ativa' : 'ðŸ”´ Inativa' }}
+                  {{ instituicao.ativa ? '🟢 Ativa' : '🔴 Inativa' }}
                 </span>
                 <span class="badge badge-plano" *ngIf="instituicao.plano">
-                  ðŸ“¦ {{ instituicao.plano | titlecase }}
+                  📦 {{ instituicao.plano | titlecase }}
                 </span>
               </div>
             </div>
@@ -66,15 +66,15 @@ interface InstituicaoInfo {
               </div>
               <div class="info-row">
                 <span class="label">E-mail de contato</span>
-                <span class="value">{{ instituicao.email_contato || 'â€”' }}</span>
+                <span class="value">{{ instituicao.email_contato || '—' }}</span>
               </div>
               <div class="info-row">
                 <span class="label">Telefone</span>
-                <span class="value">{{ instituicao.telefone || 'â€”' }}</span>
+                <span class="value">{{ instituicao.telefone || '—' }}</span>
               </div>
               <div class="info-row">
-                <span class="label">DomÃ­nio de e-mail</span>
-                <span class="value">{{ instituicao.dominio_email || 'â€”' }}</span>
+                <span class="label">Domínio de e-mail</span>
+                <span class="value">{{ instituicao.dominio_email || '—' }}</span>
               </div>
               <div class="info-row">
                 <span class="label">Cadastro em</span>
@@ -82,7 +82,7 @@ interface InstituicaoInfo {
               </div>
             </div>
             <div class="card-footer">
-              <button class="btn-edit" (click)="iniciarEdicao()">âœï¸ Editar informaÃ§Ãµes</button>
+              <button class="btn-edit" (click)="iniciarEdicao()">✏️ Editar informações</button>
             </div>
           </ng-container>
 
@@ -91,8 +91,8 @@ interface InstituicaoInfo {
             <div class="section-title">Editar Dados</div>
             <div class="form-grid">
               <div class="form-group">
-                <label>Nome da InstituiÃ§Ã£o</label>
-                <input type="text" [(ngModel)]="form.nome" placeholder="Nome da instituiÃ§Ã£o" />
+                <label>Nome da Instituição</label>
+                <input type="text" [(ngModel)]="form.nome" placeholder="Nome da instituição" />
               </div>
               <div class="form-group">
                 <label>E-mail de Contato</label>
@@ -103,7 +103,7 @@ interface InstituicaoInfo {
                 <input type="text" [(ngModel)]="form.telefone" placeholder="(11) 99999-0000" />
               </div>
               <div class="form-group">
-                <label>DomÃ­nio de E-mail</label>
+                <label>Domínio de E-mail</label>
                 <input type="text" [(ngModel)]="form.dominio_email" placeholder="@minhainstituicao.edu.br" />
               </div>
             </div>
@@ -111,7 +111,7 @@ interface InstituicaoInfo {
             <div class="feedback erro-form" *ngIf="erroForm">{{ erroForm }}</div>
             <div class="card-footer">
               <button class="btn-save" (click)="salvar()" [disabled]="salvando">
-                {{ salvando ? 'Salvando...' : 'ðŸ’¾ Salvar' }}
+                {{ salvando ? 'Salvando...' : '💾 Salvar' }}
               </button>
               <button class="btn-cancel" (click)="cancelarEdicao()">Cancelar</button>
             </div>
@@ -233,7 +233,7 @@ export class InstituicaoPerfilComponent implements OnInit {
   }
 
   salvar(): void {
-    if (!this.form.nome.trim()) { this.erroForm = 'O nome Ã© obrigatÃ³rio.'; return; }
+    if (!this.form.nome.trim()) { this.erroForm = 'O nome é obrigatório.'; return; }
     this.salvando = true;
     this.erroForm = '';
 

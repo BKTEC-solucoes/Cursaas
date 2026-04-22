@@ -27,22 +27,22 @@ interface InstituicaoInfo {
     <div class="dashboard">
       <div class="header-greet">
         <h1>Bem-vindo, {{ usuarioNome }}!</h1>
-        <p class="subtitle">Painel da InstituiÃ§Ã£o â€” Cursaas</p>
+        <p class="subtitle">Painel da Instituição – Cursaas</p>
       </div>
 
-      <div class="loading" *ngIf="carregando">Carregando informaÃ§Ãµes...</div>
+      <div class="loading" *ngIf="carregando">Carregando informações...</div>
       <div class="erro" *ngIf="erro && !carregando">{{ erro }}</div>
 
       <!-- Status banner -->
       <div class="status-banner" *ngIf="instituicao && !carregando">
         <div class="status-item" [class.ok]="instituicao.aprovada" [class.pendente]="!instituicao.aprovada">
-          <span>{{ instituicao.aprovada ? 'âœ… Cadastro aprovado' : 'â³ Aguardando aprovaÃ§Ã£o do Super Admin' }}</span>
+          <span>{{ instituicao.aprovada ? '✅ Cadastro aprovado' : '⏳ Aguardando aprovação do Super Admin' }}</span>
         </div>
         <div class="status-item" [class.ok]="instituicao.ativa" [class.inativo]="!instituicao.ativa">
-          <span>{{ instituicao.ativa ? 'ðŸŸ¢ InstituiÃ§Ã£o ativa' : 'ðŸ”´ InstituiÃ§Ã£o inativa' }}</span>
+          <span>{{ instituicao.ativa ? '🟢 Instituição ativa' : '🔴 Instituição inativa' }}</span>
         </div>
         <div class="status-item" *ngIf="instituicao.plano">
-          <span>ðŸ“¦ Plano: <strong>{{ instituicao.plano | titlecase }}</strong></span>
+          <span>📦 Plano: <strong>{{ instituicao.plano | titlecase }}</strong></span>
         </div>
       </div>
 
@@ -50,17 +50,17 @@ interface InstituicaoInfo {
       <div class="stats-section" *ngIf="!carregando">
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon">ðŸ‘¨â€ðŸŽ“</div>
+            <div class="stat-icon">👨‍🎓</div>
             <div class="stat-value">{{ totalAlunos }}</div>
             <div class="stat-label">Alunos Vinculados</div>
           </div>
           <div class="stat-card highlight">
-            <div class="stat-icon">ðŸ“‹</div>
+            <div class="stat-icon">📋</div>
             <div class="stat-value">{{ solicitacoesPendentes }}</div>
-            <div class="stat-label">SolicitaÃ§Ãµes Pendentes</div>
+            <div class="stat-label">Solicitações Pendentes</div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon">âœ…</div>
+            <div class="stat-icon">✅</div>
             <div class="stat-value">{{ solicitacoesAprovadas }}</div>
             <div class="stat-label">Alunos Aprovados</div>
           </div>
@@ -69,21 +69,21 @@ interface InstituicaoInfo {
 
       <!-- Quick actions -->
       <div class="quick-actions" *ngIf="!carregando">
-        <h2>AÃ§Ãµes RÃ¡pidas</h2>
+        <h2>Ações Rápidas</h2>
         <div class="actions-grid">
           <a routerLink="/instituicao/perfil" class="action-btn">
-            <div class="action-icon">ðŸ›ï¸</div>
+            <div class="action-icon">🏛️</div>
             <div class="action-title">Meu Perfil</div>
-            <div class="action-desc">Ver e editar dados da instituiÃ§Ã£o</div>
+            <div class="action-desc">Ver e editar dados da instituição</div>
           </a>
           <a routerLink="/instituicao/alunos" class="action-btn">
-            <div class="action-icon">ðŸ‘¨â€ðŸŽ“</div>
+            <div class="action-icon">👨‍🎓</div>
             <div class="action-title">Alunos</div>
             <div class="action-desc">Ver alunos vinculados</div>
           </a>
           <a routerLink="/instituicao/solicitacoes" class="action-btn">
-            <div class="action-icon">ðŸ“‹</div>
-            <div class="action-title">SolicitaÃ§Ãµes</div>
+            <div class="action-icon">📋</div>
+            <div class="action-title">Solicitações</div>
             <div class="action-desc">Acompanhar cadastros pendentes</div>
             <div class="action-badge" *ngIf="solicitacoesPendentes > 0">{{ solicitacoesPendentes }}</div>
           </a>
@@ -177,7 +177,7 @@ export class InstituicaoDashboardComponent implements OnInit {
       this.solicitacoesPendentes = sols.filter((s: any) => s.status === 'pendente').length;
       this.solicitacoesAprovadas = sols.filter((s: any) => s.status === 'aprovada').length;
       this.carregando = false;
-      if (!inst) this.erro = 'Erro ao carregar dados da instituiÃ§Ã£o.';
+      if (!inst) this.erro = 'Erro ao carregar dados da instituição.';
     });
   }
 

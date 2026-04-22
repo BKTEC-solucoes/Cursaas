@@ -58,16 +58,16 @@ function formVazio(): AlunoForm {
   template: `
     <div class="page-container">
       <div class="page-header">
-        <h2>ðŸ‘¨â€ðŸŽ“ Alunos</h2>
+        <h2>👨‍🎓 Alunos</h2>
         <button class="btn-primary" (click)="abrirFormulario()">+ Novo Aluno</button>
       </div>
 
-      <!-- Modal Confirmar ExclusÃ£o -->
+      <!-- Modal Confirmar Exclusão -->
       <div class="modal-overlay" *ngIf="alunoParaDeletar" (click)="alunoParaDeletar = null">
         <div class="modal-card" (click)="$event.stopPropagation()">
-          <h3>ðŸ—‘ï¸ Confirmar ExclusÃ£o</h3>
+          <h3>🗑️ Confirmar Exclusão</h3>
           <p>Tem certeza que deseja excluir o aluno <strong>{{ alunoParaDeletar.nome }}</strong>?</p>
-          <p class="modal-aviso">Esta aÃ§Ã£o Ã© irreversÃ­vel e tambÃ©m removerÃ¡ o acesso do aluno Ã  plataforma.</p>
+          <p class="modal-aviso">Esta ação é irreversível e também removerá o acesso do aluno à plataforma.</p>
           <div class="modal-actions">
             <button class="btn-danger" [disabled]="deletando" (click)="confirmarDelecao()">
               {{ deletando ? 'Excluindo...' : 'Sim, excluir' }}
@@ -78,12 +78,12 @@ function formVazio(): AlunoForm {
         </div>
       </div>
 
-      <!-- FormulÃ¡rio -->
+      <!-- Formulário -->
       <div class="form-card" *ngIf="formAberto">
-        <h3>{{ editandoId ? 'âœï¸ Editar Aluno' : 'âž• Novo Aluno' }}</h3>
+        <h3>{{ editandoId ? '✏️ Editar Aluno' : '➕ Novo Aluno' }}</h3>
         <form (ngSubmit)="salvarAluno()" #f="ngForm">
 
-          <div class="section-title">ðŸ‘¤ Dados Pessoais</div>
+          <div class="section-title">👤 Dados Pessoais</div>
           <div class="form-grid">
             <div class="form-row span2">
               <label>Nome Completo *</label>
@@ -100,7 +100,7 @@ function formVazio(): AlunoForm {
                 <option value="Masculino">Masculino</option>
                 <option value="Feminino">Feminino</option>
                 <option value="Outro">Outro</option>
-                <option value="Prefiro nÃ£o informar">Prefiro nÃ£o informar</option>
+                <option value="Prefiro não informar">Prefiro não informar</option>
               </select>
             </div>
             <div class="form-row">
@@ -109,11 +109,11 @@ function formVazio(): AlunoForm {
             </div>
           </div>
 
-          <div class="section-title">ðŸ“ EndereÃ§o e Contato</div>
+          <div class="section-title">📍 Endereço e Contato</div>
           <div class="form-grid">
             <div class="form-row span2">
-              <label>EndereÃ§o Residencial *</label>
-              <input type="text" [(ngModel)]="form.endereco" name="endereco" required placeholder="Rua, nÃºmero, bairro, cidade" />
+              <label>Endereço Residencial *</label>
+              <input type="text" [(ngModel)]="form.endereco" name="endereco" required placeholder="Rua, número, bairro, cidade" />
             </div>
             <div class="form-row">
               <label>CEP *</label>
@@ -130,7 +130,7 @@ function formVazio(): AlunoForm {
             <div class="form-row" *ngIf="!editandoId">
               <label>Senha *</label>
               <div class="password-field">
-                <input [type]="mostrarSenha ? 'text' : 'password'" [(ngModel)]="form.senha" name="senha" required minlength="6" placeholder="MÃ­nimo 6 caracteres" />
+                <input [type]="mostrarSenha ? 'text' : 'password'" [(ngModel)]="form.senha" name="senha" required minlength="6" placeholder="Mínimo 6 caracteres" />
                 <button type="button" class="toggle-password" (click)="mostrarSenha = !mostrarSenha">
                   {{ mostrarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
@@ -138,18 +138,18 @@ function formVazio(): AlunoForm {
             </div>
           </div>
 
-          <div class="section-title">ðŸ‘¨â€ðŸ‘©â€ðŸ‘¦ ResponsÃ¡vel</div>
+          <div class="section-title">👨‍👩‍👦 Responsável</div>
           <div class="form-grid">
             <div class="form-row span2">
-              <label>Nome do Pai / MÃ£e / ResponsÃ¡vel *</label>
-              <input type="text" [(ngModel)]="form.nome_responsavel" name="nome_responsavel" required placeholder="Nome completo do responsÃ¡vel" />
+              <label>Nome do Pai / Mãe / Responsável *</label>
+              <input type="text" [(ngModel)]="form.nome_responsavel" name="nome_responsavel" required placeholder="Nome completo do responsável" />
             </div>
           </div>
 
-          <div class="section-title">ðŸŽ“ Dados Escolares</div>
+          <div class="section-title">🎓 Dados Escolares</div>
           <div class="form-grid">
             <div class="form-row">
-              <label>NÃºmero de MatrÃ­cula *</label>
+              <label>Número de Matrícula *</label>
               <input type="text" [(ngModel)]="form.numero_matricula" name="numero_matricula" required placeholder="Ex: 2026001" />
             </div>
             <div class="form-row">
@@ -157,8 +157,8 @@ function formVazio(): AlunoForm {
               <input type="text" [(ngModel)]="form.turma" name="turma" required placeholder="Ex: 3ÂºA, Turma 2026" />
             </div>
             <div class="form-row span2">
-              <label>HistÃ³rico Escolar *</label>
-              <textarea [(ngModel)]="form.historico_escolar" name="historico_escolar" required rows="3" placeholder="ObservaÃ§Ãµes sobre o histÃ³rico escolar do aluno..."></textarea>
+              <label>Histórico Escolar *</label>
+              <textarea [(ngModel)]="form.historico_escolar" name="historico_escolar" required rows="3" placeholder="Observações sobre o histórico escolar do aluno..."></textarea>
             </div>
           </div>
 
@@ -189,32 +189,32 @@ function formVazio(): AlunoForm {
         <table>
           <thead>
             <tr>
-              <th>MatrÃ­cula</th>
+              <th>Matrícula</th>
               <th>Nome</th>
               <th>CPF/RG</th>
               <th>Turma</th>
               <th>E-mail</th>
               <th>Celular</th>
               <th>Status</th>
-              <th>AÃ§Ãµes</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let aluno of alunos" [class.inactive]="!aluno.ativo">
-              <td class="matricula">{{ aluno.numero_matricula || aluno.matricula || 'â€”' }}</td>
+              <td class="matricula">{{ aluno.numero_matricula || aluno.matricula || '—' }}</td>
               <td class="aluno-nome">{{ aluno.nome }}</td>
-              <td>{{ aluno.cpf_rg || 'â€”' }}</td>
-              <td>{{ aluno.turma || 'â€”' }}</td>
+              <td>{{ aluno.cpf_rg || '—' }}</td>
+              <td>{{ aluno.turma || '—' }}</td>
               <td>{{ aluno.email }}</td>
-              <td>{{ aluno.telefone || 'â€”' }}</td>
+              <td>{{ aluno.telefone || '—' }}</td>
               <td>
                 <span class="status" [ngClass]="aluno.ativo ? 'ativo' : 'inativo'">
-                  {{ aluno.ativo ? 'âœ“ Ativo' : 'âœ— Inativo' }}
+                  {{ aluno.ativo ? '✔ Ativo' : '✗ Inativo' }}
                 </span>
               </td>
               <td class="actions">
-                <button class="btn-sm btn-edit" title="Editar" (click)="editarAluno(aluno)">âœï¸</button>
-                <button class="btn-sm btn-delete" title="Deletar" (click)="abrirDelecao(aluno)">ðŸ—‘ï¸</button>
+                <button class="btn-sm btn-edit" title="Editar" (click)="editarAluno(aluno)">✏️</button>
+                <button class="btn-sm btn-delete" title="Deletar" (click)="abrirDelecao(aluno)">🗑️</button>
               </td>
             </tr>
           </tbody>
@@ -478,7 +478,7 @@ export class InstituicaoAlunosComponent implements OnInit {
     ];
     for (const campo of obrigatorios) {
       if (!String(this.form[campo]).trim()) {
-        this.formErro = 'Todos os campos obrigatÃ³rios devem ser preenchidos.';
+        this.formErro = 'Todos os campos obrigatórios devem ser preenchidos.';
         return;
       }
     }
