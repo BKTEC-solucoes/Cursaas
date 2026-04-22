@@ -69,6 +69,6 @@ export class LojasComponent implements OnInit {
   }
 
   logout(): void {
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/login']);
   }
 }

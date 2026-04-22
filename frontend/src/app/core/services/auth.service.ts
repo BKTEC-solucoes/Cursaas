@@ -19,9 +19,10 @@ export interface UserInfo {
   id: number;
   nome: string;
   email: string;
-  role: 'admin' | 'aluno';
+  role: 'admin' | 'aluno' | 'instituicao';
   admin_role?: string | null;
   instituicao_id?: number | null;
+  faculdade_id?: number | null;
 }
 
 export interface GoogleLoginResponse {
@@ -63,9 +64,10 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('tenant_theme');
     this.tokenSubject.next(null);
     this.currentUserSubject.next(null);
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {
@@ -84,12 +86,30 @@ export class AuthService {
         this.currentUserSubject.next(decoded);
       } catch (error) {
         console.error('Error decoding token:', error);
+        // Token inválido, limpar do localStorage
+        localStorage.removeItem('access_token');
+        this.tokenSubject.next(null);
+        this.currentUserSubject.next(null);
       }
     }
   }
 
   private decodeToken(token: string): UserInfo {
-    const base64Url = token.split('.')[1];
+    // Validar se o token é um JWT válido com 3 partes
+    if (!token || typeof token !== 'string') {
+      throw new Error('Token inválido: não é uma string');
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Token inválido: não é um JWT válido');
+    }
+
+    const base64Url = parts[1];
+    if (!base64Url) {
+      throw new Error('Token inválido: payload vazio');
+    }
+
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
       return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -102,6 +122,7 @@ export class AuthService {
       role: payload.role ?? 'aluno',
       admin_role: payload.admin_role ?? null,
       instituicao_id: payload.instituicao_id ?? null,
+      faculdade_id: payload.faculdade_id ?? null,
     };
   }
 
@@ -116,11 +137,12 @@ export class AuthService {
     return roles.includes(user.role);
   }
 
-  register(nome: string, email: string, senha: string): Observable<TokenResponse> {
+  register(nome: string, email: string, senha: string, faculdade_id?: number): Observable<TokenResponse> {
     return this.http.post<TokenResponse>(`${this.apiUrl}/auth/registro`, {
       nome,
       email,
-      senha
+      senha,
+      ...(faculdade_id !== undefined ? { faculdade_id } : {})
     }).pipe(
       tap(response => {
         localStorage.setItem('access_token', response.access_token);
@@ -143,12 +165,15 @@ export class AuthService {
   }
 
   registrarInstituicao(dados: {
-    nome: string;
+    nome_instituicao: string;
     cnpj: string;
     email: string;
-    descricao: string;
+    endereco: string;
+    contato: string;
+    nome_responsavel?: string;
+    senha: string;
   }): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>(`${this.apiUrl}/faculdades`, dados).pipe(
+    return this.http.post<TokenResponse>(`${this.apiUrl}/instituicoes/registrar`, dados).pipe(
       tap(response => {
         localStorage.setItem('access_token', response.access_token);
         this.tokenSubject.next(response.access_token);

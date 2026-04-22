@@ -48,6 +48,9 @@ import { PermissionsService } from '../../../core/services/permissions.service';
             <a routerLink="/admin/administradores" routerLinkActive="active" *ngIf="p.can('administradores:read')">
               <span class="icon">🔐</span>Administradores
             </a>
+            <a routerLink="/admin/cadastros" routerLinkActive="active">
+              <span class="icon">📝</span>Cadastros
+            </a>
             <a routerLink="/admin/solicitacoes" routerLinkActive="active">
               <span class="icon">📨</span>Solicitações
             </a>

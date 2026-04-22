@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { ApiService, CursoResumo } from '../../../shared/services/api.service';
+import { CursosService } from '../../../core/services/cursos.service';
 
 interface Aula {
   id: number;
@@ -24,7 +23,17 @@ interface Prova {
   ativo: boolean;
 }
 
-interface Curso extends CursoResumo {
+interface Curso {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  pago: boolean;
+  valor: number | null;
+  status: string;
+  ativo: boolean;
+  faculdade_id: number | null;
+  percentual_presenca_minima: number;
+  data_criacao: string;
   aulas: Aula[];
   provas: Prova[];
 }
@@ -53,11 +62,13 @@ interface Curso extends CursoResumo {
         <button class="btn-primary" (click)="carregarCursos()">Tentar novamente</button>
       </div>
 
-      <!-- Sem cursos -->
-      <div class="empty-state" *ngIf="!carregando && !erro && cursos.length === 0">
-        <div class="empty-icon">📭</div>
-        <h3>Nenhum curso encontrado</h3>
-        <p>Você ainda não está inscrito em nenhum curso.</p>
+      <!-- Aguardando aprovação -->
+      <div class="pending-state" *ngIf="!carregando && !erro && cursos.length === 0">
+        <div class="pending-icon">⏳</div>
+        <h3>Cadastro em análise</h3>
+        <p>Sua solicitação de acesso foi enviada e está aguardando aprovação do administrador.</p>
+        <p class="pending-sub">Após a aprovação, seus cursos aparecerão aqui automaticamente. Enquanto isso, explore o catálogo de cursos disponíveis.</p>
+        <a class="btn-catalogo-inline" routerLink="/aluno/catalogo">🛒 Ver Catálogo</a>
       </div>
 
       <!-- Lista de cursos -->
@@ -507,6 +518,56 @@ interface Curso extends CursoResumo {
       margin-top: 10px;
     }
 
+    .pending-state {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      padding: 48px 32px;
+      text-align: center;
+    }
+
+    .pending-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .pending-state h3 {
+      font-size: 22px;
+      color: #2c3e50;
+      margin: 0 0 12px;
+    }
+
+    .pending-state p {
+      color: #555;
+      font-size: 15px;
+      margin: 0 0 8px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .pending-sub {
+      font-size: 13px !important;
+      color: #888 !important;
+    }
+
+    .btn-catalogo-inline {
+      display: inline-block;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .btn-catalogo-inline:hover {
+      opacity: 0.88;
+    }
+
     @media (max-width: 600px) {
       .curso-header {
         flex-direction: column;
@@ -525,42 +586,32 @@ export class AlunoCursosComponent implements OnInit {
   erro = '';
   expandido: Record<number, boolean> = {};
 
-  constructor(
-    private apiService: ApiService,
-    private authService: AuthService
-  ) {}
+  constructor(private cursosService: CursosService) {}
 
   ngOnInit(): void {
     this.carregarCursos();
   }
 
   carregarCursos(): void {
-    const usuario = this.authService.getCurrentUser();
-    if (!usuario) {
-      this.erro = 'Usuário não autenticado.';
-      return;
-    }
-
     this.carregando = true;
     this.erro = '';
 
-    this.apiService.getCursosAluno(usuario.id).subscribe({
+    // O backend filtra automaticamente pelo faculdade_id do JWT.
+    // Nenhum ID de usuário ou faculdade é passado manualmente.
+    this.cursosService.getCursos().subscribe({
       next: (cursos) => {
-        this.cursos = (Array.isArray(cursos) ? cursos : []).map((curso) => ({
+        this.cursos = cursos.map((curso) => ({
           ...curso,
           descricao: curso.descricao ?? null,
-          aulas: Array.isArray(curso.aulas) ? curso.aulas : [],
-          provas: Array.isArray(curso.provas) ? curso.provas : []
+          aulas: [],
+          provas: [],
         })) as Curso[];
-        console.log('Cursos do aluno recebidos:', this.cursos);
         this.carregando = false;
-        this.erro = '';
       },
       error: (err: any) => {
-        console.error('Erro ao carregar cursos:', err);
         this.erro = err?.error?.detail || 'Erro ao carregar seus cursos. Tente novamente.';
         this.carregando = false;
-      }
+      },
     });
   }
 

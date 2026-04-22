@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import Optional
 from sqlalchemy.orm import Session
 
-from app.models import Instituicao, StatusInstituicaoEnum
+from app.models import Instituicao, StatusInstituicaoEnum, Usuario, AdminRoleEnum, RoleEnum
 from app.repositories.instituicao_repository import InstituicaoRepository
 from app.schemas import InstituicaoCreate, InstituicaoPageResponse, InstituicaoResponse
 
@@ -28,12 +28,6 @@ class InstituicaoService:
 
     @staticmethod
     def criar_solicitacao(db: Session, payload: InstituicaoCreate) -> Instituicao:
-        if InstituicaoRepository.get_by_email(db, payload.email):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Já existe uma instituição cadastrada com este e-mail.",
-            )
-
         cnpj_normalizado = _normalizar_cnpj(payload.cnpj)
         if InstituicaoRepository.get_by_cnpj(db, cnpj_normalizado):
             raise HTTPException(
@@ -61,19 +55,31 @@ class InstituicaoService:
     def aprovar(db: Session, instituicao_id: int) -> Instituicao:
         inst = _get_or_404(db, instituicao_id)
 
-        if inst.status == StatusInstituicaoEnum.aprovado:
+        if inst.aprovada:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Instituição já está aprovada.",
             )
 
+        # Converter usuários da instituição em admin instrutor
+        usuarios = db.query(Usuario).filter(
+            Usuario.instituicao_id == instituicao_id,
+            Usuario.role == RoleEnum.admin
+        ).all()
+        
+        for usuario in usuarios:
+            usuario.admin_role = AdminRoleEnum.instrutor
+            db.add(usuario)
+        
+        db.flush()
+        
         return InstituicaoRepository.set_status(db, inst, StatusInstituicaoEnum.aprovado)
 
     @staticmethod
     def recusar(db: Session, instituicao_id: int) -> Instituicao:
         inst = _get_or_404(db, instituicao_id)
 
-        if inst.status == StatusInstituicaoEnum.recusado:
+        if not inst.aprovada:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Instituição já está recusada.",
@@ -84,10 +90,10 @@ class InstituicaoService:
     @staticmethod
     def ativar(db: Session, instituicao_id: int) -> Instituicao:
         inst = _get_or_404(db, instituicao_id)
-        if inst.status != StatusInstituicaoEnum.aprovado:
+        if not inst.aprovada:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Só é possível ativar instituições com status 'aprovado'.",
+                detail="Só é possível ativar instituições que foram aprovadas.",
             )
         return InstituicaoRepository.set_ativa(db, inst, True)
 

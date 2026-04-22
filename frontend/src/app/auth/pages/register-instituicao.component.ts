@@ -35,6 +35,8 @@ export class RegisterInstituicaoComponent {
   loading = false;
   error = '';
   success = false;
+  showConfirmationPopup = false;
+  confirmationCounter = 5;
 
   constructor(private router: Router, private authService: AuthService, private http: HttpClient) {}
 
@@ -158,17 +160,31 @@ export class RegisterInstituicaoComponent {
     this.error = '';
 
     const dadosInstituicao = {
-      nome: this.nomeInstituicao.trim(),
+      nome_instituicao: this.nomeInstituicao.trim(),
       cnpj: cnpjSemMascara,
       email: this.email.trim().toLowerCase(),
-      descricao: `Responsável: ${this.nomeResponsavel} | Tel: ${this.telefonResponsavel} | Endereço: ${this.endereco}`
+      endereco: this.endereco.trim(),
+      contato: this.telefonResponsavel.trim(),
+      nome_responsavel: this.nomeResponsavel.trim(),
+      senha: this.senha
     };
 
     this.authService.registrarInstituicao(dadosInstituicao).subscribe({
       next: () => {
         this.loading = false;
         this.success = true;
-        this.router.navigate(['/admin/dashboard']);
+        this.showConfirmationPopup = true;
+        this.confirmationCounter = 5;
+
+        // Contador regressivo
+        const interval = setInterval(() => {
+          this.confirmationCounter--;
+          if (this.confirmationCounter <= 0) {
+            clearInterval(interval);
+            this.showConfirmationPopup = false;
+            this.router.navigate(['/auth/login']);
+          }
+        }, 1000);
       },
       error: (error) => {
         this.loading = false;

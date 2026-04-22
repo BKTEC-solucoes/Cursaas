@@ -4,18 +4,19 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 
-export type StatusInstituicao = 'pendente' | 'aprovado' | 'recusado';
-
 export interface Instituicao {
   id: number;
   nome: string;
-  email: string;
-  cnpj: string;
-  status: StatusInstituicao;
+  slug: string;
+  cnpj: string | null;
+  email_contato: string | null;
+  telefone: string | null;
+  dominio_email: string | null;
   ativa: boolean;
-  descricao: string | null;
-  data_solicitacao: string;
-  data_aprovacao: string | null;
+  aprovada: boolean;
+  plano: string;
+  data_criacao: string;
+  data_atualizacao: string;
 }
 
 interface PageResponse {
@@ -85,12 +86,12 @@ interface PageResponse {
               <td class="col-id">{{ inst.id }}</td>
               <td>
                 <div class="cell-nome">{{ inst.nome }}</div>
-                <div class="cell-email">{{ inst.email }}</div>
+                <div class="cell-email">{{ inst.email_contato }}</div>
               </td>
-              <td class="col-cnpj">{{ inst.cnpj }}</td>
+              <td class="col-cnpj">{{ inst.cnpj || '—' }}</td>
               <td>
-                <span class="badge" [ngClass]="'badge-' + inst.status">
-                  {{ statusLabel(inst.status) }}
+                <span class="badge" [ngClass]="'badge-' + (inst.aprovada ? 'aprovado' : 'pendente')">
+                  {{ inst.aprovada ? 'Aprovado' : 'Pendente' }}
                 </span>
               </td>
               <td>
@@ -99,13 +100,13 @@ interface PageResponse {
                 </span>
               </td>
               <td class="col-data">
-                {{ inst.data_solicitacao | date:'dd/MM/yyyy' }}<br>
-                <span class="hora">{{ inst.data_solicitacao | date:'HH:mm' }}</span>
+                {{ inst.data_criacao | date:'dd/MM/yyyy' }}<br>
+                <span class="hora">{{ inst.data_criacao | date:'HH:mm' }}</span>
               </td>
               <td class="col-data">
-                <ng-container *ngIf="inst.data_aprovacao; else semAprovacao">
-                  {{ inst.data_aprovacao | date:'dd/MM/yyyy' }}<br>
-                  <span class="hora">{{ inst.data_aprovacao | date:'HH:mm' }}</span>
+                <ng-container *ngIf="inst.aprovada; else semAprovacao">
+                  {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}<br>
+                  <span class="hora">{{ inst.data_atualizacao | date:'HH:mm' }}</span>
                 </ng-container>
                 <ng-template #semAprovacao>
                   <span class="text-muted">&#8212;</span>
@@ -243,7 +244,12 @@ export class AdminInstituicoesComponent implements OnInit {
       .set('limit', this.limit);
 
     if (this.filtroStatus) {
-      params = params.set('status', this.filtroStatus);
+      // Converte pendente/aprovado para booleano para o backend
+      if (this.filtroStatus === 'pendente') {
+        params = params.set('aprovada', 'false');
+      } else if (this.filtroStatus === 'aprovado') {
+        params = params.set('aprovada', 'true');
+      }
     }
 
     this.http
@@ -291,15 +297,6 @@ export class AdminInstituicoesComponent implements OnInit {
 
   verDetalhes(id: number): void {
     this.router.navigate(['/admin/instituicoes', id]);
-  }
-
-  statusLabel(status: StatusInstituicao): string {
-    const labels: Record<StatusInstituicao, string> = {
-      pendente: 'Pendente',
-      aprovado: 'Aprovado',
-      recusado: 'Recusado',
-    };
-    return labels[status] ?? status;
   }
 
   private authHeaders(): HttpHeaders {

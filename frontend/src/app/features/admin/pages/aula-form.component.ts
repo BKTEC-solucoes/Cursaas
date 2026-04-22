@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
-import { BlocoTextoComponent, BlocoVideoComponent, RichTextEditorComponent } from '../../../shared/components';
+import { BlocoTextoComponent, BlocoVideoModernoComponent, RichTextEditorComponent } from '../../../shared/components';
 import type { BlocoEditavel, TipoBloco } from '../../../shared/components';
+import type { Video } from '../../../shared/components';
 import { AuthService } from '../../../core/services/auth.service';
 
 interface Curso { id: number; nome: string; }
@@ -33,7 +34,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
 @Component({
   selector: 'app-admin-aula-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, BlocoTextoComponent, BlocoVideoComponent, RichTextEditorComponent],
+  imports: [CommonModule, FormsModule, RouterModule, BlocoTextoComponent, BlocoVideoModernoComponent, RichTextEditorComponent],
   template: `
     <div class="form-page">
 
@@ -103,15 +104,11 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
                   class="bloco-content"
                 />
 
-                <app-bloco-video
+                <app-bloco-video-moderno
                   *ngIf="b.tipo === 'video'"
                   [conteudo]="b.conteudo"
-                  (conteudoChange)="atualizar(b.id, $event)"
                   [aulaId]="aulaId"
-                  [videoUploadUrl]="videoAtual"
-                  [videoUploadId]="videoId"
-                  (uploadConcluido)="onUploadConcluido($event)"
-                  (uploadRemovido)="onUploadRemovido()"
+                  (conteudoChange)="atualizar(b.id, $event)"
                   class="bloco-content"
                 />
 
@@ -668,12 +665,42 @@ export class AdminAulaFormComponent implements OnInit {
           ativo: aula.ativo ?? true,
         };
 
-        // Carrega vídeo existente
-        if (aula.videos && aula.videos.length > 0) {
-          const v = aula.videos[0];
-          const nome = (v.caminho_arquivo as string).split('\\').pop() || v.arquivo_nome;
-          this.videoAtual = `${API}/aulas/video/${nome}`;
-          this.videoId = v.id;
+        // Converte aula.videos (uploads do servidor) para formato Video[]
+        const videosUpload: Video[] = (aula.videos ?? []).map((v: any) => {
+          const nome = (v.caminho_arquivo as string).split(/[/\\]/).pop() || v.arquivo_nome;
+          return {
+            id: `upload_${v.id}`,
+            tipo: 'upload' as const,
+            url: `${API}/aulas/video/${nome}`,
+            tamanho: v.tamanho_bytes,
+            titulo: v.arquivo_nome,
+          };
+        });
+
+        // Injeta vídeos no bloco de vídeo existente (ou cria um novo)
+        if (videosUpload.length > 0) {
+          const videoBlocoIdx = this.blocos.findIndex(b => b.tipo === 'video');
+          if (videoBlocoIdx >= 0) {
+            // Preserva vídeos YouTube já existentes no bloco, adiciona uploads
+            let videosYt: Video[] = [];
+            try {
+              const parsed = JSON.parse(this.blocos[videoBlocoIdx].conteudo);
+              if (Array.isArray(parsed)) videosYt = parsed.filter((v: any) => v.tipo === 'youtube');
+            } catch {
+              const url = this.blocos[videoBlocoIdx].conteudo?.trim();
+              if (url) videosYt = [{ id: `yt_old`, tipo: 'youtube', url }];
+            }
+            const combinados = [...videosUpload, ...videosYt];
+            this.blocos = this.blocos.map((b, i) =>
+              i === videoBlocoIdx ? { ...b, conteudo: JSON.stringify(combinados) } : b
+            );
+          } else {
+            this.blocos = [...this.blocos, {
+              id: this.proximoId++,
+              tipo: 'video',
+              conteudo: JSON.stringify(videosUpload),
+            }];
+          }
         }
       },
       error: () => {

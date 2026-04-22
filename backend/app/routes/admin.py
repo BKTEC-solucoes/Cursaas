@@ -39,7 +39,20 @@ def list_all_courses(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_admin),
 ):
-    cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+    """Lista cursos para o admin. Instrutores veem apenas seus cursos, super admin vê todos."""
+    from app.services.admin_course_access import get_allowed_course_ids
+    
+    allowed = get_allowed_course_ids(db, current_user)
+    
+    if allowed is None:
+        # Super admin: retorna todos
+        cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
+    else:
+        # Instrutor ou sem acesso: retorna apenas os permitidos
+        if not allowed:
+            return []
+        cursos = db.query(Curso).filter(Curso.id.in_(allowed)).order_by(Curso.data_criacao.desc()).all()
+    
     return [CursoAdminResponse.model_validate(curso) for curso in cursos]
 
 
@@ -92,7 +105,7 @@ def list_instituicoes(
 ):
     instituicoes = (
         db.query(Instituicao)
-        .order_by(Instituicao.data_solicitacao.desc())
+        .order_by(Instituicao.data_criacao.desc())
         .all()
     )
     return [InstituicaoResponse.model_validate(inst) for inst in instituicoes]
@@ -112,9 +125,11 @@ def update_instituicao_status(
             detail=f"Instituição {instituicao_id} não encontrada",
         )
 
-    inst.status = StatusInstituicaoEnum(body.status)
-    if body.status == StatusInstituicaoEnum.aprovado:
-        inst.data_aprovacao = datetime.utcnow()
+    # Mapear status para aprovada/recusada
+    if body.status == StatusInstituicaoEnum.aprovado.value:
+        inst.aprovada = True
+    elif body.status == StatusInstituicaoEnum.recusado.value:
+        inst.aprovada = False
 
     db.commit()
     db.refresh(inst)

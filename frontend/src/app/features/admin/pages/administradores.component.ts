@@ -416,8 +416,6 @@ interface ConviteItem {
               <option value="">Todos os tipos</option>
               <option value="super_admin">Super Admin</option>
               <option value="instrutor">Instrutor</option>
-              <option value="financeiro">Financeiro</option>
-              <option value="suporte">Suporte</option>
               <option value="legacy">Legado</option>
             </select>
             <select [(ngModel)]="filtroAtivo" (ngModelChange)="onFiltroSelectChange()" name="filtro_ativo" class="filtro-select">
@@ -480,6 +478,9 @@ interface ConviteItem {
                       title="Gerenciar cursos"
                     >
                       📚 Cursos
+                    </button>
+                    <button type="button" class="btn-delete" (click)="excluirAdmin(admin)" title="Excluir administrador">
+                      🗑️ Excluir
                     </button>
                   </td>
                 </tr>
@@ -780,8 +781,6 @@ interface ConviteItem {
     }
     .role-super_admin { background: #2c3e50; color: #fff; }
     .role-instrutor   { background: #2980b9; color: #fff; }
-    .role-financeiro  { background: #27ae60; color: #fff; }
-    .role-suporte     { background: #e67e22; color: #fff; }
     .role-legacy      { background: #95a5a6; color: #fff; }
 
     .photo-upload-container {
@@ -940,6 +939,29 @@ interface ConviteItem {
 
     .btn-cursos.active {
       background: #6c3483;
+    }
+
+    .btn-delete {
+      padding: 6px 12px;
+      background: #b42318;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-left: 6px;
+    }
+
+    .btn-delete:hover {
+      background: #991b1b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(180, 35, 24, 0.3);
+    }
+
+    .btn-delete:active {
+      transform: translateY(0);
     }
 
     .cursos-panel-row td {
@@ -1354,8 +1376,6 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
   private readonly ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
     super_admin: 'Acesso total e irrestrito ao sistema e a todos os cursos.',
     instrutor:   'Gerencia cursos, aulas, provas, notas e presença. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
-    financeiro:  'Visualiza relatórios financeiros, alunos e notas. Não possui acesso a nenhum curso por padrão.',
-    suporte:     'Gerencia alunos e visualiza presença. Não possui acesso a nenhum curso por padrão.',
   };
 
   private readonly adminApiUrl  = 'http://localhost:8000/api/auth/admin-registro';
@@ -1694,6 +1714,25 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
           this.erroCursos = err?.error?.detail ?? 'Erro ao salvar cursos.';
         }
       });
+  }
+
+  excluirAdmin(admin: AdminResumo): void {
+    if (!confirm(`Excluir o administrador "${admin.nome}" permanentemente? Esta ação não pode ser desfeita.`)) return;
+
+    this.http.delete(
+      `http://localhost:8000/api/auth/admins/${admin.id}`,
+      { headers: this.getHeaders() }
+    ).subscribe({
+      next: () => {
+        this.admins = this.admins.filter(a => a.id !== admin.id);
+        if (this.editandoAdminId === admin.id) {
+          this.editandoAdminId = null;
+        }
+      },
+      error: (err) => {
+        alert(err?.error?.detail ?? 'Erro ao excluir administrador.');
+      }
+    });
   }
 
   editarAdmin(admin: AdminResumo): void {

@@ -1,0 +1,197 @@
+<!-- HEADER -->
+<header class="header">
+  <div class="header-container">
+    <div class="logo">
+      <span class="logo-icon">🎓</span>
+      <span class="logo-text">Cursa<span class="logo-accent">as</span></span>
+    </div>
+    <button class="btn-outline" (click)="navigateToLogin()">Entrar</button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">Plataforma EAD Institucional</div>
+    <h1 class="hero-title">
+      Educação digital<br />
+      <span class="hero-title-accent">sem fronteiras</span>
+    </h1>
+    <p class="hero-subtitle">
+      Gerencie cursos, acompanhe o desempenho dos alunos e centralize
+      toda a gestão educacional da sua instituição em uma só plataforma.
+    </p>
+    <div class="hero-actions">
+      <button class="btn-primary btn-lg" (click)="navigateToLogin()">
+        Acessar sistema
+        <span class="btn-arrow">→</span>
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-number">0</span>
+        <span class="stat-label">Cursos ativos</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-number">0</span>
+        <span class="stat-label">Alunos matriculados</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-number">0%</span>
+        <span class="stat-label">Satisfação</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="hero-blob"></div>
+    <div class="hero-card hero-card-float">
+      <span class="hero-card-icon">📈</span>
+      <div>
+        <p class="hero-card-title">Progresso geral</p>
+        <p class="hero-card-value">0% este mês</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BENEFITS -->
+<section class="benefits">
+  <div class="section-container">
+    <div class="section-header">
+      <span class="section-tag">Por que escolher</span>
+      <h2 class="section-title">Tudo que sua instituição precisa</h2>
+      <p class="section-subtitle">
+        Uma plataforma completa para modernizar o ensino e simplificar a gestão educacional.
+      </p>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card" *ngFor="let benefit of benefits">
+        <div class="benefit-icon">{{ benefit.icon }}</div>
+        <h3 class="benefit-title">{{ benefit.title }}</h3>
+        <p class="benefit-description">{{ benefit.description }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD PREVIEW -->
+<section class="preview">
+  <div class="section-container">
+    <div class="section-header">
+      <span class="section-tag">Preview</span>
+      <h2 class="section-title">Interface intuitiva e moderna</h2>
+      <p class="section-subtitle">
+        Dashboard limpo e objetivo para que gestores e alunos encontrem tudo com facilidade.
+      </p>
+    </div>
+
+    <div class="dashboard-mockup">
+      <!-- Sidebar -->
+      <div class="mock-sidebar">
+        <div class="mock-logo-bar">
+          <span class="mock-logo-dot"></span>
+          <span class="mock-logo-label">Cursaas</span>
+        </div>
+        <ul class="mock-nav">
+          <li class="mock-nav-item mock-nav-active">
+            <span class="mock-nav-icon">⊞</span> Dashboard
+          </li>
+          <li class="mock-nav-item">
+            <span class="mock-nav-icon">📚</span> Cursos
+          </li>
+          <li class="mock-nav-item">
+            <span class="mock-nav-icon">👥</span> Alunos
+          </li>
+          <li class="mock-nav-item">
+            <span class="mock-nav-icon">📋</span> Relatórios
+          </li>
+          <li class="mock-nav-item">
+            <span class="mock-nav-icon">⚙️</span> Configurações
+          </li>
+        </ul>
+      </div>
+
+      <!-- Main area -->
+      <div class="mock-main">
+        <div class="mock-topbar">
+          <span class="mock-page-title">Visão geral</span>
+          <div class="mock-topbar-actions">
+            <span class="mock-avatar"></span>
+          </div>
+        </div>
+
+        <div class="mock-stats-row">
+          <div class="mock-stat-card mock-stat-blue">
+            <p class="mock-stat-label">Cursos ativos</p>
+            <p class="mock-stat-value">0</p>
+            <div class="mock-stat-bar"><div class="mock-stat-fill" style="width:72%"></div></div>
+          </div>
+          <div class="mock-stat-card mock-stat-purple">
+            <p class="mock-stat-label">Alunos</p>
+            <p class="mock-stat-value">0</p>
+            <div class="mock-stat-bar"><div class="mock-stat-fill" style="width:88%"></div></div>
+          </div>
+          <div class="mock-stat-card mock-stat-green">
+            <p class="mock-stat-label">Concluídos</p>
+            <p class="mock-stat-value">0</p>
+            <div class="mock-stat-bar"><div class="mock-stat-fill" style="width:55%"></div></div>
+          </div>
+        </div>
+
+        <div class="mock-table-area">
+          <p class="mock-table-title">Cursos recentes</p>
+          <div class="mock-table">
+            <div class="mock-table-row mock-table-header">
+              <span>Curso</span><span>Alunos</span><span>Status</span>
+            </div>
+            <div class="mock-table-row">
+              <span>Introdução ao Angular</span><span>0</span>
+              <span class="mock-badge mock-badge-green">Ativo</span>
+            </div>
+            <div class="mock-table-row">
+              <span>Python para Dados</span><span>0</span>
+              <span class="mock-badge mock-badge-green">Ativo</span>
+            </div>
+            <div class="mock-table-row">
+              <span>UX Design Avançado</span><span>0</span>
+              <span class="mock-badge mock-badge-yellow">Em breve</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta">
+  <div class="cta-container">
+    <div class="cta-glow"></div>
+    <h2 class="cta-title">Pronto para transformar sua instituição?</h2>
+    <p class="cta-subtitle">
+      Acesse agora e gerencie sua plataforma educacional de forma simples e eficiente.
+    </p>
+    <button class="btn-primary btn-lg btn-white" (click)="navigateToLogin()">
+      Acessar sistema
+      <span class="btn-arrow">→</span>
+    </button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-logo">
+      <span class="logo-icon">🎓</span>
+      <span class="logo-text">Cursa<span class="logo-accent">as</span></span>
+    </div>
+    <p class="footer-copy">© 2026 Cursaas. Todos os direitos reservados.</p>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacidade</a>
+      <a href="#" class="footer-link">Termos</a>
+      <a href="#" class="footer-link">Suporte</a>
+    </div>
+  </div>
+</footer>

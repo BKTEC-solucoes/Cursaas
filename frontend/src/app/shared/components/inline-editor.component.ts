@@ -33,10 +33,8 @@ export interface BlocoEditavel {
     <div
       #el
       class="bloco bloco-{{ tipo }}"
-      [attr.contenteditable]="editando ? 'true' : 'false'"
+      contenteditable="true"
       [attr.placeholder]="tipo === 'titulo' ? 'Digite um título...' : 'Digite um texto...'"
-      (click)="editando = true"
-      (focus)="editando = true"
       (blur)="onBlur($event)"
       (input)="onInput($event)"
       (keydown.enter)="onEnter($event)"
@@ -57,7 +55,7 @@ export interface BlocoEditavel {
       color: #aaa;
       pointer-events: none;
     }
-    .bloco[contenteditable='true'] {
+    .bloco:focus {
       background: #f0f7ff;
       box-shadow: 0 0 0 2px #3b82f6;
     }
@@ -80,19 +78,16 @@ export class BlocoTextoComponent implements OnChanges {
 
   @ViewChild('el', { static: true }) el!: ElementRef<HTMLDivElement>;
 
-  editando = false;
-
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['conteudo'] && !this.editando) {
+    if (changes['conteudo']) {
       const div = this.el.nativeElement;
-      if (div.textContent !== this.conteudo) {
+      if (document.activeElement !== div && div.textContent !== this.conteudo) {
         div.textContent = this.conteudo;
       }
     }
   }
 
   onBlur(event: FocusEvent): void {
-    this.editando = false;
     this.conteudoChange.emit((event.target as HTMLElement).textContent ?? '');
   }
 

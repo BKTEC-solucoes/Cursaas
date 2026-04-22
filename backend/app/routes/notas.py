@@ -7,6 +7,7 @@ from app.schemas import (
     NotaCursoResponse, NotaCursoDetailResponse, NotaCursoCreate, NotaCursoUpdate
 )
 from app.routes.auth import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 from datetime import datetime
 from decimal import Decimal
@@ -19,22 +20,26 @@ router = APIRouter()
 @router.get("", response_model=list[NotaListResponse], status_code=200)
 async def listar_notas(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Lista todas as notas (admin only)
     """
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode listar todas as notas")
-    
+
+    # Join com Prova para filtro de tenant (Nota não tem faculdade_id direto)
+    query = db.query(Nota).join(Prova, Nota.prova_id == Prova.id)
+    query = tc.filter_query(query, Prova.faculdade_id)
+
     allowed = get_allowed_course_ids(db, current_user)
     if allowed is not None:
         if not allowed:
             return []
-        prova_ids_allowed = {pid for (pid,) in db.query(Prova.id).filter(Prova.curso_id.in_(allowed)).all()}
-        notas = db.query(Nota).filter(Nota.prova_id.in_(prova_ids_allowed)).all()
-    else:
-        notas = db.query(Nota).all()
+        query = query.filter(Prova.curso_id.in_(allowed))
+
+    notas = query.all()
     
     result = []
     for n in notas:
@@ -58,30 +63,34 @@ async def listar_notas(
 async def get_notas_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
-    Obtém todas as notas de um aluno
-    Aluno pode ver suas próprias notas, admin vê de qualquer um
+    Obtém todas as notas de um aluno.
+    Aluno pode ver suas próprias notas, admin vê de qualquer um dentro do tenant.
     """
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
-    
+
     # Validar que o aluno existe
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
-    
+
+    # Bloquear admin de ver notas de alunos de outro tenant
+    if current_user.role.value == "admin":
+        tc.assert_access(aluno.faculdade_id)
+
     # Buscar notas do aluno (filtrando por cursos permitidos para admins restritos)
-    query = db.query(Nota).filter(Nota.usuario_id == aluno_id)
+    query = db.query(Nota).join(Prova, Nota.prova_id == Prova.id).filter(Nota.usuario_id == aluno_id)
     if current_user.role.value == "admin":
         allowed = get_allowed_course_ids(db, current_user)
         if allowed is not None:
             if not allowed:
                 return []
-            prova_ids_allowed = {pid for (pid,) in db.query(Prova.id).filter(Prova.curso_id.in_(allowed)).all()}
-            query = query.filter(Nota.prova_id.in_(prova_ids_allowed))
+            query = query.filter(Prova.curso_id.in_(allowed))
     notas = query.all()
     
     result = []
@@ -146,7 +155,8 @@ async def atualizar_nota(
     nota_id: int,
     nota_update: NotaUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Atualiza a nota de um aluno (admin only)
@@ -162,6 +172,7 @@ async def atualizar_nota(
         raise HTTPException(status_code=404, detail="Nota não encontrada")
     
     if nota.prova:
+        tc.assert_access(nota.prova.faculdade_id)
         ensure_admin_can_access_course(db, current_user, nota.prova.curso_id)
     
     # Atualizar campos

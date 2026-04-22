@@ -1,4 +1,17 @@
 <div class="register-container">
+  <!-- Popup de Confirmação -->
+  <div class="confirmation-overlay" *ngIf="showConfirmationPopup">
+    <div class="confirmation-popup">
+      <div class="popup-icon">✓</div>
+      <h2>Solicitação Enviada com Sucesso!</h2>
+      <p>Sua solicitação de cadastro foi recebida e está aguardando aprovação.</p>
+      <p class="popup-hint">Você será redirecionado para a página de login em <strong>{{ confirmationCounter }}</strong> segundo{{ confirmationCounter !== 1 ? 's' : '' }}...</p>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="(confirmationCounter / 5) * 100"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="register-box">
     <form (ngSubmit)="register()" *ngIf="!success" class="form-wrapper">
       

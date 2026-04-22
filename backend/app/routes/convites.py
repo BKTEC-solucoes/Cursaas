@@ -32,8 +32,6 @@ router = APIRouter()
 _ROLE_LABELS: dict[str, str] = {
     "super_admin": "Super Admin",
     "instrutor":   "Instrutor",
-    "financeiro":  "Financeiro",
-    "suporte":     "Suporte",
 }
 
 

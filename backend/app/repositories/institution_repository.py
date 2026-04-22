@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
-from app.models import Instituicao, RoleEnum, Usuario
+from app.models import Faculdade, Instituicao, RoleEnum, Usuario
+
 
 
 class InstitutionRepository:
@@ -12,6 +13,34 @@ class InstitutionRepository:
 
     def get_institution_by_cnpj(self, cnpj: str) -> Instituicao | None:
         return self.db.query(Instituicao).filter(Instituicao.cnpj == cnpj).first()
+
+    def get_faculdade_by_cnpj(self, cnpj: str) -> Faculdade | None:
+        return self.db.query(Faculdade).filter(Faculdade.cnpj == cnpj).first()
+
+    def get_faculdade_by_slug(self, slug: str) -> Faculdade | None:
+        return self.db.query(Faculdade).filter(Faculdade.slug == slug).first()
+
+    def create_faculdade(
+        self,
+        *,
+        nome: str,
+        slug: str,
+        cnpj: str | None,
+        email_contato: str | None,
+        telefone: str | None,
+    ) -> Faculdade:
+        faculdade = Faculdade(
+            nome=nome,
+            slug=slug,
+            cnpj=cnpj if cnpj else None,
+            email_contato=email_contato,
+            telefone=telefone,
+            ativa=False,
+            aprovada=False,
+        )
+        self.db.add(faculdade)
+        self.db.flush()
+        return faculdade
 
     def create_institution(
         self,
@@ -26,8 +55,8 @@ class InstitutionRepository:
             cnpj=cnpj,
             contato=contato,
             endereco=endereco,
-            ativo=True,
-            aprovada=True,
+            ativa=False,
+            aprovada=False,
         )
         self.db.add(instituicao)
         self.db.flush()
@@ -40,13 +69,15 @@ class InstitutionRepository:
         email: str,
         senha_hash: str,
         instituicao_id: int,
+        faculdade_id: int | None = None,
     ) -> Usuario:
         usuario = Usuario(
             nome=nome,
             email=email,
             senha=senha_hash,
-            role=RoleEnum.admin,
+            role=RoleEnum.instituicao,
             instituicao_id=instituicao_id,
+            faculdade_id=faculdade_id,
             ativo=True,
         )
         self.db.add(usuario)

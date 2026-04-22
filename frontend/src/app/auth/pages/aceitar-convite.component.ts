@@ -373,6 +373,6 @@ export class AceitarConviteComponent implements OnInit {
   }
 
   irParaLogin(): void {
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/login']);
   }
 }

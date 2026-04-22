@@ -42,7 +42,7 @@ class AuthService:
     
     @staticmethod
     def decode_token(token: str) -> Optional[dict]:
-        """Decodifica um token JWT"""
+        """Decodifica um token JWT e retorna o payload completo."""
         try:
             payload = jwt.decode(
                 token,
@@ -50,12 +50,17 @@ class AuthService:
                 algorithms=[settings.ALGORITHM]
             )
             email: str = payload.get("sub")
-            role: str = payload.get("role")
-            
+
             if email is None:
                 return None
-            
-            return {"email": email, "role": role}
+
+            return {
+                "email":        email,
+                "role":         payload.get("role"),
+                "admin_role":   payload.get("admin_role"),
+                "user_id":      payload.get("user_id"),
+                "faculdade_id": payload.get("faculdade_id"),
+            }
         except JWTError:
             return None
     
@@ -94,6 +99,7 @@ class AuthService:
         numero_matricula: str = None,
         turma: str = None,
         historico_escolar: str = None,
+        faculdade_id: Optional[int] = None,
     ) -> Usuario:
         """Cria um novo usuário"""
         hashed_password = AuthService.hash_password(senha)
@@ -128,6 +134,7 @@ class AuthService:
             numero_matricula=numero_matricula,
             turma=turma,
             historico_escolar=historico_escolar,
+            faculdade_id=faculdade_id,
         )
         
         db.add(db_user)

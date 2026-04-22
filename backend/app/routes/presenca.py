@@ -7,6 +7,7 @@ from app.schemas import (
     PresencaAlunoResponse, PresencaCursoResponse, PresencaManualUpdate
 )
 from app.routes.auth import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 from datetime import datetime
 from sqlalchemy import func, and_
@@ -18,7 +19,8 @@ router = APIRouter()
 @router.get("", response_model=list[PresencaDetailResponse], status_code=200)
 async def listar_presencas(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Lista todos os registros de presença (admin only)
@@ -27,14 +29,20 @@ async def listar_presencas(
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode listar presenças")
     
+    query = (
+        db.query(Presenca)
+        .join(Aula, Presenca.aula_id == Aula.id)
+        .join(Curso, Aula.curso_id == Curso.id)
+    )
+    query = tc.filter_query(query, Curso.faculdade_id)
+
     allowed = get_allowed_course_ids(db, current_user)
     if allowed is not None:
         if not allowed:
             return []
-        aula_ids_allowed = {aid for (aid,) in db.query(Aula.id).filter(Aula.curso_id.in_(allowed)).all()}
-        presencas = db.query(Presenca).filter(Presenca.aula_id.in_(aula_ids_allowed)).all()
-    else:
-        presencas = db.query(Presenca).all()
+        query = query.filter(Aula.curso_id.in_(allowed))
+
+    presencas = query.all()
     return [
         PresencaDetailResponse(
             id=p.id,
@@ -57,7 +65,8 @@ async def editar_presenca_manual(
     presenca_id: int,
     dados: PresencaManualUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Edita manualmente um registro de presença (admin only)
@@ -69,6 +78,9 @@ async def editar_presenca_manual(
     if not presenca:
         raise HTTPException(status_code=404, detail="Registro de presença não encontrado")
 
+    curso = db.query(Curso).filter(Curso.id == presenca.aula.curso_id).first()
+    if curso:
+        tc.assert_access(curso.faculdade_id)
     ensure_admin_can_access_course(db, current_user, presenca.aula.curso_id)
 
     presenca.percentual_assistido = dados.percentual_assistido
@@ -101,7 +113,8 @@ async def editar_presenca_manual(
 async def get_presenca_curso(
     curso_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém relatório de presença de todos os alunos em um curso (admin only)
@@ -111,12 +124,13 @@ async def get_presenca_curso(
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode acessar relatórios de presença")
     
-    ensure_admin_can_access_course(db, current_user, curso_id)
-    
     # Validar que o curso existe
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso não encontrado")
+
+    tc.assert_access(curso.faculdade_id)
+    ensure_admin_can_access_course(db, current_user, curso_id)
     
     # Buscar todas as aulas do curso
     aulas = db.query(Aula).filter(Aula.curso_id == curso_id).all()

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
@@ -18,7 +19,17 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def secret_key_must_be_strong(cls, v: str) -> str:
+        if v == "your-secret-key-change-in-production" or len(v) < 32:
+            raise ValueError(
+                "SECRET_KEY insegura — defina no .env com no mínimo 32 caracteres aleatórios. "
+                "Gere um com: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return v
     
     # Upload
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
