@@ -5,6 +5,15 @@ engine = create_engine('mysql+pymysql://root:gahesil@localhost:3306/cursaas')
 columns_to_add = [
     ("content_width", "ENUM('full','boxed') NOT NULL DEFAULT 'boxed'"),
     ("sidebar_collapsible", "TINYINT(1) NOT NULL DEFAULT 1"),
+    ("layout_type", "ENUM('topbar','sidebar') NOT NULL DEFAULT 'topbar'"),
+    ("anim_intensity", "ENUM('none','reduced','normal','expressive') NOT NULL DEFAULT 'normal'"),
+    ("transition_type", "ENUM('instant','fade','slide','spring') NOT NULL DEFAULT 'fade'"),
+    ("gradient_enabled", "TINYINT(1) NOT NULL DEFAULT 0"),
+    ("login_layout", "VARCHAR(20) NOT NULL DEFAULT 'centered'"),
+    ("login_background_type", "VARCHAR(20) NOT NULL DEFAULT 'gradient'"),
+    ("login_background_value", "VARCHAR(500) NULL DEFAULT NULL"),
+    ("login_message_title", "VARCHAR(120) NULL DEFAULT NULL"),
+    ("login_message_body", "VARCHAR(300) NULL DEFAULT NULL"),
 ]
 
 with engine.connect() as conn:

@@ -365,6 +365,15 @@ def _build_tema_response(f: Faculdade, t: Optional[FaculdadeTema]) -> FaculdadeT
         layout_type       = t.layout_type      if t else 'topbar',
         gradient_enabled  = t.gradient_enabled if t else False,
         page_overrides    = t.page_overrides   if t else None,
+        content_width              = t.content_width              if t else 'boxed',
+        sidebar_collapsible        = t.sidebar_collapsible        if t else True,
+        anim_intensity             = t.anim_intensity             if t else 'normal',
+        transition_type            = t.transition_type            if t else 'fade',
+        login_layout               = t.login_layout               if t else 'centered',
+        login_background_type      = t.login_background_type      if t else 'gradient',
+        login_background_value     = t.login_background_value     if t else None,
+        login_message_title        = t.login_message_title        if t else None,
+        login_message_body         = t.login_message_body         if t else None,
     )
 
 
