@@ -369,6 +369,28 @@ export class ThemeService {
     root.style.setProperty('--background-color', bg);  // alias legado
     root.style.setProperty('--font-family',      ff);
 
+    // ── data-app-theme: deriva "verde" | "azul" a partir do primary_color ────
+    // Converte o hex para HSL e classifica pelo ângulo de hue:
+    //   Verde: 80°–180°  |  Azul: 180°–270°  |  Demais → fallback "verde"
+    try {
+      const hex = lightP.replace('#', '');
+      const r = parseInt(hex.slice(0, 2), 16) / 255;
+      const g = parseInt(hex.slice(2, 4), 16) / 255;
+      const b = parseInt(hex.slice(4, 6), 16) / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0;
+      if (max !== min) {
+        const d = max - min;
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+        else if (max === g) h = ((b - r) / d + 2) * 60;
+        else h = ((r - g) / d + 4) * 60;
+      }
+      const appTheme = (h >= 180 && h < 270) ? 'azul' : 'verde';
+      root.setAttribute('data-app-theme', appTheme);
+    } catch {
+      root.setAttribute('data-app-theme', 'verde');
+    }
+
     // Preserva as variantes para que CSS puro possa trocar via [data-theme]
     root.style.setProperty('--light-primary',         lightP);
     root.style.setProperty('--light-secondary',       lightS);

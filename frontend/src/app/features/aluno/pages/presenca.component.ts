@@ -19,218 +19,164 @@ interface PresencaAula {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="page-container">
-      <h2>✓ Minha Presença</h2>
-
-      <div class="summary-bar" *ngIf="!carregando && presencas.length > 0">
-        <div class="summary-item">
-          <span class="label">Total de aulas</span>
-          <span class="value">{{ presencas.length }}</span>
-        </div>
-        <div class="summary-item">
-          <span class="label">Com presença (≥75%)</span>
-          <span class="value success">{{ aulasComPresenca }}</span>
-        </div>
-        <div class="summary-item">
-          <span class="label">Percentual geral</span>
-          <span class="value" [ngClass]="percentualGeral >= 75 ? 'success' : 'danger'">
-            {{ percentualGeral }}%
-          </span>
-        </div>
+    <div class="content-page">
+      <div class="page-header">
+        <h1 class="page-title">Minha Presença</h1>
+        <p class="page-subtitle">Acompanhe sua frequência em cada aula</p>
       </div>
 
-      <div class="loading" *ngIf="carregando">Carregando registros de presença...</div>
+      @if (!carregando && presencas.length > 0) {
+        <div class="stat-grid" style="margin-bottom:var(--space-6)">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div>
+              <div class="stat-value">{{ presencas.length }}</div>
+              <div class="stat-label">Total de aulas</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon--success">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div class="stat-value">{{ aulasComPresenca }}</div>
+              <div class="stat-label">Com presença ≥75%</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" [class]="percentualGeral >= 75 ? 'stat-icon--success' : 'stat-icon--danger'">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+              <div class="stat-value">{{ percentualGeral }}<span style="font-size:1.1rem;opacity:.65">%</span></div>
+              <div class="stat-label">Frequência geral</div>
+            </div>
+          </div>
+        </div>
+      }
 
-      <div class="erro" *ngIf="erro">{{ erro }}</div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando registros...</p></div>
+      }
 
-      <div class="table-container" *ngIf="!carregando && presencas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Aula</th>
-              <th>Data</th>
-              <th>Progresso</th>
-              <th>Status</th>
-              <th>Conclusão</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let p of presencas">
-              <td class="aula-titulo">{{ p.aula_titulo }}</td>
-              <td>{{ p.aula_data | date:'dd/MM/yyyy' }}</td>
-              <td>
-                <div class="progress-bar-wrap">
-                  <div class="progress-bar">
-                    <div class="progress-fill"
-                         [style.width.%]="p.percentual_assistido"
-                         [ngClass]="p.percentual_assistido >= 75 ? 'fill-ok' : 'fill-low'">
-                    </div>
-                  </div>
-                  <span class="progress-label">{{ p.percentual_assistido }}%</span>
-                </div>
-              </td>
-              <td>
-                <span class="badge" [ngClass]="p.percentual_assistido >= 75 ? 'badge-ok' : 'badge-low'">
-                  {{ p.percentual_assistido >= 75 ? '✓ Presente' : '✗ Ausente' }}
-                </span>
-              </td>
-              <td>
-                <span *ngIf="p.data_conclusao">{{ p.data_conclusao | date:'dd/MM/yyyy HH:mm' }}</span>
-                <span *ngIf="!p.data_conclusao" class="sem-conclusao">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (erro) {
+        <div class="alert alert--danger">{{ erro }}</div>
+      }
 
-      <div class="empty-state" *ngIf="!carregando && !erro && presencas.length === 0">
-        <p>Nenhum registro de presença encontrado. Comece a assistir as aulas para registrar sua presença.</p>
-      </div>
+      @if (!carregando && presencas.length > 0) {
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Aula</th><th>Data</th><th>Progresso</th><th>Status</th><th>Conclusão</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of presencas; track p.id) {
+                  <tr>
+                    <td class="fw-600">{{ p.aula_titulo }}</td>
+                    <td class="text-sm text-muted">{{ p.aula_data | date:'dd/MM/yyyy' }}</td>
+                    <td>
+                      <div class="prog-wrap">
+                        <div class="prog-track">
+                          <div class="prog-fill"
+                               [style.width.%]="p.percentual_assistido"
+                               [class]="p.percentual_assistido >= 75 ? 'prog-fill--ok' : 'prog-fill--low'">
+                          </div>
+                        </div>
+                        <span class="prog-pct">{{ p.percentual_assistido }}%</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge" [class]="p.percentual_assistido >= 75 ? 'badge--success' : 'badge--danger'">
+                        {{ p.percentual_assistido >= 75 ? 'Presente' : 'Ausente' }}
+                      </span>
+                    </td>
+                    <td class="text-sm text-muted">
+                      @if (p.data_conclusao) { {{ p.data_conclusao | date:'dd/MM/yyyy HH:mm' }} }
+                      @else { — }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      @if (!carregando && !erro && presencas.length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <p class="empty-title">Nenhuma presença registrada</p>
+          <p class="text-muted">Comece a assistir as aulas para registrar sua frequência.</p>
+        </div>
+      }
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 30px 20px;
+    :host { display: block; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: var(--space-4);
     }
-
-    h2 {
-      margin: 0 0 24px;
-      color: #2c3e50;
-      font-size: 1.6rem;
+    .stat-card {
+      display: flex; align-items: center; gap: var(--space-4);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-5);
+      box-shadow: var(--shadow-sm);
     }
-
-    .summary-bar {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: var(--radius);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
+    .stat-icon--primary { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); }
+    .stat-icon--success { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .stat-icon--danger  { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
+    .stat-value { font-family: var(--font-display); font-size: var(--font-size-3xl); font-weight: 800; color: var(--color-text); line-height: 1; margin-bottom: 2px; }
+    .stat-label { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
-    .summary-item {
-      background: white;
-      border-radius: 8px;
-      padding: 16px 24px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 140px;
+    .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .table-responsive { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th {
+      background: var(--color-surface-2); padding: var(--space-3) var(--space-4);
+      text-align: left; font-size: var(--font-size-xs); font-weight: 700;
+      color: var(--color-text-muted); border-bottom: 2px solid var(--color-border);
+      text-transform: uppercase; letter-spacing: .05em;
     }
+    .table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); color: var(--color-text); vertical-align: middle; }
+    .table tr:last-child td { border-bottom: none; }
+    .table-zebra tr:nth-child(even) td { background: var(--color-surface-2); }
+    .table-zebra tr:hover td { background: color-mix(in srgb, var(--primary) 5%, var(--color-surface)); }
 
-    .summary-item .label {
-      font-size: 0.8rem;
-      color: #888;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
+    .prog-wrap  { display: flex; align-items: center; gap: var(--space-2); }
+    .prog-track { flex: 1; height: 8px; background: var(--color-border); border-radius: var(--radius-full); overflow: hidden; min-width: 80px; }
+    .prog-fill  { height: 100%; border-radius: var(--radius-full); transition: width .3s; }
+    .prog-fill--ok  { background: var(--color-success); }
+    .prog-fill--low { background: var(--color-danger); }
+    .prog-pct   { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); min-width: 34px; text-align: right; }
 
-    .summary-item .value {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #2c3e50;
-    }
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
 
-    .value.success { color: #27ae60; }
-    .value.danger  { color: #e74c3c; }
+    .alert { padding: var(--space-4); border-radius: var(--radius); margin-bottom: var(--space-4); }
+    .alert--danger { background: color-mix(in srgb, var(--color-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); color: var(--color-danger); }
 
-    .table-container {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      overflow: hidden;
-    }
+    .loading-state { text-align: center; padding: 60px var(--space-4); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    thead { background: #f8f9fa; }
-
-    th {
-      padding: 14px 16px;
-      text-align: left;
-      font-weight: 600;
-      color: #555;
-      border-bottom: 2px solid #e9ecef;
-    }
-
-    td {
-      padding: 13px 16px;
-      border-bottom: 1px solid #f0f0f0;
-      color: #333;
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f8f9fa; }
-
-    .aula-titulo { font-weight: 500; }
-
-    .progress-bar-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .progress-bar {
-      flex: 1;
-      height: 8px;
-      background: #ecf0f1;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.3s;
-    }
-
-    .fill-ok  { background: #27ae60; }
-    .fill-low { background: #e74c3c; }
-
-    .progress-label {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #555;
-      min-width: 36px;
-      text-align: right;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .badge-ok  { background: #d5f5e3; color: #1e8449; }
-    .badge-low { background: #fdecea; color: #c0392b; }
-
-    .sem-conclusao { color: #bbb; }
-
-    .loading, .empty-state {
-      text-align: center;
-      padding: 50px 20px;
-      color: #888;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    .erro {
-      padding: 16px;
-      background: #fdecea;
-      border: 1px solid #f5c6c6;
-      border-radius: 8px;
-      color: #c0392b;
-      margin-bottom: 20px;
-    }
+    .fw-600 { font-weight: 600; }
+    .text-sm { font-size: var(--font-size-sm); }
+    .text-muted { color: var(--color-text-muted); }
   `]
 })
 export class AlunoPresencaComponent implements OnInit {

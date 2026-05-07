@@ -9,287 +9,243 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="dashboard">
-      <div class="header-greet">
-        <h1>Bem-vindo, {{ usuarioNome }}!</h1>
-        <p class="subtitle">Controle total da plataforma EAD Cursaas</p>
-      </div>
-
-      <div class="quick-actions">
-        <h2>Ações Rápidas</h2>
-        <div class="actions-grid">
-          <a routerLink="/admin/cursos" class="action-btn action-cursos">
-            <div class="action-icon">📚</div>
-            <div class="action-title">Gerenciar Cursos</div>
-            <div class="action-desc">Criar, editar e deletar cursos</div>
-          </a>
-
-          <a routerLink="/admin/aulas" class="action-btn action-aulas">
-            <div class="action-icon">🎥</div>
-            <div class="action-title">Aulas & Vídeos</div>
-            <div class="action-desc">Criar aulas e fazer upload de vídeos</div>
-          </a>
-
-          <a routerLink="/admin/provas" class="action-btn action-provas">
-            <div class="action-icon">📝</div>
-            <div class="action-title">Criar Provas</div>
-            <div class="action-desc">Gerenciar avaliações e questões</div>
-          </a>
-
-          <a routerLink="/admin/notas" class="action-btn action-notas">
-            <div class="action-icon">📊</div>
-            <div class="action-title">Lançar Notas</div>
-            <div class="action-desc">Gerenciar notas dos alunos</div>
-          </a>
-
-          <a routerLink="/admin/presenca" class="action-btn action-presenca">
-            <div class="action-icon">✓</div>
-            <div class="action-title">Presença</div>
-            <div class="action-desc">Ver frequência automática</div>
-          </a>
-
-          <a routerLink="/admin/administradores" class="action-btn action-administradores">
-            <div class="action-icon">🔐</div>
-            <div class="action-title">Administradores</div>
-            <div class="action-desc">Cadastrar novos admins</div>
-          </a>
-
-          <a routerLink="/admin/instituicoes" class="action-btn action-instituicoes">
-            <div class="action-icon">🏛️</div>
-            <div class="action-title">Instituições</div>
-            <div class="action-desc">Solicitações de novas instituições</div>
-          </a>
+    <div class="content-page">
+      <div class="dash-hero">
+        <div>
+          <h1>Bem-vindo, {{ usuarioNome }}</h1>
+          <p>Controle total da plataforma EAD Cursaas</p>
         </div>
       </div>
 
-      <div class="stats-section">
-        <h2>Estatísticas da Plataforma</h2>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">📚</div>
-            <div class="stat-value">{{ totalCursos }}</div>
-            <div class="stat-label">Cursos Ativos</div>
+      <h2 class="section-heading">Ações rápidas</h2>
+      <div class="actions-grid">
+        <a routerLink="/admin/cursos" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value">{{ totalAlunos }}</div>
-            <div class="stat-label">Alunos Inscritos</div>
+          <div class="action-title">Gerenciar Cursos</div>
+          <div class="action-desc">Criar, editar e remover cursos</div>
+        </a>
+
+        <a routerLink="/admin/aulas" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">🎥</div>
-            <div class="stat-value">{{ totalAulas }}</div>
-            <div class="stat-label">Aulas Criadas</div>
+          <div class="action-title">Aulas &amp; Vídeos</div>
+          <div class="action-desc">Criar aulas e fazer upload</div>
+        </a>
+
+        <a routerLink="/admin/provas" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">📝</div>
-            <div class="stat-value">{{ totalProvas }}</div>
-            <div class="stat-label">Provas Criadas</div>
+          <div class="action-title">Criar Provas</div>
+          <div class="action-desc">Gerenciar avaliações e questões</div>
+        </a>
+
+        <a routerLink="/admin/notas" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
+          <div class="action-title">Lançar Notas</div>
+          <div class="action-desc">Gerenciar notas dos alunos</div>
+        </a>
+
+        <a routerLink="/admin/presenca" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="action-title">Presença</div>
+          <div class="action-desc">Ver frequência automática</div>
+        </a>
+
+        <a routerLink="/admin/administradores" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="action-title">Administradores</div>
+          <div class="action-desc">Cadastrar novos admins</div>
+        </a>
+
+        <a routerLink="/admin/instituicoes" class="action-card">
+          <div class="action-icon">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="action-title">Instituições</div>
+          <div class="action-desc">Solicitações de novas instituições</div>
+        </a>
+      </div>
+
+      <h2 class="section-heading">Estatísticas da plataforma</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div class="stat-value">{{ totalCursos }}</div>
+          <div class="stat-label">Cursos Ativos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="stat-value">{{ totalAlunos }}</div>
+          <div class="stat-label">Alunos Inscritos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          </div>
+          <div class="stat-value">{{ totalAulas }}</div>
+          <div class="stat-label">Aulas Criadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+          </div>
+          <div class="stat-value">{{ totalProvas }}</div>
+          <div class="stat-label">Provas Criadas</div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .dashboard {
-      max-width: 1400px;
-      margin: 0 auto;
+    :host { display: block; }
+
+    .dash-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: #fff;
+      padding: 36px 32px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 32px;
     }
 
-    .header-greet {
-      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-      color: white;
-      padding: 40px 30px;
-      border-radius: 8px;
-      margin-bottom: 40px;
-    }
-
-    .header-greet h1 {
-      margin: 0 0 10px 0;
-      font-size: 32px;
+    .dash-hero h1 {
+      margin: 0 0 6px;
+      font-size: var(--font-size-2xl);
       font-weight: 700;
+      font-family: var(--font-display);
     }
 
-    .header-greet .subtitle {
+    .dash-hero p {
       margin: 0;
-      font-size: 16px;
-      opacity: 0.9;
+      opacity: 0.88;
+      font-size: var(--font-size-base);
     }
 
-    .quick-actions {
-      margin-bottom: 40px;
-    }
-
-    .quick-actions h2 {
-      margin: 0 0 20px 0;
-      color: #333;
-      font-size: 20px;
+    .section-heading {
+      font-size: var(--font-size-base);
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 0 0 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-size: 0.8125rem;
     }
 
     .actions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
     }
 
-    .action-btn {
+    .action-card {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 25px 15px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      gap: 10px;
+      padding: 22px 14px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
       text-decoration: none;
-      color: #333;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      border: 2px solid transparent;
+      color: var(--color-text);
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow-sm);
     }
 
-    .action-btn:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .action-btn.action-cursos:hover {
-      border-color: #2c3e50;
-      background: #f0f5f9;
-    }
-
-    .action-btn.action-aulas:hover {
-      border-color: #e74c3c;
-      background: #ffe8e8;
-    }
-
-    .action-btn.action-provas:hover {
-      border-color: #f39c12;
-      background: #fff8e8;
-    }
-
-    .action-btn.action-notas:hover {
-      border-color: #27ae60;
-      background: #e8f9e8;
-    }
-
-    .action-btn.action-presenca:hover {
-      border-color: #3498db;
-      background: #e8f4ff;
-    }
-
-    .action-btn.action-administradores:hover {
-      border-color: #2c3e50;
-      background: #eef2f5;
-    }
-
-    .action-btn.action-instituicoes:hover {
-      border-color: #7c3aed;
-      background: #f5f0ff;
+    .action-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+      color: var(--primary);
     }
 
     .action-icon {
-      font-size: 32px;
-      margin-bottom: 10px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      border-radius: var(--radius);
+      color: var(--primary);
+    }
+
+    .action-card:hover .action-icon {
+      background: color-mix(in srgb, var(--primary) 16%, transparent);
     }
 
     .action-title {
-      font-size: 15px;
+      font-size: 0.875rem;
       font-weight: 600;
-      margin-bottom: 5px;
       text-align: center;
     }
 
     .action-desc {
-      font-size: 12px;
-      color: #999;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
       text-align: center;
       line-height: 1.4;
     }
 
-    .stats-section {
-      margin-top: 40px;
-    }
-
-    .stats-section h2 {
-      margin: 0 0 20px 0;
-      color: #333;
-      font-size: 20px;
-    }
-
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
     }
 
     .stat-card {
-      background: white;
-      border-radius: 8px;
-      padding: 25px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
       text-align: center;
-      transition: transform 0.2s;
-      border-left: 4px solid #2c3e50;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .stat-card:hover {
-      transform: translateY(-2px);
-    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 
     .stat-icon {
-      font-size: 36px;
-      margin-bottom: 12px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      border-radius: var(--radius);
+      color: var(--primary);
+      margin: 0 auto 14px;
     }
 
     .stat-value {
-      font-size: 32px;
-      font-weight: bold;
-      color: #2c3e50;
-      margin-bottom: 8px;
+      font-size: var(--font-size-3xl);
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 6px;
+      font-family: var(--font-display);
     }
 
     .stat-label {
-      color: #666;
-      font-size: 14px;
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
     }
 
-    @media (max-width: 768px) {
-      .header-greet {
-        padding: 30px 20px;
-      }
-
-      .header-greet h1 {
-        font-size: 24px;
-      }
-
-      .header-greet .subtitle {
-        font-size: 14px;
-      }
-
-      .actions-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 10px;
-      }
-
-      .action-btn {
-        padding: 20px 10px;
-      }
-
-      .action-icon {
-        font-size: 28px;
-      }
-
-      .action-title {
-        font-size: 13px;
-      }
-
-      .action-desc {
-        font-size: 11px;
-      }
-
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 640px) {
+      .dash-hero { padding: 24px 20px; }
+      .actions-grid { grid-template-columns: repeat(2, 1fr); }
     }
   `]
 })

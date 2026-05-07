@@ -33,570 +33,272 @@ interface QuestaoResposta {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h2>📊 Gerenciar Notas</h2>
+    <div class="content-page">
+      <div class="page-topbar">
+        <h1>Gerenciar Notas</h1>
       </div>
 
-      <!-- Filtros -->
-      <div class="filtros">
-        <input
-          class="filtro-input"
-          type="text"
-          placeholder="🔍 Buscar por aluno ou prova..."
-          [(ngModel)]="busca"
-          (ngModelChange)="aplicarFiltro()"
-        />
-        <select class="filtro-select" [(ngModel)]="filtroPendente" (ngModelChange)="aplicarFiltro()">
+      <div class="filter-bar">
+        <input class="filter-input" type="text" placeholder="Buscar por aluno ou prova..." [(ngModel)]="busca" (ngModelChange)="aplicarFiltro()" />
+        <select class="filter-select" [(ngModel)]="filtroPendente" (ngModelChange)="aplicarFiltro()">
           <option value="todos">Todas as notas</option>
           <option value="pendentes">Aguardando correção</option>
           <option value="corrigidas">Já corrigidas</option>
         </select>
       </div>
 
-      <!-- Tabela -->
-      <div class="notas-table" *ngIf="notasFiltradas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Aluno</th>
-              <th>Prova</th>
-              <th>Nota Final</th>
-              <th>Tentativa</th>
-              <th>Enviado em</th>
-              <th>Corrigido em</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let nota of notasFiltradas" [class.pendente-row]="nota.nota_final == null">
-              <td class="aluno-nome">{{ nota.usuario_nome }}</td>
-              <td>{{ nota.prova_titulo }}</td>
-              <td class="nota-valor">
-                <span *ngIf="nota.nota_final != null" [ngClass]="'nivel-' + getNivelNota(+nota.nota_final)">
-                  {{ (+nota.nota_final).toFixed(1) }}
-                </span>
-                <span *ngIf="nota.nota_final == null" class="pendente-badge">⏳ Pendente</span>
-              </td>
-              <td class="tentativa-val">{{ nota.tentativa }}ª</td>
-              <td class="data-col">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td class="data-col">
-                <span *ngIf="nota.data_correcao">{{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }}</span>
-                <span *ngIf="!nota.data_correcao" class="sem-correcao">—</span>
-              </td>
-              <td class="actions">
-                <button class="btn-view" (click)="verRespostas(nota)" title="Ver respostas do aluno">👁️ Ver</button>
-                <button class="btn-edit" (click)="abrirEdicao(nota)" title="Editar nota">✏️ Editar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando notas...</p></div>
+      }
 
-      <div class="no-data" *ngIf="notasFiltradas.length === 0 && !carregando">
-        <p>{{ notas.length === 0 ? 'Nenhuma nota registrada ainda.' : 'Nenhuma nota corresponde ao filtro.' }}</p>
-      </div>
+      @if (erro) {
+        <div class="msg msg--error">{{ erro }} <button (click)="carregarNotas()">Tentar novamente</button></div>
+      }
 
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando notas...</p>
-      </div>
+      @if (!carregando && notasFiltradas.length > 0) {
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Prova</th>
+                <th>Nota Final</th>
+                <th>Tentativa</th>
+                <th>Enviado em</th>
+                <th>Corrigido em</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (nota of notasFiltradas; track nota.id) {
+                <tr [class.row-pending]="nota.nota_final == null">
+                  <td class="cell-strong">{{ nota.usuario_nome }}</td>
+                  <td>{{ nota.prova_titulo }}</td>
+                  <td>
+                    @if (nota.nota_final != null) {
+                      <span class="nota-val" [ngClass]="'nota-' + getNivelNota(+nota.nota_final)">{{ (+nota.nota_final).toFixed(1) }}</span>
+                    } @else {
+                      <span class="badge badge--warn">Pendente</span>
+                    }
+                  </td>
+                  <td class="col-center">{{ nota.tentativa }}ª</td>
+                  <td class="col-date">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="col-date">
+                    @if (nota.data_correcao) { {{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }} }
+                    @else { <span class="muted">—</span> }
+                  </td>
+                  <td class="cell-actions">
+                    <button class="btn-icon btn-icon--view" title="Ver respostas" (click)="verRespostas(nota)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon--edit" title="Editar nota" (click)="abrirEdicao(nota)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
-      <div class="error-msg" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarNotas()">Tentar novamente</button>
-      </div>
+      @if (!carregando && notasFiltradas.length === 0 && !erro) {
+        <div class="empty-state">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <p>{{ notas.length === 0 ? 'Nenhuma nota registrada ainda.' : 'Nenhuma nota corresponde ao filtro.' }}</p>
+        </div>
+      }
     </div>
 
-    <!-- Modal de Edição -->
-    <div class="modal-overlay" *ngIf="notaEmEdicao" (click)="fecharEdicao()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>✏️ Editar Nota</h3>
-          <button class="modal-close" (click)="fecharEdicao()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="info-aluno">
-            <p><strong>Aluno:</strong> {{ notaEmEdicao.usuario_nome }}</p>
-            <p><strong>Prova:</strong> {{ notaEmEdicao.prova_titulo }}</p>
-            <p><strong>Tentativa:</strong> {{ notaEmEdicao.tentativa }}ª</p>
-            <p><strong>Enviado em:</strong> {{ notaEmEdicao.data_submissao | date:'dd/MM/yyyy HH:mm' }}</p>
+    @if (notaEmEdicao) {
+      <div class="modal-overlay" (click)="fecharEdicao()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>Editar Nota</h3>
+            <button class="modal-close-btn" (click)="fecharEdicao()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-
-          <div class="form-group">
-            <label>Nota Final <span class="label-hint">(0 a 10)</span></label>
-            <input
-              type="number"
-              class="nota-input"
-              [(ngModel)]="notaEditada"
-              min="0"
-              max="10"
-              step="0.1"
-              placeholder="Ex: 7.5"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Observações</label>
-            <textarea
-              class="obs-input"
-              [(ngModel)]="obsEditada"
-              placeholder="Comentário sobre a correção (opcional)..."
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div class="modal-error" *ngIf="erroEdicao">{{ erroEdicao }}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancelar" (click)="fecharEdicao()" [disabled]="salvando">Cancelar</button>
-          <button class="btn-salvar" (click)="salvarNota()" [disabled]="salvando || notaEditada === null || notaEditada === undefined">
-            {{ salvando ? 'Salvando...' : 'Salvar Nota' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Respostas -->
-    <div class="modal-overlay" *ngIf="notaRespostas" (click)="fecharRespostas()">
-      <div class="modal modal-lg" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <h3>📄 Respostas do Aluno</h3>
-            <p class="modal-subtitle">{{ notaRespostas.usuario_nome }} — {{ notaRespostas.prova_titulo }}</p>
-          </div>
-          <button class="modal-close" (click)="fecharRespostas()">✕</button>
-        </div>
-        <div class="modal-body modal-body-scroll">
-          <div class="loading-respostas" *ngIf="carregandoRespostas">
-            <div class="spinner"></div>
-            <p>Carregando respostas...</p>
-          </div>
-
-          <div class="erro-respostas" *ngIf="erroRespostas">{{ erroRespostas }}</div>
-
-          <div *ngIf="!carregandoRespostas && questoesRespostas.length > 0">
-            <div class="questao-resposta" *ngFor="let q of questoesRespostas; let i = index">
-              <div class="questao-resp-header">
-                <span class="questao-num">Q{{ i + 1 }}</span>
-                <span class="questao-tipo-badge" [class.mc]="q.tipo === 'multipla_escolha'" [class.diss]="q.tipo === 'dissertativa'">
-                  {{ q.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
-                </span>
-                <span class="questao-pts-label" title="Clique para editar os pontos">
-                  <input
-                    class="questao-pts-input"
-                    type="number"
-                    min="0.1"
-                    step="0.5"
-                    [ngModel]="q.pontos"
-                    (change)="salvarPontos(q, +$any($event).target.value)"
-                  />pts
-                </span>
-                <span class="questao-status" *ngIf="q.tipo === 'multipla_escolha'">
-                  <span class="correta" *ngIf="q.correta === true">✅ Correta</span>
-                  <span class="incorreta" *ngIf="q.correta === false">❌ Errada</span>
-                  <span class="sem-resp" *ngIf="q.correta === null">— Não respondida</span>
-                </span>
-                <span class="questao-status" *ngIf="q.tipo === 'dissertativa'">
-                  <span class="pendente-text">⏳ Aguarda correção</span>
-                </span>
-              </div>
-
-              <p class="enunciado">{{ q.enunciado }}</p>
-
-              <!-- Múltipla escolha -->
-              <div class="opcoes-lista" *ngIf="q.tipo === 'multipla_escolha' && q.opcoes">
-                <div
-                  class="opcao-linha"
-                  *ngFor="let op of q.opcoes"
-                  [class.selecionada]="op.id === q.opcao_selecionada"
-                  [class.gabarito]="op.correta"
-                >
-                  <span class="opcao-marcador">
-                    <span *ngIf="op.id === q.opcao_selecionada && op.correta">✅</span>
-                    <span *ngIf="op.id === q.opcao_selecionada && !op.correta">❌</span>
-                    <span *ngIf="op.id !== q.opcao_selecionada && op.correta">✓</span>
-                    <span *ngIf="op.id !== q.opcao_selecionada && !op.correta">&nbsp;</span>
-                  </span>
-                  <span class="opcao-texto">{{ op.texto }}</span>
-                  <span class="gabarito-label" *ngIf="op.correta">(gabarito)</span>
-                </div>
-              </div>
-
-              <!-- Dissertativa -->
-              <div class="resposta-dissertativa" *ngIf="q.tipo === 'dissertativa'">
-                <label>Resposta do aluno:</label>
-                <div class="texto-resposta" *ngIf="q.texto_resposta">{{ q.texto_resposta }}</div>
-                <div class="sem-resposta" *ngIf="!q.texto_resposta">Sem resposta</div>
-              </div>
+          <div class="modal-body">
+            <div class="info-box-sm">
+              <p><strong>Aluno:</strong> {{ notaEmEdicao.usuario_nome }}</p>
+              <p><strong>Prova:</strong> {{ notaEmEdicao.prova_titulo }}</p>
+              <p><strong>Tentativa:</strong> {{ notaEmEdicao.tentativa }}ª</p>
             </div>
+            <div class="form-row">
+              <label>Nota Final (0 a 10)</label>
+              <input type="number" class="nota-input-big" [(ngModel)]="notaEditada" min="0" max="10" step="0.1" placeholder="Ex: 7.5" />
+            </div>
+            <div class="form-row">
+              <label>Observações</label>
+              <textarea [(ngModel)]="obsEditada" rows="3" placeholder="Comentário sobre a correção (opcional)..."></textarea>
+            </div>
+            @if (erroEdicao) { <div class="form-error">{{ erroEdicao }}</div> }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharEdicao()" [disabled]="salvando">Cancelar</button>
+            <button class="btn-primary" (click)="salvarNota()" [disabled]="salvando || notaEditada === null || notaEditada === undefined">{{ salvando ? 'Salvando...' : 'Salvar Nota' }}</button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn-cancelar" (click)="fecharRespostas()">Fechar</button>
-          <button class="btn-salvar" (click)="abrirEdicaoDeRespostas()">✏️ Editar Nota</button>
+      </div>
+    }
+
+    @if (notaRespostas) {
+      <div class="modal-overlay" (click)="fecharRespostas()">
+        <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3>Respostas do Aluno</h3>
+              <p class="modal-subtitle">{{ notaRespostas.usuario_nome }} — {{ notaRespostas.prova_titulo }}</p>
+            </div>
+            <button class="modal-close-btn" (click)="fecharRespostas()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="modal-body modal-body--scroll">
+            @if (carregandoRespostas) {
+              <div class="loading-state"><div class="spinner"></div><p>Carregando respostas...</p></div>
+            }
+            @if (erroRespostas) { <div class="form-error">{{ erroRespostas }}</div> }
+            @if (!carregandoRespostas && questoesRespostas.length > 0) {
+              @for (q of questoesRespostas; track q.id; let i = $index) {
+                <div class="questao-card">
+                  <div class="questao-header">
+                    <span class="questao-num">Q{{ i + 1 }}</span>
+                    <span class="badge" [class]="q.tipo === 'multipla_escolha' ? 'badge--info' : 'badge--warn'">{{ q.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}</span>
+                    <span class="questao-pts">{{ q.pontos }}pts</span>
+                    @if (q.tipo === 'multipla_escolha') {
+                      @if (q.correta === true) { <span class="badge badge--success">Correta</span> }
+                      @else if (q.correta === false) { <span class="badge badge--danger">Errada</span> }
+                      @else { <span class="muted">Não respondida</span> }
+                    } @else {
+                      <span class="badge badge--warn">Aguarda correção</span>
+                    }
+                  </div>
+                  <p class="questao-enunciado">{{ q.enunciado }}</p>
+                  @if (q.tipo === 'multipla_escolha' && q.opcoes) {
+                    <div class="opcoes-lista">
+                      @for (op of q.opcoes; track op.id) {
+                        <div class="opcao-linha" [class.opcao-selecionada]="op.id === q.opcao_selecionada" [class.opcao-gabarito]="op.correta">
+                          <span class="opcao-texto">{{ op.texto }}</span>
+                          @if (op.correta) { <span class="badge badge--success" style="font-size:0.7rem">gabarito</span> }
+                        </div>
+                      }
+                    </div>
+                  }
+                  @if (q.tipo === 'dissertativa') {
+                    <div class="resp-dissertativa">
+                      <p class="resp-label">Resposta do aluno:</p>
+                      @if (q.texto_resposta) { <div class="resp-texto">{{ q.texto_resposta }}</div> }
+                      @else { <div class="muted" style="font-style:italic">Sem resposta</div> }
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharRespostas()">Fechar</button>
+            <button class="btn-primary" (click)="abrirEdicaoDeRespostas()">Editar Nota</button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
-    .page-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+    :host { display: block; }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
+    .page-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .page-topbar h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
 
-    .page-header h2 {
-      margin: 0;
-      color: #333;
-    }
+    .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-input { flex: 1; min-width: 200px; padding: 9px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); background: var(--color-surface-2); color: var(--color-text); outline: none; }
+    .filter-input:focus { border-color: var(--primary); background: var(--color-surface); }
+    .filter-select { padding: 9px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); background: var(--color-surface-2); color: var(--color-text); cursor: pointer; }
 
-    /* Filtros */
-    .filtros {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
+    .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 24px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .filtro-input {
-      flex: 1;
-      min-width: 220px;
-      padding: 10px 14px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-    }
+    .msg { padding: 12px 16px; border-radius: var(--radius); font-size: var(--font-size-sm); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .msg--error { background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent); }
+    .msg--error button { background: none; border: none; color: var(--color-danger); cursor: pointer; font-weight: 600; text-decoration: underline; }
 
-    .filtro-select {
-      padding: 10px 14px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-      background: white;
-      cursor: pointer;
-    }
+    .table-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); min-width: 700px; }
+    th { padding: 12px 14px; text-align: left; font-weight: 600; color: var(--color-text-muted); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--color-border); color: var(--color-text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--color-surface-2); }
+    tr.row-pending td { background: color-mix(in srgb, var(--color-warning) 4%, transparent); }
+    .cell-strong { font-weight: 600; }
+    .col-center { text-align: center; color: var(--color-text-muted); }
+    .col-date { font-size: 0.8125rem; color: var(--color-text-muted); }
+    .muted { color: var(--color-text-muted); }
 
-    /* Tabela */
-    .notas-table {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
+    .nota-val { font-weight: 700; font-size: var(--font-size-base); }
+    .nota-excelente { color: var(--color-success); }
+    .nota-bom       { color: var(--primary); }
+    .nota-regular   { color: var(--color-warning); }
+    .nota-insuficiente { color: var(--color-danger); }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    .badge { display: inline-flex; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger) 15%, transparent);  color: var(--color-danger); }
+    .badge--info    { background: color-mix(in srgb, var(--color-info) 15%, transparent);    color: var(--color-info); }
 
-    thead {
-      background: #f5f5f5;
-      border-bottom: 2px solid #ddd;
-    }
-
-    th {
-      padding: 14px 16px;
-      text-align: left;
-      font-weight: 600;
-      color: #555;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    td {
-      padding: 14px 16px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    tbody tr:hover { background-color: #f9f9f9; }
-    tbody tr.pendente-row { background-color: #fffbf0; }
-
-    .aluno-nome { font-weight: 600; color: #333; }
-
-    .nota-valor { font-weight: 700; font-size: 15px; }
-    .nivel-excelente { color: #27ae60; }
-    .nivel-bom      { color: #3498db; }
-    .nivel-regular  { color: #f39c12; }
-    .nivel-insuficiente { color: #e74c3c; }
-
-    .pendente-badge {
-      background: #fff3cd;
-      color: #856404;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .tentativa-val { text-align: center; color: #666; }
-    .data-col { color: #666; font-size: 13px; }
-    .sem-correcao { color: #bbb; }
-
-    .actions { white-space: nowrap; }
-
-    .btn-edit {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-    .btn-edit:hover { background: #2980b9; }
-
-    .btn-view {
-      background: #27ae60;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s;
-      margin-right: 6px;
-    }
-    .btn-view:hover { background: #219a52; }
-
-    /* Modal de Respostas */
-    .modal-lg { max-width: 720px; }
-    .modal-subtitle { margin: 4px 0 0 0; font-size: 13px; color: #666; }
-    .modal-body-scroll { max-height: 60vh; overflow-y: auto; padding: 24px; }
-
-    .questao-resposta { border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .questao-resp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-    .questao-num { background: #495057; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-    .questao-tipo-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .questao-tipo-badge.mc { background: #e3f2fd; color: #1976d2; }
-    .questao-tipo-badge.diss { background: #f3e5f5; color: #7b1fa2; }
-    .questao-pts-label { background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; cursor: text; }
-    .questao-pts-input { width: 42px; border: none; background: transparent; color: #856404; font-size: 11px; font-weight: 700; text-align: right; padding: 0; -moz-appearance: textfield; }
-    .questao-pts-input::-webkit-outer-spin-button, .questao-pts-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .questao-pts-input:focus { outline: 1px solid #b8860b; border-radius: 2px; }
-    .questao-status { margin-left: auto; font-size: 13px; }
-    .correta { color: #27ae60; font-weight: 600; }
-    .incorreta { color: #e74c3c; font-weight: 600; }
-    .sem-resp { color: #999; }
-    .pendente-text { color: #856404; }
-
-    .enunciado { margin: 0 0 12px 0; font-size: 14px; color: #333; }
-    .opcoes-lista { display: flex; flex-direction: column; gap: 6px; }
-    .opcao-linha { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee; font-size: 13px; }
-    .opcao-linha.selecionada { border-color: #3498db; background: #ebf5fb; }
-    .opcao-linha.gabarito:not(.selecionada) { border-color: #27ae60; background: #eafaf1; }
-    .opcao-linha.selecionada.gabarito { border-color: #27ae60; background: #eafaf1; }
-    .gabarito-label { margin-left: auto; font-size: 11px; color: #27ae60; font-weight: 600; }
-    .opcao-marcador { width: 20px; text-align: center; flex-shrink: 0; }
-
-    .resposta-dissertativa { margin-top: 8px; }
-    .resposta-dissertativa label { font-size: 12px; font-weight: 600; color: #666; }
-    .texto-resposta { background: #f8f9fa; border-radius: 6px; padding: 10px 14px; font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
-    .sem-resposta { color: #999; font-size: 13px; font-style: italic; margin-top: 6px; }
-
-    .loading-respostas { text-align: center; padding: 30px; }
-    .erro-respostas { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 6px; }
-
-    .no-data {
-      background: white;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      color: #999;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #27ae60;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0%   { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error-msg {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-    }
-    .error-msg button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+    .cell-actions { display: flex; gap: 6px; }
+    .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius); border: 1.5px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+    .btn-icon--view  { color: var(--color-info); }
+    .btn-icon--view:hover  { border-color: var(--color-info); background: color-mix(in srgb, var(--color-info) 8%, transparent); }
+    .btn-icon--edit  { color: var(--primary); }
+    .btn-icon--edit:hover  { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
 
     /* Modal */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0 0 0 / 0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); max-width: 480px; width: 100%; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; max-height: 90vh; }
+    .modal-card--lg { max-width: 680px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px 16px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .modal-header h3 { margin: 0 0 4px; font-size: var(--font-size-lg); color: var(--color-text); }
+    .modal-subtitle { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+    .modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius); line-height: 1; }
+    .modal-close-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+    .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-body--scroll { max-height: 55vh; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--color-border); flex-shrink: 0; }
 
-    .modal {
-      background: white;
-      border-radius: 10px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      display: flex;
-      flex-direction: column;
-    }
+    .info-box-sm { background: var(--color-surface-2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; }
+    .info-box-sm p { margin: 4px 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px;
-      border-bottom: 1px solid #eee;
-    }
+    .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-row label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-muted); }
+    .form-row input, .form-row textarea { padding: 9px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); outline: none; background: var(--color-surface-2); color: var(--color-text); font-family: inherit; }
+    .form-row input:focus, .form-row textarea:focus { border-color: var(--primary); background: var(--color-surface); }
+    .form-row textarea { resize: vertical; }
+    .nota-input-big { font-size: 1.5rem; font-weight: 700; text-align: center; }
 
-    .modal-header h3 { margin: 0; font-size: 18px; color: #333; }
+    .form-error { margin-top: 10px; padding: 10px 14px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent); border-radius: var(--radius); color: var(--color-danger); font-size: var(--font-size-sm); }
 
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      color: #999;
-      padding: 4px 8px;
-    }
-    .modal-close:hover { color: #333; }
+    .btn-primary { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: var(--radius); cursor: pointer; font-weight: 600; font-size: var(--font-size-sm); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline { padding: 9px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text-muted); font-size: var(--font-size-sm); font-weight: 500; cursor: pointer; }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .modal-body { padding: 24px; }
-
-    .info-aluno {
-      background: #f8f9fa;
-      border-radius: 6px;
-      padding: 14px;
-      margin-bottom: 20px;
-    }
-    .info-aluno p {
-      margin: 4px 0;
-      font-size: 13px;
-      color: #555;
-    }
-
-    .form-group { margin-bottom: 18px; }
-
-    .form-group label {
-      display: block;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 6px;
-      font-size: 14px;
-    }
-
-    .label-hint { font-weight: 400; color: #888; font-size: 12px; }
-
-    .nota-input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 20px;
-      font-weight: 700;
-      text-align: center;
-      box-sizing: border-box;
-      transition: border-color 0.2s;
-    }
-    .nota-input:focus { outline: none; border-color: #3498db; }
-
-    .obs-input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-      resize: vertical;
-      box-sizing: border-box;
-      font-family: inherit;
-      transition: border-color 0.2s;
-    }
-    .obs-input:focus { outline: none; border-color: #3498db; }
-
-    .modal-error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      margin-top: 10px;
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      padding: 16px 24px;
-      border-top: 1px solid #eee;
-    }
-
-    .btn-cancelar {
-      padding: 10px 20px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: white;
-      color: #555;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .btn-cancelar:hover { background: #f5f5f5; }
-
-    .btn-salvar {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 6px;
-      background: #27ae60;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-    .btn-salvar:hover:not(:disabled) { background: #219a52; }
-    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    @media (max-width: 768px) {
-      table { font-size: 12px; }
-      th, td { padding: 10px; }
-      .modal { margin: 16px; }
-    }
+    /* Questoes */
+    .questao-card { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+    .questao-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .questao-num { background: var(--color-surface-2); color: var(--color-text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+    .questao-pts { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; }
+    .questao-enunciado { margin: 0 0 10px; font-size: var(--font-size-sm); color: var(--color-text); }
+    .opcoes-lista { display: flex; flex-direction: column; gap: 5px; }
+    .opcao-linha { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--color-border); font-size: var(--font-size-sm); }
+    .opcao-selecionada { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, transparent); }
+    .opcao-gabarito:not(.opcao-selecionada) { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 6%, transparent); }
+    .opcao-texto { flex: 1; }
+    .resp-dissertativa { margin-top: 8px; }
+    .resp-label { font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); margin: 0 0 6px; }
+    .resp-texto { background: var(--color-surface-2); border-radius: var(--radius); padding: 10px 12px; font-size: var(--font-size-sm); white-space: pre-wrap; }
   `]
 })
 export class AdminNotasComponent implements OnInit {
@@ -742,7 +444,7 @@ export class AdminNotasComponent implements OnInit {
 
     const valor = Number(this.notaEditada);
     if (isNaN(valor) || valor < 0 || valor > 10) {
-      this.erroEdicao = 'Nota inválida. Insira um valor entre 0 e 10.';
+      this.erroEdicao = 'Nota inv├ílida. Insira um valor entre 0 e 10.';
       return;
     }
 

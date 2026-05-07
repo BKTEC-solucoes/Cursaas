@@ -92,62 +92,43 @@ interface InstituicaoInfo {
     </div>
   `,
   styles: [`
-    .dashboard { max-width: 1100px; margin: 0 auto; }
+    :host { display: block; }
 
-    .header-greet {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      color: white;
-      padding: 36px 30px;
-      border-radius: 12px;
-      margin-bottom: 20px;
+    .status-banner { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-5); }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      padding: var(--space-2) var(--space-4); border-radius: var(--radius-full);
+      font-size: var(--font-size-sm); font-weight: 500;
+      background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted);
     }
-    .header-greet h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; }
-    .header-greet .subtitle { margin: 0; font-size: 14px; opacity: 0.9; }
+    .chip-ok { background: color-mix(in srgb, var(--color-success) 12%, transparent); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-success); }
+    .chip-warn { background: color-mix(in srgb, var(--color-warning) 12%, transparent); border-color: color-mix(in srgb, var(--color-warning) 30%, transparent); color: var(--color-warning); }
+    .chip-danger { background: color-mix(in srgb, var(--color-danger) 12%, transparent); border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); color: var(--color-danger); }
+    .chip-info { background: color-mix(in srgb, var(--primary) 8%, transparent); border-color: color-mix(in srgb, var(--primary) 25%, transparent); color: var(--primary); }
 
-    .loading { padding: 24px; text-align: center; background: #f0f9ff; color: #0369a1; border-radius: 8px; margin-bottom: 20px; }
-    .erro    { padding: 24px; text-align: center; background: #fef2f2; color: #dc2626; border-radius: 8px; margin-bottom: 20px; }
+    .stat-card--highlight { border: 2px solid var(--color-warning) !important; }
 
-    .status-banner { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
-    .status-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 16px; border-radius: 8px;
-      background: #f0fdf4; border: 1px solid #bbf7d0;
-      font-size: 14px; font-weight: 500; color: #166534;
-    }
-    .status-item.pendente { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
-    .status-item.inativo  { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+    .section-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text); margin: var(--space-6) 0 var(--space-4); font-family: var(--font-display); }
 
-    .stats-section { margin-bottom: 28px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-    .stat-card {
-      background: white; border-radius: 12px; padding: 24px 20px;
-      text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border: 2px solid transparent;
-    }
-    .stat-card.highlight { border-color: #f59e0b; }
-    .stat-icon  { font-size: 32px; margin-bottom: 8px; }
-    .stat-value { font-size: 32px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
-    .stat-label { font-size: 13px; color: #6b7280; }
-
-    .quick-actions h2 { font-size: 18px; font-weight: 600; color: #1f2937; margin: 0 0 16px; }
-    .actions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .actions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4); }
     .action-btn {
-      position: relative;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      padding: 24px 16px; background: white; border-radius: 12px;
-      text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      transition: all 0.2s; border: 2px solid transparent;
+      position: relative; display: flex; flex-direction: column; align-items: center;
+      gap: var(--space-2); padding: var(--space-6) var(--space-4);
+      background: var(--color-surface); border-radius: var(--radius-lg);
+      text-decoration: none; box-shadow: var(--shadow-sm);
+      border: 2px solid var(--color-border);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
     }
-    .action-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); border-color: var(--secondary); }
-    .action-icon  { font-size: 36px; }
-    .action-title { font-size: 14px; font-weight: 600; color: #1f2937; }
-    .action-desc  { font-size: 12px; color: #6b7280; text-align: center; }
-    .action-badge {
-      position: absolute; top: 10px; right: 10px;
-      background: #ef4444; color: white;
-      border-radius: 999px; padding: 2px 8px;
-      font-size: 11px; font-weight: 700;
-    }
+    .action-btn:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--primary); }
+    .action-icon { color: var(--primary); }
+    .action-title { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+    .action-desc { font-size: var(--font-size-xs); color: var(--color-text-muted); text-align: center; }
+    .action-badge { position: absolute; top: 10px; right: 10px; background: var(--color-danger); color: #fff; border-radius: var(--radius-full); padding: 2px 8px; font-size: var(--font-size-xs); font-weight: 700; }
+
+    .loading-state { text-align: center; padding: 40px; color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-card { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); padding: var(--space-5); border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); margin-bottom: var(--space-4); }
   `]
 })
 export class InstituicaoDashboardComponent implements OnInit {

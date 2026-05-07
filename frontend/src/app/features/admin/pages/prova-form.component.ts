@@ -1,549 +1,228 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
+import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-interface Curso {
-  id: number;
-  nome: string;
-}
-
-interface Opcao {
-  texto: string;
-  correta: boolean;
-}
-
-interface Questao {
-  enunciado: string;
-  tipo: string;
-  pontos: number;
-  opcoes: Opcao[];
-}
+interface Curso { id: number; nome: string; }
+interface Opcao { texto: string; correta: boolean; }
+interface Questao { enunciado: string; tipo: string; pontos: number; opcoes: Opcao[]; }
 
 @Component({
   selector: 'app-admin-prova-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink],
   template: `
-    <div class="page-container">
+    <div class="content-page">
+
       <div class="page-header">
-        <h2>{{ provaId ? 'Editar Prova' : 'Nova Prova' }}</h2>
+        <div>
+          <h1 class="page-title">{{ provaId ? 'Editar Prova' : 'Nova Prova' }}</h1>
+          <p class="page-subtitle">{{ provaId ? 'Altere os dados e questões da prova.' : 'Preencha os dados e adicione questões.' }}</p>
+        </div>
         <div class="header-actions">
-          <button class="btn-secondary" [routerLink]="['/admin/provas']">← Voltar</button>
-          <button class="btn-primary" (click)="salvar()" [disabled]="salvando || !provaForm.valid">
-            {{ salvando ? 'Salvando...' : 'Salvar Prova' }}
+          <a class="btn btn-outline" [routerLink]="['/admin/provas']">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Voltar
+          </a>
+          <button class="btn btn-primary" (click)="salvar()" [disabled]="salvando || !provaForm.valid">
+            @if (salvando) { Salvando... } @else { Salvar Prova }
           </button>
         </div>
       </div>
 
-      <div class="form-container">
-        <!-- Dados Básicos da Prova -->
-        <div class="form-section">
-          <h3>📝 Dados da Prova</h3>
-          
-          <form [formGroup]="provaForm">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="titulo">Título *</label>
-                <input 
-                  type="text" 
-                  id="titulo" 
-                  formControlName="titulo"
-                  placeholder="Ex: Avaliação Módulo 1">
-                <div class="error" *ngIf="provaForm.get('titulo')?.invalid && provaForm.get('titulo')?.touched">
-                  Título é obrigatório
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>
+      }
+
+      @if (erro)    { <div class="msg msg-error"   style="margin-bottom:var(--space-4)">{{ erro }}</div> }
+      @if (sucesso) { <div class="msg msg-success" style="margin-bottom:var(--space-4)">{{ sucesso }}</div> }
+
+      @if (!carregando) {
+        <div class="form-layout">
+
+          <!-- Dados básicos -->
+          <div class="card" style="margin-bottom:var(--space-5)">
+            <h2 class="section-title">Dados da Prova</h2>
+            <form [formGroup]="provaForm">
+              <div class="form-grid-2">
+                <div class="field">
+                  <label class="field-label" for="titulo">Título *</label>
+                  <input class="field-input" id="titulo" type="text" formControlName="titulo" placeholder="Ex: Avaliação Módulo 1" />
+                  @if (provaForm.get('titulo')?.invalid && provaForm.get('titulo')?.touched) {
+                    <span class="field-error">Título é obrigatório</span>
+                  }
+                </div>
+                <div class="field">
+                  <label class="field-label" for="curso">Curso *</label>
+                  <select class="field-input" id="curso" formControlName="curso_id">
+                    <option [value]="null">Selecione um curso</option>
+                    @for (c of cursos; track c.id) {
+                      <option [value]="c.id">{{ c.nome }}</option>
+                    }
+                  </select>
+                  @if (provaForm.get('curso_id')?.invalid && provaForm.get('curso_id')?.touched) {
+                    <span class="field-error">Curso é obrigatório</span>
+                  }
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="curso">Curso *</label>
-                <select id="curso" formControlName="curso_id">
-                  <option [value]="null">Selecione um curso</option>
-                  <option *ngFor="let curso of cursos" [value]="curso.id">{{ curso.nome }}</option>
-                </select>
-                <div class="error" *ngIf="provaForm.get('curso_id')?.invalid && provaForm.get('curso_id')?.touched">
-                  Curso é obrigatório
+              <div class="field" style="margin-bottom:var(--space-4)">
+                <label class="field-label" for="descricao">Descrição</label>
+                <textarea class="field-input" id="descricao" formControlName="descricao" rows="3" placeholder="Descrição da prova (opcional)"></textarea>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="field">
+                  <label class="field-label" for="data_inicio">Data/Hora Início *</label>
+                  <input class="field-input" id="data_inicio" type="datetime-local" formControlName="data_inicio" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="data_fim">Data/Hora Fim *</label>
+                  <input class="field-input" id="data_fim" type="datetime-local" formControlName="data_fim" />
                 </div>
               </div>
-            </div>
 
-            <div class="form-group">
-              <label for="descricao">Descrição</label>
-              <textarea 
-                id="descricao" 
-                formControlName="descricao"
-                rows="3"
-                placeholder="Descrição da prova (opcional)"></textarea>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="data_inicio">Data/Hora Início *</label>
-                <input 
-                  type="datetime-local" 
-                  id="data_inicio" 
-                  formControlName="data_inicio">
+              <div class="form-grid-2">
+                <div class="field">
+                  <label class="field-label" for="tentativas">Tentativas Permitidas *</label>
+                  <input class="field-input" id="tentativas" type="number" formControlName="tentativas_permitidas" min="1" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="status">Status</label>
+                  <select class="field-input" id="status" formControlName="ativo">
+                    <option [ngValue]="true">Ativa</option>
+                    <option [ngValue]="false">Inativa</option>
+                  </select>
+                </div>
               </div>
-
-              <div class="form-group">
-                <label for="data_fim">Data/Hora Fim *</label>
-                <input 
-                  type="datetime-local" 
-                  id="data_fim" 
-                  formControlName="data_fim">
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="tentativas">Tentativas Permitidas *</label>
-                <input 
-                  type="number" 
-                  id="tentativas" 
-                  formControlName="tentativas_permitidas"
-                  min="1">
-              </div>
-
-              <div class="form-group">
-                <label for="status">Status *</label>
-                <select id="status" formControlName="ativo">
-                  <option [ngValue]="true">Ativa</option>
-                  <option [ngValue]="false">Inativa</option>
-                </select>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        <!-- Questões -->
-        <div class="form-section">
-          <div class="section-header">
-            <h3>❓ Questões ({{ questoes.length }}) — Total: {{ getTotalPontos() }} pts</h3>
-            <button class="btn-primary" (click)="adicionarQuestao()">+ Nova Questão</button>
+            </form>
           </div>
 
-          <div class="questoes-lista" *ngIf="questoes.length > 0">
-            <div class="questao-card" *ngFor="let questao of questoes; let i = index">
-              <div class="questao-header">
-                <span class="questao-numero">Questão {{ i + 1 }}</span>
-                <span class="questao-tipo" [class.multipla]="questao.tipo === 'multipla_escolha'" [class.dissertativa]="questao.tipo === 'dissertativa'">
-                  {{ questao.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
-                </span>
-                <label class="questao-pontos-badge" title="Valor da questão">
-                  <input
-                    class="pontos-inline-input"
-                    type="number"
-                    [(ngModel)]="questao.pontos"
-                    min="0.1"
-                    step="0.5"
-                    (click)="$event.stopPropagation()"
-                  />
-                  pts
-                </label>
-                <button class="btn-delete" (click)="removerQuestao(i)">🗑️</button>
+          <!-- Questões -->
+          <div class="card">
+            <div class="questoes-header">
+              <div>
+                <h2 class="section-title" style="margin:0">Questões</h2>
+                <p class="questoes-meta">{{ questoes.length }} questão(ões) &bull; {{ getTotalPontos() }} pts no total</p>
               </div>
+              <button class="btn btn-primary btn-sm" (click)="adicionarQuestao()">+ Nova Questão</button>
+            </div>
 
-              <div class="questao-body">
-                <div class="form-group">
-                  <label>Enunciado *</label>
-                  <textarea 
-                    [(ngModel)]="questao.enunciado"
-                    rows="2"
-                    placeholder="Digite o enunciado da questão"></textarea>
+            @if (questoes.length === 0) {
+              <div class="empty-state" style="padding:var(--space-8) var(--space-4)">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
+                <h3 class="empty-title">Nenhuma questão ainda</h3>
+                <p class="empty-body">Clique em "Nova Questão" para adicionar.</p>
+              </div>
+            }
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Tipo de Questão</label>
-                    <select [(ngModel)]="questao.tipo" (ngModelChange)="ajustarOpcoes(questao)">
-                      <option value="multipla_escolha">Múltipla Escolha</option>
-                      <option value="dissertativa">Dissertativa</option>
-                    </select>
+            <div class="questoes-lista">
+              @for (questao of questoes; track $index; let i = $index) {
+                <div class="questao-card">
+                  <div class="questao-head">
+                    <span class="questao-num">Questão {{ i + 1 }}</span>
+                    <span class="badge" [class.badge-primary]="questao.tipo === 'multipla_escolha'" [class.badge-neutral]="questao.tipo === 'dissertativa'">
+                      {{ questao.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
+                    </span>
+                    <label class="pontos-badge">
+                      <input class="pontos-input" type="number" [(ngModel)]="questao.pontos" min="0.1" step="0.5" (click)="$event.stopPropagation()" />
+                      pts
+                    </label>
+                    <button class="btn-icon-danger" (click)="removerQuestao(i)" title="Remover questão">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </button>
                   </div>
-                </div>
 
-                <!-- Opções para Múltipla Escolha -->
-                <div class="opcoes-container" *ngIf="questao.tipo === 'multipla_escolha'">
-                  <label>Opções de Resposta</label>
-                  <div class="opcao-item" *ngFor="let opcao of questao.opcoes; let j = index">
-                    <div class="opcao-input">
-                      <span class="opcao-letra">{{ getLetter(j) }}</span>
-                      <input 
-                        type="text" 
-                        [(ngModel)]="opcao.texto"
-                        [placeholder]="'Opção ' + getLetter(j)">
-                      <label class="opcao-correta">
-                        <input 
-                          type="checkbox" 
-                          [checked]="opcao.correta"
-                          (change)="toggleCorreta(questao, j, $event)">
-                        Correta
-                      </label>
+                  <div class="questao-body">
+                    <div class="field" style="margin-bottom:var(--space-4)">
+                      <label class="field-label">Enunciado *</label>
+                      <textarea class="field-input" [(ngModel)]="questao.enunciado" rows="2" placeholder="Digite o enunciado da questão"></textarea>
                     </div>
+
+                    <div class="field" style="margin-bottom:var(--space-4); max-width: 260px">
+                      <label class="field-label">Tipo</label>
+                      <select class="field-input" [(ngModel)]="questao.tipo" (ngModelChange)="ajustarOpcoes(questao)">
+                        <option value="multipla_escolha">Múltipla Escolha</option>
+                        <option value="dissertativa">Dissertativa</option>
+                      </select>
+                    </div>
+
+                    @if (questao.tipo === 'multipla_escolha') {
+                      <div class="opcoes-wrap">
+                        <label class="field-label">Opções de Resposta</label>
+                        @for (opcao of questao.opcoes; track $index; let j = $index) {
+                          <div class="opcao-row">
+                            <span class="opcao-letra">{{ getLetter(j) }}</span>
+                            <input class="field-input opcao-texto" type="text" [(ngModel)]="opcao.texto" [placeholder]="'Opção ' + getLetter(j)" />
+                            <label class="opcao-correta-label" [class.is-correta]="opcao.correta">
+                              <input type="checkbox" [checked]="opcao.correta" (change)="toggleCorreta(questao, j, $event)" />
+                              Correta
+                            </label>
+                          </div>
+                        }
+                      </div>
+                    }
                   </div>
                 </div>
-              </div>
+              }
             </div>
           </div>
 
-          <div class="no-questoes" *ngIf="questoes.length === 0">
-            <p>Nenhuma questão adicionada ainda.</p>
-            <button class="btn-primary" (click)="adicionarQuestao()">Adicionar Primeira Questão</button>
-          </div>
         </div>
-      </div>
+      }
 
-      <div class="footer-actions" *ngIf="!carregando">
-        <button class="btn-secondary" [routerLink]="['/admin/provas']">← Voltar</button>
-        <button class="btn-primary" (click)="salvar()" [disabled]="salvando || !provaForm.valid">
-          {{ salvando ? 'Salvando...' : 'Salvar Prova' }}
-        </button>
-      </div>
-
-      <!-- Loading/Error States -->
-      <div class="loading" *ngIf="carregando">
-        <p>Carregando...</p>
-      </div>
-
-      <div class="error-message" *ngIf="erro">
-        <p>{{ erro }}</p>
-      </div>
-
-      <div class="success-message" *ngIf="sucesso">
-        <p>{{ sucesso }}</p>
-      </div>
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 20px;
-    }
+    .header-actions { display: flex; gap: var(--space-3); align-items: center; }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #eee;
-    }
+    .loading-state { text-align: center; padding: var(--space-10); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .page-header h2 {
-      margin: 0;
-      color: #333;
-    }
+    .section-title { font-size: var(--font-size-md); font-weight: 700; color: var(--color-text); margin: 0 0 var(--space-5); }
 
-    .header-actions {
-      display: flex;
-      gap: 10px;
-    }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4); }
 
-    .btn-primary, .btn-secondary {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .btn-primary {
-      background: #f39c12;
-      color: white;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      background: #e67e22;
-    }
-
-    .btn-primary:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
-    .btn-secondary {
-      background: #95a5a6;
-      color: white;
-    }
-
-    .btn-secondary:hover {
-      background: #7f8c8d;
-    }
-
-    .form-container {
-      display: flex;
-      flex-direction: column;
-      gap: 30px;
-    }
-
-    .footer-actions {
-      margin-top: 24px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    .form-section {
-      background: white;
-      border-radius: 8px;
-      padding: 25px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .form-section h3 {
-      margin: 0 0 20px 0;
-      color: #333;
-      font-size: 18px;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .section-header h3 {
-      margin: 0;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 15px;
-    }
-
-    .form-group {
-      flex: 1;
-      margin-bottom: 20px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 600;
-      color: #555;
-    }
-
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
-      outline: none;
-      border-color: #f39c12;
-      box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.2);
-    }
-
-    .error {
-      color: #e74c3c;
-      font-size: 12px;
-      margin-top: 5px;
-    }
+    .field { display: flex; flex-direction: column; gap: var(--space-1); }
+    .field-label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+    .field-input { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text); outline: none; font-family: inherit; transition: border-color var(--transition-fast); width: 100%; box-sizing: border-box; }
+    .field-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+    textarea.field-input { resize: vertical; }
+    .field-error { font-size: var(--font-size-xs); color: var(--color-danger); }
 
     /* Questões */
-    .questoes-lista {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
+    .questoes-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); }
+    .questoes-meta { font-size: var(--font-size-xs); color: var(--color-text-muted); margin: var(--space-1) 0 0; }
+    .questoes-lista { display: flex; flex-direction: column; gap: var(--space-4); }
 
-    .questao-card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
-    }
+    .questao-card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .questao-head { background: var(--color-surface-2); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--color-border); }
+    .questao-num { font-weight: 700; font-size: var(--font-size-sm); color: var(--color-text); }
+    .questao-body { padding: var(--space-5); }
 
-    .questao-header {
-      background: #f8f9fa;
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #ddd;
-    }
+    .pontos-badge { display: inline-flex; align-items: center; gap: var(--space-1); background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); padding: 2px var(--space-2); border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; cursor: text; margin-left: auto; }
+    .pontos-input { width: 40px; border: none; background: transparent; color: var(--primary); font-size: var(--font-size-xs); font-weight: 700; text-align: right; padding: 0; -moz-appearance: textfield; }
+    .pontos-input::-webkit-outer-spin-button, .pontos-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .pontos-input:focus { outline: none; }
 
-    .questao-numero {
-      font-weight: 600;
-      color: #333;
-    }
+    .btn-icon-danger { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--color-border); background: var(--color-surface); border-radius: var(--radius); cursor: pointer; color: var(--color-danger); transition: all var(--transition-fast); }
+    .btn-icon-danger:hover { background: color-mix(in srgb, var(--color-danger) 10%, transparent); border-color: var(--color-danger); }
 
-    .questao-tipo {
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
+    .opcoes-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+    .opcao-row { display: flex; align-items: center; gap: var(--space-3); }
+    .opcao-letra { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--color-surface-2); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-muted); }
+    .opcao-texto { flex: 1; }
+    .opcao-correta-label { display: flex; align-items: center; gap: var(--space-1); font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); white-space: nowrap; cursor: pointer; }
+    .opcao-correta-label.is-correta { color: var(--color-success); }
 
-    .questao-tipo.multipla {
-      background: #e3f2fd;
-      color: #1976d2;
-    }
-
-    .questao-tipo.dissertativa {
-      background: #f3e5f5;
-      color: #7b1fa2;
-    }
-
-    .questao-pontos-badge {
-      background: #fff3cd;
-      color: #856404;
-      border: 1px solid #ffc107;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 700;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      cursor: text;
-    }
-
-    .pontos-inline-input {
-      width: 44px;
-      border: none;
-      background: transparent;
-      color: #856404;
-      font-size: 12px;
-      font-weight: 700;
-      text-align: right;
-      padding: 0;
-      -moz-appearance: textfield;
-    }
-    .pontos-inline-input::-webkit-outer-spin-button,
-    .pontos-inline-input::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    .pontos-inline-input:focus {
-      outline: 1px solid #b8860b;
-      border-radius: 2px;
-    }
-
-    .btn-delete {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px;
-    }
-
-    .btn-delete:hover {
-      transform: scale(1.2);
-    }
-
-    .questao-body {
-      padding: 20px;
-    }
-
-    /* Opções */
-    .opcoes-container {
-      margin-top: 15px;
-    }
-
-    .opcao-item {
-      margin-bottom: 10px;
-    }
-
-    .opcao-input {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .opcao-letra {
-      background: #495057;
-      color: white;
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-
-    .opcao-input input[type="text"] {
-      flex: 1;
-    }
-
-    .opcao-correta {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      color: #28a745;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .no-questoes {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .no-questoes p {
-      margin-bottom: 15px;
-    }
-
-    /* Messages */
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #999;
-    }
-
-    .error-message {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 4px;
-      margin: 20px 0;
-      border: 1px solid #f5c6cb;
-    }
-
-    .success-message {
-      background: #d4edda;
-      color: #155724;
-      padding: 15px;
-      border-radius: 4px;
-      margin: 20px 0;
-      border: 1px solid #c3e6cb;
-    }
-
-    @media (max-width: 768px) {
-      .form-row {
-        flex-direction: column;
-      }
-
-      .page-header {
-        flex-direction: column;
-        gap: 15px;
-      }
-
-      .header-actions {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .footer-actions {
-        width: 100%;
-        justify-content: space-between;
-      }
+    @media (max-width: 700px) {
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .header-actions { width: 100%; justify-content: flex-end; }
     }
   `]
 })
@@ -552,11 +231,11 @@ export class AdminProvaFormComponent implements OnInit {
   provaId: number | null = null;
   cursos: Curso[] = [];
   questoes: Questao[] = [];
-  
+
   carregando = false;
-  salvando = false;
-  erro = '';
-  sucesso = '';
+  salvando   = false;
+  erro       = '';
+  sucesso    = '';
 
   constructor(
     private fb: FormBuilder,
@@ -565,197 +244,103 @@ export class AdminProvaFormComponent implements OnInit {
     private router: Router
   ) {
     this.provaForm = this.fb.group({
-      titulo: ['', Validators.required],
-      descricao: [''],
-      curso_id: [null, Validators.required],
-      data_inicio: ['', Validators.required],
-      data_fim: ['', Validators.required],
-      tentativas_permitidas: [1, [Validators.required, Validators.min(1)]],
-      ativo: [true]
+      titulo:               ['', Validators.required],
+      descricao:            [''],
+      curso_id:             [null, Validators.required],
+      data_inicio:          ['', Validators.required],
+      data_fim:             ['', Validators.required],
+      tentativas_permitidas:[1, [Validators.required, Validators.min(1)]],
+      ativo:                [true]
     });
   }
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
-      if (params['id']) {
-        this.provaId = +params['id'];
-        this.carregarProva();
-      }
+      if (params['id']) { this.provaId = +params['id']; this.carregarProva(); }
     });
-    
     this.carregarCursos();
   }
 
   carregarCursos(): void {
     this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
-      next: (cursos) => {
-        this.cursos = cursos || [];
-      },
-      error: (error) => {
-        console.error('Erro ao carregar cursos:', error);
-      }
+      next: (c) => { this.cursos = c || []; },
+      error: () => {}
     });
   }
 
   carregarProva(): void {
     if (!this.provaId) return;
-
     this.carregando = true;
     this.http.get(`http://localhost:8000/api/provas/${this.provaId}`).subscribe({
       next: (prova: any) => {
         this.provaForm.patchValue({
-          titulo: prova.titulo,
-          descricao: prova.descricao,
-          curso_id: prova.curso_id,
+          titulo: prova.titulo, descricao: prova.descricao, curso_id: prova.curso_id,
           data_inicio: this.formatDateForInput(prova.data_inicio),
           data_fim: this.formatDateForInput(prova.data_fim),
-          tentativas_permitidas: prova.tentativas_permitidas,
-          ativo: prova.ativo
+          tentativas_permitidas: prova.tentativas_permitidas, ativo: prova.ativo
         });
-
-        this.questoes = (prova.questoes || []).map((q: any) => ({
-          ...q,
-          pontos: Number(q.pontos) || 1
-        }));
+        this.questoes = (prova.questoes || []).map((q: any) => ({ ...q, pontos: Number(q.pontos) || 1 }));
         this.carregando = false;
       },
-      error: (error) => {
-        console.error('Erro ao carregar prova:', error);
-        this.erro = 'Erro ao carregar prova';
-        this.carregando = false;
-      }
+      error: () => { this.erro = 'Erro ao carregar prova.'; this.carregando = false; }
     });
   }
 
   formatDateForInput(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toISOString().slice(0, 16);
+    return new Date(dateString).toISOString().slice(0, 16);
   }
 
   adicionarQuestao(): void {
-    this.questoes.push({
-      enunciado: '',
-      tipo: 'multipla_escolha',
-      pontos: 1,
-      opcoes: [
-        { texto: '', correta: false },
-        { texto: '', correta: false },
-        { texto: '', correta: false },
-        { texto: '', correta: false }
-      ]
+    this.questoes.push({ enunciado: '', tipo: 'multipla_escolha', pontos: 1,
+      opcoes: [{ texto: '', correta: false }, { texto: '', correta: false }, { texto: '', correta: false }, { texto: '', correta: false }]
     });
   }
 
   removerQuestao(index: number): void {
-    if (confirm('Tem certeza que deseja remover esta questão?')) {
-      this.questoes.splice(index, 1);
-    }
+    if (confirm('Tem certeza que deseja remover esta questão?')) { this.questoes.splice(index, 1); }
   }
 
   ajustarOpcoes(questao: Questao): void {
-    if (questao.tipo === 'multipla_escolha') {
-      questao.opcoes = [
-        { texto: '', correta: false },
-        { texto: '', correta: false },
-        { texto: '', correta: false },
-        { texto: '', correta: false }
-      ];
-    } else {
-      questao.opcoes = [];
-    }
-  }
-
-  marcarCorreta(questao: Questao, index: number): void {
-    questao.opcoes.forEach((opcao, i) => {
-      opcao.correta = i === index;
-    });
+    questao.opcoes = questao.tipo === 'multipla_escolha'
+      ? [{ texto: '', correta: false }, { texto: '', correta: false }, { texto: '', correta: false }, { texto: '', correta: false }]
+      : [];
   }
 
   toggleCorreta(questao: Questao, index: number, event: any): void {
-    const isChecked = event.target.checked;
-    
-    if (isChecked) {
-      // Marcar esta opção como correta e desmarcar as outras
-      questao.opcoes.forEach((opcao, i) => {
-        opcao.correta = i === index;
-      });
-    } else {
-      // Desmarcar esta opção
-      questao.opcoes[index].correta = false;
-    }
+    if (event.target.checked) { questao.opcoes.forEach((o, i) => o.correta = i === index); }
+    else { questao.opcoes[index].correta = false; }
   }
 
-  getLetter(index: number): string {
-    return String.fromCharCode(65 + index);
-  }
+  getLetter(index: number): string { return String.fromCharCode(65 + index); }
 
-  getTotalPontos(): number {
-    return this.questoes.reduce((sum, q) => sum + (Number(q.pontos) || 1), 0);
-  }
+  getTotalPontos(): number { return this.questoes.reduce((s, q) => s + (Number(q.pontos) || 1), 0); }
 
   salvar(): void {
-    if (!this.provaForm.valid) {
-      this.erro = 'Preencha todos os campos obrigatórios';
-      return;
-    }
+    if (!this.provaForm.valid) { this.erro = 'Preencha todos os campos obrigatórios.'; return; }
+    if (this.questoes.length === 0) { this.erro = 'Adicione pelo menos uma questão.'; return; }
 
-    if (this.questoes.length === 0) {
-      this.erro = 'Adicione pelo menos uma questão';
-      return;
-    }
-
-    // Validar questões
     for (let i = 0; i < this.questoes.length; i++) {
-      const questao = this.questoes[i];
-      
-      if (!questao.enunciado.trim()) {
-        this.erro = `O enunciado da questão ${i + 1} é obrigatório`;
-        return;
-      }
-
-      if (questao.tipo === 'multipla_escolha') {
-        const opcoesPreenchidasCorretamente = questao.opcoes.every(op => op.texto.trim() !== '');
-        if (!opcoesPreenchidasCorretamente) {
-          this.erro = `Todas as opções da questão ${i + 1} devem ser preenchidas`;
-          return;
-        }
-
-        const temOpcaoCorreta = questao.opcoes.some(op => op.correta);
-        if (!temOpcaoCorreta) {
-          this.erro = `Marque a opção correta na questão ${i + 1}`;
-          return;
-        }
+      const q = this.questoes[i];
+      if (!q.enunciado.trim()) { this.erro = `O enunciado da questão ${i + 1} é obrigatório.`; return; }
+      if (q.tipo === 'multipla_escolha') {
+        if (!q.opcoes.every(o => o.texto.trim())) { this.erro = `Preencha todas as opções da questão ${i + 1}.`; return; }
+        if (!q.opcoes.some(o => o.correta))       { this.erro = `Marque a opção correta na questão ${i + 1}.`; return; }
       }
     }
 
-    this.salvando = true;
-    this.erro = '';
-    this.sucesso = '';
+    this.salvando = true; this.erro = ''; this.sucesso = '';
+    const dados = { ...this.provaForm.value, ativo: this.provaForm.value.ativo === true || this.provaForm.value.ativo === 'true', questoes: this.questoes };
+    const req = this.provaId
+      ? this.http.put(`http://localhost:8000/api/provas/${this.provaId}`, dados)
+      : this.http.post('http://localhost:8000/api/provas/', dados);
 
-    const dadosProva = {
-      ...this.provaForm.value,
-      ativo: this.provaForm.value.ativo === true || this.provaForm.value.ativo === 'true',
-      questoes: this.questoes
-    };
-
-    const request = this.provaId 
-      ? this.http.put(`http://localhost:8000/api/provas/${this.provaId}`, dadosProva)
-      : this.http.post('http://localhost:8000/api/provas/', dadosProva);
-
-    request.subscribe({
-      next: (response: any) => {
+    req.subscribe({
+      next: () => {
         this.salvando = false;
         this.sucesso = this.provaId ? 'Prova atualizada com sucesso!' : 'Prova criada com sucesso!';
-        
-        setTimeout(() => {
-          this.router.navigate(['/admin/provas']);
-        }, 1500);
+        setTimeout(() => this.router.navigate(['/admin/provas']), 1500);
       },
-      error: (error) => {
-        console.error('Erro ao salvar prova:', error);
-        this.salvando = false;
-        this.erro = error.error?.detail || 'Erro ao salvar prova';
-      }
+      error: (e: any) => { this.salvando = false; this.erro = e.error?.detail || 'Erro ao salvar prova.'; }
     });
   }
 }

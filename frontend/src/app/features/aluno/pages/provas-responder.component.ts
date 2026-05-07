@@ -39,602 +39,282 @@ interface RespuestaProva {
   standalone: true,
   imports: [CommonModule, FormsModule, LetraPipe],
   template: `
-    <div class="page-container">
-      <div class="prova-header" *ngIf="prova">
-        <button class="btn-voltar" (click)="voltar()">← Voltar</button>
-        <div class="header-content">
-          <h1>{{ prova.titulo }}</h1>
-          <p>{{ prova.descricao }}</p>
-        </div>
-        <div class="timer" *ngIf="tempoRestante">
-          <span>Tempo restante: {{ formatarTempo(tempoRestante) }}</span>
-        </div>
-      </div>
-
-      <div class="questoes-container" *ngIf="prova && !enviada">
-        <div class="questoes-lista">
-          <div class="questao-item" *ngFor="let questao of prova.questoes; let i = index">
-            <div class="questao-header">
-              <h3>Questão {{ i + 1 }} de {{ prova.questoes.length }}</h3>
-              <span class="tipo-questao">{{ getTipoLabel(questao.tipo) }}</span>
-            </div>
-
-            <p class="questao-descricao">{{ questao.descricao }}</p>
-
-            <!-- Múltipla escolha -->
-            <div class="opcoes" *ngIf="questao.tipo === 'multip_escolha'">
-              <label class="opcao-item" *ngFor="let opcao of questao.opcoes">
-                <input
-                  type="radio"
-                  [name]="'questao_' + questao.id"
-                  [value]="opcao.id"
-                  [(ngModel)]="questao.resposta_selecionada"
-                />
-                <span class="opcao-letter">{{ opcao.numero | letra }}</span>
-                <span class="opcao-text">{{ opcao.descricao }}</span>
-              </label>
-            </div>
-
-            <!-- Verdadeiro ou Falso -->
-            <div class="opcoes" *ngIf="questao.tipo === 'verdadeiro_falso'">
-              <label class="opcao-item">
-                <input
-                  type="radio"
-                  [name]="'questao_' + questao.id"
-                  value="verdadeiro"
-                  [(ngModel)]="questao.resposta_selecionada"
-                />
-                <span class="opcao-text">Verdadeiro</span>
-              </label>
-              <label class="opcao-item">
-                <input
-                  type="radio"
-                  [name]="'questao_' + questao.id"
-                  value="falso"
-                  [(ngModel)]="questao.resposta_selecionada"
-                />
-                <span class="opcao-text">Falso</span>
-              </label>
-            </div>
-
-            <!-- Dissertativa -->
-            <div class="dissertativa" *ngIf="questao.tipo === 'dissertativa'">
-              <textarea
-                [(ngModel)]="questao.resposta_selecionada"
-                [ngModelOptions]="{ updateOn: 'change' }"
-                placeholder="Digite sua resposta aqui..."
-                class="dissertativa-input"
-                rows="6"
-              ></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="total-questoes">
-          <p>Respondidas: <strong>{{ contagemRespondidas }}</strong> de {{ prova.questoes.length }}</p>
-        </div>
-      </div>
-
-      <!-- Resumo antes de enviar -->
-      <div class="confirmacao" *ngIf="prova && !enviada">
-        <div class="confirmacao-content">
-          <h3>Tem certeza que deseja enviar sua prova?</h3>
-          <p>Você respondeu {{ contagemRespondidas }} de {{ prova.questoes.length }} questões.</p>
-          <div class="confirmacao-buttons">
-            <button class="btn-continuar" (click)="scrollToTop()">
-              Continuar Respondendo
-            </button>
-            <button class="btn-enviar" (click)="enviarProva()" [disabled]="enviando">
-              {{ enviando ? 'Enviando...' : 'Enviar Prova' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Resultado após envio -->
-      <div class="resultado" *ngIf="resultado">
-        <div class="resultado-content">
-          <div class="score-display" [ngClass]="'score-' + getPerformance(resultado.pontuacao)">
-            <div class="score-number">{{ resultado.pontuacao }}%</div>
-            <div class="score-label">{{ getPerformanceLabel(resultado.pontuacao) }}</div>
-          </div>
-
-          <div class="resultado-details">
-            <h2>Resultado da Prova</h2>
-            <p>Prova: <strong>{{ prova?.titulo }}</strong></p>
-
-            <div class="resultado-stats">
-              <div class="stat">
-                <span class="stat-label">Acertos:</span>
-                <span class="stat-value">{{ resultado.acertos }} questões</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">Erros:</span>
-                <span class="stat-value">{{ resultado.erros }} questões</span>
-              </div>
-              <div class="stat">
-                <span class="stat-label">Em Branco:</span>
-                <span class="stat-value">{{ resultado.em_branco }} questões</span>
-              </div>
-            </div>
-
-            <div class="feedback" *ngIf="resultado.feedback">
-              <h4>Feedback</h4>
-              <p>{{ resultado.feedback }}</p>
-            </div>
-
-            <div class="resultado-buttons">
-              <button class="btn-voltar-list" (click)="voltarParaLista()">
-                Voltar para Lista de Provas
-              </button>
-              <button class="btn-dashboard" (click)="irParaDashboard()">
-                Ir para Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="loading" *ngIf="carregando">
+    @if (carregando) {
+      <div class="loading-state">
         <div class="spinner"></div>
         <p>Carregando prova...</p>
       </div>
+    }
 
-      <div class="error" *ngIf="erro">
+    @if (erro) {
+      <div class="error-card">
         <p>{{ erro }}</p>
-        <button (click)="voltar()">Voltar</button>
+        <button class="btn-primary" (click)="voltar()">Voltar</button>
       </div>
-    </div>
+    }
+
+    @if (prova && !carregando) {
+      <div class="content-page prova-page">
+        <div class="prova-header">
+          <button class="btn-voltar" (click)="voltar()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Voltar
+          </button>
+          <div class="header-content">
+            <h1 class="page-title">{{ prova.titulo }}</h1>
+            @if (prova.descricao) { <p class="page-subtitle">{{ prova.descricao }}</p> }
+          </div>
+          @if (tempoRestante) {
+            <div class="timer">Tempo restante: {{ formatarTempo(tempoRestante) }}</div>
+          }
+        </div>
+
+        @if (!enviada) {
+          <div class="questoes-layout">
+            <div class="questoes-lista">
+              @for (questao of prova.questoes; track questao.id; let i = $index) {
+                <div class="questao-item">
+                  <div class="questao-header">
+                    <h3 class="questao-num">Questão {{ i + 1 }} de {{ prova.questoes.length }}</h3>
+                    <span class="tipo-badge">{{ getTipoLabel(questao.tipo) }}</span>
+                  </div>
+                  <p class="questao-desc">{{ questao.descricao }}</p>
+
+                  @if (questao.tipo === 'multip_escolha') {
+                    <div class="opcoes">
+                      @for (opcao of questao.opcoes; track opcao.id) {
+                        <label class="opcao-item">
+                          <input type="radio" [name]="'questao_' + questao.id" [value]="opcao.id" [(ngModel)]="questao.resposta_selecionada">
+                          <span class="opcao-letter">{{ opcao.numero | letra }}</span>
+                          <span class="opcao-text">{{ opcao.descricao }}</span>
+                        </label>
+                      }
+                    </div>
+                  }
+
+                  @if (questao.tipo === 'verdadeiro_falso') {
+                    <div class="opcoes">
+                      <label class="opcao-item">
+                        <input type="radio" [name]="'questao_' + questao.id" value="verdadeiro" [(ngModel)]="questao.resposta_selecionada">
+                        <span class="opcao-text">Verdadeiro</span>
+                      </label>
+                      <label class="opcao-item">
+                        <input type="radio" [name]="'questao_' + questao.id" value="falso" [(ngModel)]="questao.resposta_selecionada">
+                        <span class="opcao-text">Falso</span>
+                      </label>
+                    </div>
+                  }
+
+                  @if (questao.tipo === 'dissertativa') {
+                    <textarea
+                      [(ngModel)]="questao.resposta_selecionada"
+                      [ngModelOptions]="{ updateOn: 'change' }"
+                      placeholder="Digite sua resposta aqui..."
+                      class="dissertativa-input"
+                      rows="6"></textarea>
+                  }
+                </div>
+              }
+              <div class="total-questoes">
+                Respondidas: <strong>{{ contagemRespondidas }}</strong> de {{ prova.questoes.length }}
+              </div>
+            </div>
+          </div>
+
+          <div class="confirmacao">
+            <h3 class="instr-title">Tem certeza que deseja enviar sua prova?</h3>
+            <p class="conf-sub">Você respondeu {{ contagemRespondidas }} de {{ prova.questoes.length }} questões.</p>
+            <div class="conf-actions">
+              <button class="btn-outline" (click)="scrollToTop()">Continuar Respondendo</button>
+              <button class="btn-primary" (click)="enviarProva()" [disabled]="enviando">
+                {{ enviando ? 'Enviando...' : 'Enviar Prova' }}
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (resultado) {
+          <div class="resultado">
+            <div class="score-panel" [ngClass]="'score-' + getPerformance(resultado.pontuacao)">
+              <div class="score-number">{{ resultado.pontuacao }}%</div>
+              <div class="score-label">{{ getPerformanceLabel(resultado.pontuacao) }}</div>
+            </div>
+            <div class="resultado-details">
+              <h2 class="res-title">Resultado da Prova</h2>
+              <p class="res-sub">Prova: <strong>{{ prova?.titulo }}</strong></p>
+              <div class="stat-grid">
+                <div class="stat-card">
+                  <div class="stat-value">{{ resultado.acertos }}</div>
+                  <div class="stat-label">Acertos</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="color:var(--color-danger)">{{ resultado.erros }}</div>
+                  <div class="stat-label">Erros</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="color:var(--color-text-muted)">{{ resultado.em_branco }}</div>
+                  <div class="stat-label">Em Branco</div>
+                </div>
+              </div>
+              @if (resultado.feedback) {
+                <div class="feedback">
+                  <h4>Feedback</h4>
+                  <p>{{ resultado.feedback }}</p>
+                </div>
+              }
+              <div class="res-actions">
+                <button class="btn-outline" (click)="voltarParaLista()">Voltar para Lista</button>
+                <button class="btn-primary" (click)="irParaDashboard()">Ir para Dashboard</button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
   `,
   styles: [`
-    .page-container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-    }
+    :host { display: block; }
+    .prova-page { padding: 0; max-width: unset; }
 
     .prova-header {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 20px;
-      align-items: start;
-      margin-bottom: 30px;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: var(--space-5); align-items: start;
+      padding: var(--space-6) var(--space-7);
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
     }
-
     .btn-voltar {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      padding: 8px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.2s;
+      display: inline-flex; align-items: center; gap: var(--space-1);
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      color: var(--color-text-muted); padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius); font-size: var(--font-size-sm); cursor: pointer;
+      font-weight: 600; transition: background var(--transition-fast);
     }
+    .btn-voltar:hover { background: var(--color-border); color: var(--color-text); }
+    .timer { color: var(--color-danger); font-weight: 600; font-size: var(--font-size-sm); text-align: right; }
 
-    .btn-voltar:hover {
-      background-color: #efefef;
-    }
-
-    .header-content h1 {
-      margin: 0 0 8px 0;
-      font-size: 24px;
-      color: #333;
-    }
-
-    .header-content p {
-      margin: 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .timer {
-      text-align: right;
-      color: #d63031;
-      font-weight: 600;
-    }
-
-    .questoes-container {
-      display: grid;
-      grid-template-columns: 1fr 250px;
-      gap: 20px;
-    }
-
+    /* Questoes */
+    .questoes-layout { padding: 0 var(--space-7); }
     .questoes-lista {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
     }
+    .questao-item { padding: var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .questao-item:last-of-type { border-bottom: none; }
+    .questao-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); gap: var(--space-3); }
+    .questao-num { margin: 0; font-size: var(--font-size-base); color: var(--color-text); font-weight: 700; }
+    .tipo-badge { background: var(--color-surface-2); border: 1px solid var(--color-border); padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
+    .questao-desc { margin: 0 0 var(--space-4); color: var(--color-text); line-height: 1.6; font-size: var(--font-size-sm); }
 
-    .questao-item {
-      padding: 20px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .questao-item:last-child {
-      border-bottom: none;
-    }
-
-    .questao-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      gap: 12px;
-    }
-
-    .questao-header h3 {
-      margin: 0;
-      font-size: 16px;
-      color: #333;
-    }
-
-    .tipo-questao {
-      background-color: #f0f0f0;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      color: #666;
-      white-space: nowrap;
-    }
-
-    .questao-descricao {
-      margin: 0 0 16px 0;
-      color: #333;
-      line-height: 1.6;
-      font-size: 15px;
-    }
-
-    .opcoes {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
+    /* Opções */
+    .opcoes { display: flex; flex-direction: column; gap: var(--space-2); }
     .opcao-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.2s;
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: var(--space-3); border-radius: var(--radius); cursor: pointer;
+      border: 1px solid transparent;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
     }
-
-    .opcao-item:hover {
-      background-color: #f9f9f9;
-    }
-
-    .opcao-item input[type="radio"] {
-      margin-top: 4px;
-      cursor: pointer;
-    }
-
+    .opcao-item:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+    .opcao-item input[type='radio'] { margin-top: 3px; cursor: pointer; accent-color: var(--primary); }
     .opcao-letter {
-      display: inline-block;
-      min-width: 24px;
-      height: 24px;
-      background-color: #667eea;
-      color: white;
-      border-radius: 50%;
-      text-align: center;
-      line-height: 24px;
-      font-weight: 600;
-      font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 24px; height: 24px;
+      background: var(--primary); color: #fff;
+      border-radius: 50%; font-weight: 700; font-size: var(--font-size-xs);
     }
+    .opcao-text { flex: 1; color: var(--color-text); line-height: 1.5; font-size: var(--font-size-sm); }
 
-    .opcao-text {
-      flex: 1;
-      color: #333;
-      line-height: 1.5;
-    }
-
+    /* Dissertativa */
     .dissertativa-input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-family: inherit;
-      font-size: 14px;
-      resize: vertical;
+      width: 100%; padding: var(--space-4); box-sizing: border-box;
+      border: 2px solid var(--color-border); border-radius: var(--radius);
+      font-family: inherit; font-size: var(--font-size-sm); resize: vertical;
+      background: var(--color-surface); color: var(--color-text);
+      transition: border-color var(--transition-fast);
     }
+    .dissertativa-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent); }
 
-    .dissertativa-input:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
+    /* Total */
     .total-questoes {
-      position: sticky;
-      bottom: 0;
-      background: white;
-      padding: 15px 20px;
-      border-top: 1px solid #eee;
-      text-align: right;
-      font-size: 14px;
-      color: #666;
+      padding: var(--space-4) var(--space-6); border-top: 1px solid var(--color-border);
+      text-align: right; font-size: var(--font-size-sm); color: var(--color-text-muted);
+      background: var(--color-surface-2);
     }
 
+    /* Confirmação */
     .confirmacao {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-top: 20px;
-      grid-column: 1 / -1;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-sm);
+      margin: var(--space-5) var(--space-7) var(--space-7);
     }
+    .instr-title { margin: 0 0 var(--space-2); color: var(--color-text); font-family: var(--font-display); font-size: var(--font-size-base); }
+    .conf-sub { margin: 0 0 var(--space-5); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+    .conf-actions { display: flex; gap: var(--space-3); justify-content: flex-end; }
 
-    .confirmacao-content h3 {
-      margin: 0 0 8px 0;
-      color: #333;
-    }
-
-    .confirmacao-content p {
-      margin: 0 0 20px 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .confirmacao-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .btn-continuar {
-      padding: 12px;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-
-    .btn-continuar:hover {
-      background-color: #efefef;
-    }
-
-    .btn-enviar {
-      padding: 12px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-
-    .btn-enviar:hover:not(:disabled) {
-      background-color: #5568d3;
-    }
-
-    .btn-enviar:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
+    /* Resultado */
     .resultado {
-      grid-column: 1 / -1;
-      margin-top: 30px;
+      display: grid; grid-template-columns: 220px 1fr;
+      gap: var(--space-7); margin: var(--space-6) var(--space-7);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow);
     }
-
-    .resultado-content {
-      display: grid;
-      grid-template-columns: 250px 1fr;
-      gap: 30px;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .score-panel {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: var(--space-8) var(--space-5);
+      background: var(--primary);
     }
+    .score-panel.score-excelente { background: var(--color-success); }
+    .score-panel.score-bom { background: var(--primary); }
+    .score-panel.score-regular { background: var(--color-warning); }
+    .score-panel.score-insuficiente { background: var(--color-danger); }
+    .score-number { font-size: 48px; font-weight: 700; color: #fff; margin-bottom: var(--space-2); font-family: var(--font-display); }
+    .score-label { font-size: var(--font-size-base); font-weight: 600; color: rgba(255,255,255,.9); }
 
-    .score-display {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-
-    .score-display.score-excelente {
-      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    }
-
-    .score-display.score-bom {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    .score-display.score-regular {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-
-    .score-display.score-insuficiente {
-      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    }
-
-    .score-number {
-      font-size: 48px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .score-label {
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .resultado-details h2 {
-      margin: 0 0 15px 0;
-      color: #333;
-    }
-
-    .resultado-details p {
-      margin: 0 0 20px 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .resultado-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      margin-bottom: 30px;
-    }
-
-    .stat {
-      background: #f9f9f9;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-    }
-
-    .stat-label {
-      display: block;
-      color: #666;
-      font-size: 12px;
-      margin-bottom: 5px;
-      font-weight: 600;
-    }
-
-    .stat-value {
-      display: block;
-      color: #333;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
+    .resultado-details { padding: var(--space-7); }
+    .res-title { margin: 0 0 var(--space-2); color: var(--color-text); font-family: var(--font-display); }
+    .res-sub { margin: 0 0 var(--space-5); color: var(--color-text-muted); font-size: var(--font-size-sm); }
     .feedback {
-      background: #e8f4f8;
-      border-left: 4px solid #667eea;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
+      background: color-mix(in srgb, var(--primary) 8%, transparent);
+      border-left: 4px solid var(--primary);
+      padding: var(--space-4); border-radius: var(--radius); margin-bottom: var(--space-5);
     }
+    .feedback h4 { margin: 0 0 var(--space-2); color: var(--color-text); font-size: var(--font-size-sm); }
+    .feedback p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); line-height: 1.5; }
+    .res-actions { display: flex; gap: var(--space-3); }
 
-    .feedback h4 {
-      margin: 0 0 8px 0;
-      color: #333;
+    /* Buttons */
+    .btn-primary {
+      background: var(--primary); color: #fff; border: none;
+      padding: var(--space-2) var(--space-6); border-radius: var(--radius);
+      font-weight: 700; font-size: var(--font-size-sm); cursor: pointer;
+      transition: background var(--transition-fast);
     }
-
-    .feedback p {
-      margin: 0;
-      color: #555;
-      font-size: 14px;
-      line-height: 1.5;
+    .btn-primary:hover:not(:disabled) { background: var(--secondary); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-outline {
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      color: var(--color-text-muted); padding: var(--space-2) var(--space-5);
+      border-radius: var(--radius); font-size: var(--font-size-sm); cursor: pointer;
+      font-weight: 600; transition: background var(--transition-fast);
     }
+    .btn-outline:hover { background: var(--color-border); color: var(--color-text); }
 
-    .resultado-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .btn-voltar-list {
-      padding: 12px;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: background-color 0.2s;
-    }
-
-    .btn-voltar-list:hover {
-      background-color: #efefef;
-    }
-
-    .btn-dashboard {
-      padding: 12px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: background-color 0.2s;
-    }
-
-    .btn-dashboard:hover {
-      background-color: #5568d3;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-      border: 1px solid #f5c6cb;
-      text-align: center;
-    }
-
-    .error button {
-      margin-top: 15px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
+    /* States */
+    .loading-state { text-align: center; padding: 60px var(--space-5); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-card {
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+      color: var(--color-danger); padding: var(--space-8); border-radius: var(--radius-lg);
+      text-align: center; border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+      max-width: 600px; margin: var(--space-8) auto;
     }
 
     @media (max-width: 768px) {
-      .questoes-container {
-        grid-template-columns: 1fr;
-      }
-
-      .prova-header {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-
-      .resultado-content {
-        grid-template-columns: 1fr;
-      }
-
-      .resultado-stats {
-        grid-template-columns: 1fr;
-      }
-
-      .confirmacao-buttons,
-      .resultado-buttons {
-        grid-template-columns: 1fr;
-      }
+      .prova-header { grid-template-columns: 1fr; }
+      .questoes-layout { padding: 0 var(--space-4); }
+      .confirmacao { margin: var(--space-4); }
+      .resultado { grid-template-columns: 1fr; margin: var(--space-4); }
+      .conf-actions, .res-actions { flex-direction: column; }
     }
   `]
 })

@@ -26,13 +26,13 @@ const GRADIENTS = [
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
-    <div class="catalogo-container">
+    <div class="content-page catalogo-wrapper">
       <div class="hero-banner">
         <div class="hero-content">
-          <h1>Catálogo de Cursos</h1>
-          <p>Explore todos os cursos disponíveis e expanda seu conhecimento</p>
+          <h1 class="page-title" style="color:#fff;font-size:var(--font-size-3xl)">Catálogo de Cursos</h1>
+          <p style="color:rgba(255,255,255,.75);margin:var(--space-2) 0 var(--space-6)">Explore todos os cursos disponíveis e expanda seu conhecimento</p>
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
               type="text"
               [(ngModel)]="termoBusca"
@@ -40,7 +40,9 @@ const GRADIENTS = [
               placeholder="Buscar por nome ou descrição..."
               class="search-input"
             />
-            <button class="btn-limpar" *ngIf="termoBusca" (click)="limparBusca()">✕</button>
+            @if (termoBusca) {
+              <button class="btn-limpar" (click)="limparBusca()">✕</button>
+            }
           </div>
         </div>
       </div>
@@ -58,579 +60,294 @@ const GRADIENTS = [
               Meus Cursos <span class="tab-count">{{ cursosInscritos.size }}</span>
             </button>
           </div>
-          <span class="resultado-count" *ngIf="cursosFiltrados.length > 0">
-            {{ cursosFiltrados.length }} curso(s) encontrado(s)
-          </span>
+          @if (cursosFiltrados.length > 0) {
+            <span class="resultado-count">{{ cursosFiltrados.length }} curso(s)</span>
+          }
         </div>
 
-        <div class="loading-state" *ngIf="carregando">
+        @if (carregando) {
           <div class="skeleton-grid">
-            <div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6]">
-              <div class="skeleton-header"></div>
-              <div class="skeleton-body">
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line short"></div>
-                <div class="skeleton-line"></div>
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <div class="skeleton-card">
+                <div class="skeleton skeleton-header"></div>
+                <div class="skeleton-body">
+                  <div class="skeleton skeleton-line"></div>
+                  <div class="skeleton skeleton-line short"></div>
+                  <div class="skeleton skeleton-line"></div>
+                </div>
               </div>
-            </div>
+            }
           </div>
-        </div>
+        }
 
-        <div class="empty-state" *ngIf="!carregando && cursosFiltrados.length === 0">
-          <div class="empty-icon">🔎</div>
-          <h3>Nenhum curso encontrado</h3>
-          <p *ngIf="termoBusca">Tente buscar por outro termo.</p>
-          <p *ngIf="!termoBusca && filtroAtivo === 'inscritos'">Você ainda não está inscrito em nenhum curso.</p>
-          <p *ngIf="!termoBusca && filtroAtivo !== 'inscritos'">Nenhum curso disponível no momento.</p>
-        </div>
-
-        <div class="cursos-grid" *ngIf="!carregando && cursosFiltrados.length > 0">
-          <div class="curso-card" *ngFor="let curso of cursosFiltrados">
-            <div class="card-banner" [style.background]="getGradient(curso.id)">
-              <div class="banner-overlay">
-                <span class="banner-icon">🎓</span>
-              </div>
-              <div class="card-badges">
-                <span class="badge-inscrito" *ngIf="isInscrito(curso.id)">✓ Inscrito</span>
-              </div>
+        @if (!carregando && cursosFiltrados.length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
-
-            <div class="card-body">
-              <h3 class="card-titulo">{{ curso.nome }}</h3>
-              <p class="card-descricao">{{ curso.descricao || 'Sem descrição disponível.' }}</p>
-
-              <div class="card-meta">
-                <div class="meta-item">
-                  <span class="meta-icon">📖</span>
-                  <span>{{ (curso.aulas?.length ?? 0) }} aulas</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-icon">📝</span>
-                  <span>{{ (curso.provas?.length ?? 0) }} provas</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-icon">👥</span>
-                  <span>{{ curso.percentual_presenca_minima }}% presença</span>
-                </div>
-                <div class="meta-item" [class.meta-paid]="curso.pago">
-                  <span class="meta-icon">{{ curso.pago ? '💳' : '🎁' }}</span>
-                  <span>{{ curso.pago ? 'Curso pago' : 'Acesso gratuito' }}</span>
-                </div>
-              </div>
-
-              <div class="card-preco">
-                <span class="preco-label">Valor:</span>
-                <span class="preco-valor" *ngIf="curso.pago && curso.valor !== null && curso.valor !== undefined">
-                  {{ curso.valor | currency:'BRL':'symbol':'1.2-2' }}
-                </span>
-                <span class="preco-valor" *ngIf="curso.pago && (curso.valor === null || curso.valor === undefined)">
-                  R$ 0,00
-                </span>
-                <span class="preco-valor gratuito" *ngIf="!curso.pago">
-                  🎁 Grátis
-                </span>
-              </div>
-
-              <div class="card-divider"></div>
-
-              <div class="card-actions">
-                <div class="inscrito-info" *ngIf="isInscrito(curso.id)">
-                  <span class="tag-inscrito">Você está inscrito</span>
-                  <a class="btn-acessar" [routerLink]="['/aluno/cursos']">Ver meus cursos →</a>
-                </div>
-
-                <button
-                  *ngIf="!isInscrito(curso.id) && !curso.pago"
-                  class="btn-inscrever"
-                  (click)="inscrever(curso)"
-                  [disabled]="processando[curso.id]"
-                  [class.loading]="processando[curso.id]"
-                >
-                  <span *ngIf="!processando[curso.id]">Inscrever-se grátis</span>
-                  <span *ngIf="processando[curso.id]">Inscrevendo...</span>
-                </button>
-
-                <div class="solicitacao-info" *ngIf="!isInscrito(curso.id) && curso.pago">
-                  <span class="tag-solicitacao" [ngClass]="getSolicitacaoStatus(curso.id)">
-                    {{ getSolicitacaoLabel(curso.id) }}
-                  </span>
-
-                  <button
-                    class="btn-solicitar"
-                    *ngIf="podeSolicitar(curso.id)"
-                    (click)="solicitarAcesso(curso)"
-                    [disabled]="processando[curso.id]"
-                  >
-                    {{ processando[curso.id] ? 'Enviando...' : getSolicitacaoButtonLabel(curso.id) }}
-                  </button>
-                </div>
-
-                <div class="erro-inscricao" *ngIf="erroInscricao[curso.id]">
-                  {{ erroInscricao[curso.id] }}
-                </div>
-              </div>
-            </div>
+            <h3 class="empty-title">Nenhum curso encontrado</h3>
+            @if (termoBusca) {
+              <p>Tente buscar por outro termo.</p>
+            } @else if (filtroAtivo === 'inscritos') {
+              <p>Você ainda não está inscrito em nenhum curso.</p>
+            } @else {
+              <p>Nenhum curso disponível no momento.</p>
+            }
           </div>
-        </div>
+        }
+
+        @if (!carregando && cursosFiltrados.length > 0) {
+          <div class="cursos-grid">
+            @for (curso of cursosFiltrados; track curso.id) {
+              <div class="curso-card">
+                <div class="card-banner" [style.background]="getGradient(curso.id)">
+                  <div class="banner-overlay">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                  </div>
+                  <div class="card-badges">
+                    @if (isInscrito(curso.id)) {
+                      <span class="badge-inscrito">Inscrito</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="card-body">
+                  <h3 class="card-titulo">{{ curso.nome }}</h3>
+                  <p class="card-descricao">{{ curso.descricao || 'Sem descrição disponível.' }}</p>
+
+                  <div class="card-meta">
+                    <div class="meta-item">
+                      <span>{{ (curso.aulas?.length ?? 0) }} aulas</span>
+                    </div>
+                    <div class="meta-item">
+                      <span>{{ (curso.provas?.length ?? 0) }} provas</span>
+                    </div>
+                    <div class="meta-item">
+                      <span>{{ curso.percentual_presenca_minima }}% presença</span>
+                    </div>
+                    <div class="meta-item" [class.meta-paid]="curso.pago">
+                      <span>{{ curso.pago ? 'Curso pago' : 'Gratuito' }}</span>
+                    </div>
+                  </div>
+
+                  <div class="card-preco" [class.gratuito]="!curso.pago">
+                    <span class="preco-label">Valor:</span>
+                    @if (curso.pago && curso.valor != null) {
+                      <span class="preco-valor">{{ curso.valor | currency:'BRL':'symbol':'1.2-2' }}</span>
+                    } @else if (curso.pago) {
+                      <span class="preco-valor">R$ 0,00</span>
+                    } @else {
+                      <span class="preco-valor gratuito">Grátis</span>
+                    }
+                  </div>
+
+                  <div class="card-divider"></div>
+
+                  <div class="card-actions">
+                    @if (isInscrito(curso.id)) {
+                      <div class="inscrito-info">
+                        <span class="tag-inscrito">Você está inscrito</span>
+                        <a class="btn-acessar" [routerLink]="['/aluno/cursos']">Ver meus cursos</a>
+                      </div>
+                    } @else if (!curso.pago) {
+                      <button
+                        class="btn-inscrever"
+                        (click)="inscrever(curso)"
+                        [disabled]="processando[curso.id]"
+                        [class.loading]="processando[curso.id]"
+                      >
+                        {{ processando[curso.id] ? 'Inscrevendo...' : 'Inscrever-se grátis' }}
+                      </button>
+                    } @else {
+                      <div class="solicitacao-info">
+                        <span class="tag-solicitacao" [ngClass]="getSolicitacaoStatus(curso.id)">
+                          {{ getSolicitacaoLabel(curso.id) }}
+                        </span>
+                        @if (podeSolicitar(curso.id)) {
+                          <button
+                            class="btn-solicitar"
+                            (click)="solicitarAcesso(curso)"
+                            [disabled]="processando[curso.id]"
+                          >
+                            {{ processando[curso.id] ? 'Enviando...' : getSolicitacaoButtonLabel(curso.id) }}
+                          </button>
+                        }
+                      </div>
+                    }
+                    @if (erroInscricao[curso.id]) {
+                      <div class="erro-inscricao">{{ erroInscricao[curso.id] }}</div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
   `,
   styles: [`
-    .catalogo-container {
-      min-height: 100vh;
-      background: #f0f2f5;
-    }
+    :host { display: block; }
+    .catalogo-wrapper { padding: 0; max-width: unset; }
 
     .hero-banner {
-      background: linear-gradient(135deg, #2c3e50 0%, #4a5568 100%);
-      padding: 48px 24px 56px;
+      background: var(--sidebar-bg);
+      padding: var(--space-12, 48px) var(--space-6) var(--space-14, 56px);
       text-align: center;
-      color: white;
-    }
-
-    .hero-content h1 {
-      font-size: 32px;
-      margin: 0 0 8px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-
-    .hero-content p {
-      font-size: 16px;
-      color: rgba(255,255,255,0.75);
-      margin: 0 0 28px;
+      color: #fff;
+      margin: 0;
     }
 
     .search-box {
-      display: flex;
-      align-items: center;
-      background: white;
-      border-radius: 50px;
-      padding: 4px 16px;
-      max-width: 540px;
-      margin: 0 auto;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      display: flex; align-items: center; gap: var(--space-2);
+      background: var(--color-surface); border-radius: var(--radius-full);
+      padding: var(--space-1) var(--space-4); max-width: 540px;
+      margin: 0 auto; box-shadow: var(--shadow-lg);
     }
-
-    .search-icon {
-      font-size: 16px;
-      margin-right: 10px;
-      color: #999;
-    }
-
     .search-input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 15px;
-      padding: 10px 0;
-      color: #333;
-      background: transparent;
+      flex: 1; border: none; outline: none;
+      font-size: var(--font-size-sm); padding: var(--space-2) 0;
+      color: var(--color-text); background: transparent;
     }
-
     .btn-limpar {
-      background: none;
-      border: none;
-      color: #999;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px;
-      line-height: 1;
+      background: none; border: none; color: var(--color-text-muted);
+      cursor: pointer; font-size: 15px; padding: 4px; line-height: 1;
     }
 
     .catalogo-body {
-      max-width: 1200px;
-      margin: -20px auto 0;
-      padding: 0 20px 40px;
+      max-width: 1200px; margin: calc(-1 * var(--space-5)) auto 0;
+      padding: 0 var(--space-5) var(--space-10);
     }
 
     .filtros-bar {
-      background: white;
-      border-radius: 12px;
-      padding: 6px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-1) var(--space-5);
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: var(--space-6); box-shadow: var(--shadow-sm);
     }
-
-    .filtro-tabs {
-      display: flex;
-      gap: 4px;
-    }
-
+    .filtro-tabs { display: flex; gap: var(--space-1); }
     .tab {
-      background: none;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      color: #666;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      background: none; border: none; padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm);
+      font-weight: 500; color: var(--color-text-muted);
+      transition: all var(--transition-fast);
+      display: flex; align-items: center; gap: var(--space-2);
     }
-
-    .tab:hover {
-      background: #f5f7fa;
-      color: #333;
-    }
-
-    .tab.active {
-      background: #2c3e50;
-      color: white;
-    }
-
+    .tab:hover { background: var(--color-surface-2); color: var(--color-text); }
+    .tab.active { background: var(--primary); color: #fff; }
     .tab-count {
-      background: rgba(255,255,255,0.2);
-      padding: 1px 7px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 700;
+      background: rgba(255,255,255,.22); padding: 1px 7px;
+      border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700;
     }
-
-    .tab:not(.active) .tab-count {
-      background: #eee;
-      color: #666;
-    }
-
-    .resultado-count {
-      font-size: 13px;
-      color: #888;
-    }
+    .tab:not(.active) .tab-count { background: var(--color-surface-2); color: var(--color-text-muted); }
+    .resultado-count { font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     .cursos-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 24px;
+      gap: var(--space-6);
     }
 
     .curso-card {
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      transition: transform 0.25s, box-shadow 0.25s;
-      display: flex;
-      flex-direction: column;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+      display: flex; flex-direction: column;
     }
-
-    .curso-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
-    }
+    .curso-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
 
     .card-banner {
-      height: 140px;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      height: 140px; position: relative;
+      display: flex; align-items: center; justify-content: center;
     }
-
-    .banner-overlay {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-    }
-
-    .banner-icon {
-      font-size: 52px;
-      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-    }
-
-    .card-badges {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-    }
-
+    .banner-overlay { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+    .card-badges { position: absolute; top: var(--space-3); right: var(--space-3); }
     .badge-inscrito {
-      background: rgba(0,0,0,0.45);
-      color: white;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,.45); color: #fff;
+      font-size: var(--font-size-xs); font-weight: 700; padding: 4px 10px;
+      border-radius: var(--radius-full); backdrop-filter: blur(4px);
     }
 
-    .card-body {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    .card-titulo {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1a202c;
-      margin: 0 0 8px;
-      line-height: 1.3;
-    }
-
+    .card-body { padding: var(--space-5); display: flex; flex-direction: column; flex: 1; }
+    .card-titulo { font-size: var(--font-size-base); font-weight: 700; color: var(--color-text); margin: 0 0 var(--space-2); line-height: 1.3; }
     .card-descricao {
-      font-size: 13px;
-      color: #718096;
-      margin: 0 0 16px;
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0 0 var(--space-4);
+      line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
     }
 
-    .card-meta {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-
+    .card-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
     .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: #555;
-      background: #f7fafc;
-      padding: 4px 10px;
-      border-radius: 6px;
+      font-size: var(--font-size-xs); color: var(--color-text-muted);
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      padding: 3px 10px; border-radius: var(--radius);
     }
+    .meta-item.meta-paid { background: color-mix(in srgb, var(--color-warning) 12%, transparent); color: var(--color-warning); }
 
-    .meta-item.meta-paid {
-      background: #fff4e5;
-      color: #9a3412;
-    }
-
-    .meta-icon {
-      font-size: 13px;
-    }
-
-    .card-divider {
-      height: 1px;
-      background: #edf2f7;
-      margin-bottom: 16px;
-    }
+    .card-divider { height: 1px; background: var(--color-border); margin-bottom: var(--space-4); }
 
     .card-preco {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px;
-      background: linear-gradient(135deg, #f5f3ff 0%, #faf7ff 100%);
-      border-radius: 8px;
-      margin-bottom: 16px;
-      border-left: 4px solid #6366F1;
+      display: flex; align-items: center; gap: var(--space-2);
+      padding: var(--space-3) var(--space-4); border-radius: var(--radius);
+      margin-bottom: var(--space-4); border-left: 4px solid var(--primary);
+      background: color-mix(in srgb, var(--primary) 6%, var(--color-surface));
     }
+    .card-preco.gratuito {
+      border-left-color: var(--color-success);
+      background: color-mix(in srgb, var(--color-success) 6%, var(--color-surface));
+    }
+    .preco-label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .5px; }
+    .preco-valor { font-size: var(--font-size-sm); font-weight: 700; color: var(--color-text); }
+    .preco-valor.gratuito { color: var(--color-success); }
 
-    .preco-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .card-actions { margin-top: auto; }
+    .btn-inscrever, .btn-solicitar {
+      width: 100%; color: #fff; border: none;
+      padding: var(--space-3); border-radius: var(--radius);
+      font-size: var(--font-size-sm); font-weight: 700; cursor: pointer;
+      transition: background var(--transition-fast), transform var(--transition-fast);
     }
+    .btn-inscrever { background: var(--primary); }
+    .btn-solicitar { background: var(--color-warning); }
+    .btn-inscrever:hover:not(:disabled) { background: var(--secondary); transform: translateY(-1px); }
+    .btn-solicitar:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .btn-inscrever:disabled, .btn-solicitar:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+    .btn-inscrever.loading { background: var(--color-text-muted); }
 
-    .preco-valor {
-      font-size: 15px;
-      font-weight: 700;
-      color: #2c3e50;
+    .inscrito-info, .solicitacao-info { display: flex; flex-direction: column; gap: var(--space-2); }
+    .tag-inscrito, .tag-solicitacao {
+      font-size: var(--font-size-xs); font-weight: 600; padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius); text-align: center;
     }
-
-    .preco-valor.gratuito {
-      color: #10b981;
-      font-size: 14px;
-    }
-
-    .card-actions {
-      margin-top: auto;
-    }
-
-    .btn-inscrever,
-    .btn-solicitar {
-      width: 100%;
-      color: white;
-      border: none;
-      padding: 13px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      letter-spacing: 0.3px;
-      text-align: center;
-      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-inscrever {
-      background: linear-gradient(90deg, #6274e4 0%, #a258f3 100%);
-    }
-
-    .btn-solicitar {
-      background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-    }
-
-    .btn-inscrever:hover:not(:disabled),
-    .btn-solicitar:hover:not(:disabled) {
-      opacity: 0.85;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
-    }
-
-    .btn-inscrever:disabled,
-    .btn-solicitar:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .btn-inscrever.loading {
-      background: linear-gradient(90deg, #a0aec0 0%, #718096 100%);
-    }
-
-    .inscrito-info,
-    .solicitacao-info {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .tag-inscrito,
-    .tag-solicitacao {
-      font-size: 13px;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    .tag-inscrito {
-      color: #276749;
-      background: #c6f6d5;
-    }
-
-    .tag-solicitacao.none {
-      background: #e5eef7;
-      color: #1f3b5b;
-    }
-
-    .tag-solicitacao.pending {
-      background: #fff7cc;
-      color: #8a6d00;
-    }
-
-    .tag-solicitacao.approved {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    .tag-solicitacao.rejected {
-      background: #fee2e2;
-      color: #991b1b;
-    }
+    .tag-inscrito { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .tag-solicitacao.none     { background: var(--color-surface-2); color: var(--color-text-muted); }
+    .tag-solicitacao.pending  { background: color-mix(in srgb, var(--color-warning) 14%, transparent); color: var(--color-warning); }
+    .tag-solicitacao.approved { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .tag-solicitacao.rejected { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
 
     .btn-acessar {
-      display: block;
-      text-align: center;
-      color: #667eea;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      padding: 8px;
-      border: 1px solid #667eea;
-      border-radius: 8px;
-      transition: background 0.2s;
+      display: block; text-align: center; color: var(--primary); font-size: var(--font-size-xs);
+      font-weight: 600; text-decoration: none; padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--primary); border-radius: var(--radius); transition: background var(--transition-fast);
     }
-
-    .btn-acessar:hover {
-      background: #ebf4ff;
-    }
+    .btn-acessar:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
 
     .erro-inscricao {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #c53030;
-      background: #fff5f5;
-      padding: 6px 10px;
-      border-radius: 6px;
-      text-align: center;
+      margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--color-danger);
+      background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+      padding: var(--space-1) var(--space-3); border-radius: var(--radius); text-align: center;
     }
 
-    .empty-state {
-      text-align: center;
-      padding: 80px 20px;
-      color: #a0aec0;
-    }
-
-    .empty-icon {
-      font-size: 56px;
-      margin-bottom: 16px;
-    }
-
-    .empty-state h3 {
-      font-size: 20px;
-      color: #4a5568;
-      margin: 0 0 8px;
-    }
-
-    .empty-state p {
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .skeleton-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 24px;
-    }
-
-    .skeleton-card {
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    }
-
-    .skeleton-header {
-      height: 140px;
-      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-    }
-
-    .skeleton-body {
-      padding: 20px;
-    }
-
-    .skeleton-line {
-      height: 14px;
-      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-      border-radius: 6px;
-      margin-bottom: 10px;
-    }
-
-    .skeleton-line.short {
-      width: 60%;
-    }
-
-    @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
+    /* Skeleton */
+    .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-6); }
+    .skeleton-card { background: var(--color-surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border); }
+    .skeleton-header { height: 140px; }
+    .skeleton-body { padding: var(--space-5); }
+    .skeleton-line { height: 14px; border-radius: var(--radius); margin-bottom: var(--space-2); }
+    .skeleton-line.short { width: 60%; }
 
     @media (max-width: 768px) {
-      .hero-content h1 { font-size: 24px; }
-      .filtros-bar { flex-direction: column; gap: 8px; align-items: flex-start; padding: 12px 16px; }
+      .catalogo-body { margin-top: 0; }
+      .filtros-bar { flex-direction: column; gap: var(--space-2); align-items: flex-start; padding: var(--space-3) var(--space-4); }
       .cursos-grid { grid-template-columns: 1fr; }
     }
   `]

@@ -1,222 +1,118 @@
-<div class="register-container">
-  <!-- Popup de Confirmação -->
-  <div class="confirmation-overlay" *ngIf="showConfirmationPopup">
-    <div class="confirmation-popup">
-      <div class="popup-icon">✓</div>
-      <h2>Solicitação Enviada com Sucesso!</h2>
-      <p>Sua solicitação de cadastro foi recebida e está aguardando aprovação.</p>
-      <p class="popup-hint">Você será redirecionado para a página de login em <strong>{{ confirmationCounter }}</strong> segundo{{ confirmationCounter !== 1 ? 's' : '' }}...</p>
-      <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="(confirmationCounter / 5) * 100"></div>
+<div class="auth-page auth-page--wide">
+  @if (showConfirmationPopup) {
+    <div class="popup-overlay">
+      <div class="popup-card">
+        <div class="popup-icon-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 class="popup-title">Solicitacao Enviada!</h2>
+        <p class="popup-body">Sua solicitacao foi recebida e aguarda aprovacao.</p>
+        <p class="popup-hint">Redirecionando em <strong>{{ confirmationCounter }}</strong> segundo{{ confirmationCounter !== 1 ? "s" : "" }}...</p>
+        <div class="popup-progress"><div class="popup-progress-fill" [style.width.%]="(confirmationCounter / 5) * 100"></div></div>
       </div>
     </div>
-  </div>
+  }
 
-  <div class="register-box">
-    <form (ngSubmit)="register()" *ngIf="!success" class="form-wrapper">
-      
-      <!-- ========== CABEÇALHO (FULL WIDTH) ========== -->
-      <div class="form-header">
-        <h1>Cadastro de Instituição</h1>
-        <p class="subtitle">Preencha os dados de sua instituição</p>
+  <div class="auth-card auth-card--wide">
+    @if (!success) {
+      <div class="auth-brand">
+        <h1 class="auth-heading">Cadastro de Instituicao</h1>
+        <p class="auth-sub">Preencha os dados de sua instituicao</p>
       </div>
 
-      <!-- ========== CORPO (2 COLUNAS) ========== -->
-      <div class="form-body">
-        
-        <!-- COLUNA ESQUERDA -->
-        <div class="column-left">
-          
-          <!-- Avatar Section -->
-          <div class="avatar-section">
-            <div class="avatar-container">
-              <img *ngIf="fotoPreview" [src]="fotoPreview" alt="Foto da Instituição" class="avatar-image">
-              <div *ngIf="!fotoPreview" class="avatar-placeholder">
-                <span class="avatar-icon">🏢</span>
-              </div>
-            </div>
-            <label class="upload-button" [class.has-file]="fotoSelecionada">
-              <input
-                type="file"
-                id="fotoPerfil"
-                (change)="onFotoSelecionada($event)"
-                accept="image/*"
-                style="display: none"
-              />
-              Alterar Foto
-            </label>
+      <form (ngSubmit)="register()" class="inst-form">
+        <!-- Avatar -->
+        <div class="avatar-row">
+          <div class="avatar-circle">
+            @if (fotoPreview) {
+              <img [src]="fotoPreview" alt="Foto" class="avatar-circle__img" />
+            } @else {
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+              </svg>
+            }
           </div>
-
-          <!-- Linha divisória -->
-          <div class="divider-line"></div>
-
-          <!-- Campos da Esquerda -->
-          <div class="fields-left">
-            <div class="form-group">
-              <label for="nomeInstituicao">Nome da Instituição</label>
-              <input
-                type="text"
-                id="nomeInstituicao"
-                [(ngModel)]="nomeInstituicao"
-                name="nomeInstituicao"
-                placeholder="Nome da sua instituição"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="cnpj">CNPJ</label>
-              <input
-                type="text"
-                id="cnpj"
-                [(ngModel)]="cnpj"
-                (input)="formatarCNPJ($event)"
-                name="cnpj"
-                placeholder="XX.XXX.XXX/XXXX-XX"
-                required
-                maxlength="18"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                [(ngModel)]="email"
-                name="email"
-                placeholder="contato@instituicao.com"
-                required
-              />
-            </div>
-          </div>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer">
+            <input type="file" id="fotoPerfil" (change)="onFotoSelecionada($event)" accept="image/*" style="display:none" />
+            {{ fotoSelecionada ? "Foto selecionada" : "Alterar Foto" }}
+          </label>
         </div>
 
-        <!-- Divisor Vertical -->
-        <div class="divider-vertical"></div>
-
-        <!-- COLUNA DIREITA -->
-        <div class="column-right">
-          
-          <!-- SEÇÃO: LOCALIZAÇÃO -->
-          <div class="form-section">
-            <h3 class="section-title">Localização</h3>
-            <div class="form-group">
-              <label for="endereco">Endereço Completo</label>
-              <input
-                type="text"
-                id="endereco"
-                [(ngModel)]="endereco"
-                name="endereco"
-                placeholder="Rua, nº, complemento, cidade, estado, CEP"
-                required
-              />
+        <div class="inst-grid">
+          <!-- Col 1: dados instituicao -->
+          <div class="inst-col">
+            <p class="inst-section-title">Dados da Instituicao</p>
+            <div class="field">
+              <label class="field-label" for="nomeInstituicao">Nome da Instituicao</label>
+              <input class="field-input" type="text" id="nomeInstituicao" [(ngModel)]="nomeInstituicao" name="nomeInstituicao" placeholder="Nome da sua instituicao" required />
+            </div>
+            <div class="field">
+              <label class="field-label" for="cnpj">CNPJ</label>
+              <input class="field-input" type="text" id="cnpj" [(ngModel)]="cnpj" (input)="formatarCNPJ($event)" name="cnpj" placeholder="XX.XXX.XXX/XXXX-XX" required maxlength="18" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="email">Email</label>
+              <input class="field-input" type="email" id="email" [(ngModel)]="email" name="email" placeholder="contato@instituicao.com" required />
+            </div>
+            <div class="field">
+              <label class="field-label" for="endereco">Endereco Completo</label>
+              <input class="field-input" type="text" id="endereco" [(ngModel)]="endereco" name="endereco" placeholder="Rua, no, bairro, cidade, estado, CEP" required />
             </div>
           </div>
 
-          <!-- SEÇÃO: CONTATO DO RESPONSÁVEL -->
-          <div class="form-section">
-            <h3 class="section-title">Contato do Responsável</h3>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="nomeResponsavel">Nome do Responsável</label>
-                <input
-                  type="text"
-                  id="nomeResponsavel"
-                  [(ngModel)]="nomeResponsavel"
-                  name="nomeResponsavel"
-                  placeholder="Nome completo"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="telefonResponsavel">Telefone/WhatsApp</label>
-                <input
-                  type="tel"
-                  id="telefonResponsavel"
-                  [(ngModel)]="telefonResponsavel"
-                  (input)="formatarTelefone($event)"
-                  name="telefonResponsavel"
-                  placeholder="(XX) 99999-9999"
-                  required
-                  maxlength="15"
-                />
+          <!-- Col 2: responsavel + senha -->
+          <div class="inst-col">
+            <p class="inst-section-title">Responsavel pela Conta</p>
+            <div class="field">
+              <label class="field-label" for="nomeResponsavel">Nome do Responsavel</label>
+              <input class="field-input" type="text" id="nomeResponsavel" [(ngModel)]="nomeResponsavel" name="nomeResponsavel" placeholder="Nome completo" required />
+            </div>
+            <div class="field">
+              <label class="field-label" for="telefonResponsavel">Telefone/WhatsApp</label>
+              <input class="field-input" type="tel" id="telefonResponsavel" [(ngModel)]="telefonResponsavel" (input)="formatarTelefone($event)" name="telefonResponsavel" placeholder="(XX) 99999-9999" required maxlength="15" />
+            </div>
+            <p class="inst-section-title" style="margin-top:var(--space-5,20px)">Seguranca da Conta</p>
+            <div class="field">
+              <label class="field-label" for="senha">Senha</label>
+              <div class="password-wrap">
+                <input class="field-input" [type]="showSenha ? 'text' : 'password'" id="senha" [(ngModel)]="senha" name="senha" placeholder="Minimo 6 caracteres" required />
+                <button type="button" class="btn btn-ghost btn-sm" (click)="showSenha = !showSenha">{{ showSenha ? "Ocultar" : "Mostrar" }}</button>
               </div>
             </div>
-          </div>
-
-          <!-- SEÇÃO: SEGURANÇA DA CONTA -->
-          <div class="form-section">
-            <h3 class="section-title">Segurança da Conta</h3>
-            <div class="form-group">
-              <label for="senha">Senha</label>
-              <div class="password-field">
-                <input
-                  [type]="showSenha ? 'text' : 'password'"
-                  id="senha"
-                  [(ngModel)]="senha"
-                  name="senha"
-                  placeholder="Mínimo 6 caracteres"
-                  required
-                />
-                <button 
-                  type="button" 
-                  class="toggle-password" 
-                  (click)="showSenha = !showSenha"
-                >
-                  {{ showSenha ? 'Ocultar' : 'Mostrar' }}
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="confirmarSenha">Confirmar Senha</label>
-              <div class="password-field">
-                <input
-                  [type]="showConfirmarSenha ? 'text' : 'password'"
-                  id="confirmarSenha"
-                  [(ngModel)]="confirmarSenha"
-                  name="confirmarSenha"
-                  placeholder="Digite a senha novamente"
-                  required
-                />
-                <button 
-                  type="button" 
-                  class="toggle-password" 
-                  (click)="showConfirmarSenha = !showConfirmarSenha"
-                >
-                  {{ showConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
-                </button>
+            <div class="field">
+              <label class="field-label" for="confirmarSenha">Confirmar Senha</label>
+              <div class="password-wrap">
+                <input class="field-input" [type]="showConfirmarSenha ? 'text' : 'password'" id="confirmarSenha" [(ngModel)]="confirmarSenha" name="confirmarSenha" placeholder="Digite a senha novamente" required />
+                <button type="button" class="btn btn-ghost btn-sm" (click)="showConfirmarSenha = !showConfirmarSenha">{{ showConfirmarSenha ? "Ocultar" : "Mostrar" }}</button>
               </div>
             </div>
           </div>
         </div>
 
-      </div>
+        @if (error) { <div class="msg msg-error" style="margin-bottom:var(--space-4,16px)">{{ error }}</div> }
 
-      <!-- Mensagem de erro (se houver) -->
-      <div *ngIf="error" class="error-message">{{ error }}</div>
-
-      <!-- ========== RODAPÉ (FULL WIDTH - CENTRALIZADO) ========== -->
-      <div class="form-footer-divider"></div>
-      
-      <div class="form-footer">
-        <button type="submit" class="submit-button" [disabled]="loading">
-          {{ loading ? 'Criando conta...' : 'Criar Conta' }}
-        </button>
-        <div class="back-link">
-          <a (click)="goBack()" href="javascript:void(0)">Voltar</a>
+        <div class="form-footer-row">
+          <button type="submit" class="btn btn-primary btn-lg" [disabled]="loading">
+            {{ loading ? "Criando conta..." : "Criar Conta" }}
+          </button>
+          <p class="auth-footer-link"><a (click)="goBack()" href="javascript:void(0)">Voltar</a></p>
         </div>
+      </form>
+    }
+
+    @if (success) {
+      <div class="success-state" style="text-align:center;padding:var(--space-10,40px) 0">
+        <div class="success-icon-wrap">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/>
+          </svg>
+        </div>
+        <h2 class="success-title">Solicitacao Enviada!</h2>
+        <p class="success-body">Sua solicitacao foi enviada para aprovacao.</p>
+        <p class="auth-sub">Voce recebera um email assim que for aprovado.</p>
       </div>
-
-    </form>
-
-    <!-- Mensagem de Sucesso -->
-    <div *ngIf="success" class="success-message">
-      <div class="success-icon">📬</div>
-      <h2>Solicitação Enviada!</h2>
-      <p>Sua solicitação foi enviada para aprovação.</p>
-      <p class="approval-text">Você receberá um email assim que for aprovado.</p>
-    </div>
+    }
   </div>
 </div>

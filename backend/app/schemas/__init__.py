@@ -237,12 +237,12 @@ class FaculdadeTemaCreate(BaseModel):
     secondary_color:  str  = Field('#0f4b2a', max_length=20)
     background_color: str  = Field('#f0fdf4', max_length=20)
     font_family:      str  = Field('Inter, system-ui, sans-serif', max_length=150)
-    logo_url_override: Optional[str] = Field(None, max_length=500)
+    logo_url_override: Optional[str] = None
     dark_mode:             bool = False
     dark_primary_color:    str  = Field('#34d399', max_length=20)
     dark_secondary_color:  str  = Field('#10b981', max_length=20)
     dark_background_color: str  = Field('#0f172a', max_length=20)
-    favicon_url: Optional[str] = Field(None, max_length=500)
+    favicon_url: Optional[str] = None
     # Identidade visual avançada
     border_radius:    str             = Field('8px', max_length=10)
     spacing:          SpacingEnum     = SpacingEnum.comfortable
@@ -376,12 +376,12 @@ class FaculdadeTemaUpdate(BaseModel):
     secondary_color:  Optional[str] = Field(None, max_length=20)
     background_color: Optional[str] = Field(None, max_length=20)
     font_family:      Optional[str] = Field(None, max_length=150)
-    logo_url_override: Optional[str] = Field(None, max_length=500)
+    logo_url_override: Optional[str] = None
     dark_mode:             Optional[bool]  = None
     dark_primary_color:    Optional[str]   = Field(None, max_length=20)
     dark_secondary_color:  Optional[str]   = Field(None, max_length=20)
     dark_background_color: Optional[str]   = Field(None, max_length=20)
-    favicon_url: Optional[str] = Field(None, max_length=500)
+    favicon_url: Optional[str] = None
     # Identidade visual avançada
     border_radius:    Optional[str]             = Field(None, max_length=10)
     spacing:          Optional[SpacingEnum]     = None

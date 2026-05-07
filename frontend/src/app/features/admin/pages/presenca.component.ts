@@ -21,487 +21,178 @@ interface Presenca {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h2>Presença dos Alunos</h2>
-        <button class="btn-filter" (click)="abrirFiltros()">🔍 Filtrar por Curso</button>
+    <div class="content-page">
+      <div class="page-topbar">
+        <h1>Presença dos Alunos</h1>
       </div>
 
-      <div class="presenca-table" *ngIf="presencas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Aluno</th>
-              <th>Aula</th>
-              <th>Percentual</th>
-              <th>Tipo Registro</th>
-              <th>Data Acesso</th>
-              <th>Conclusão</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let p of presencas" [class.nao-presente]="p.percentual_assistido < 75">
-              <td class="aluno-nome">{{ p.usuario_nome }}</td>
-              <td>{{ p.aula_titulo }}</td>
-              <td>
-                <div class="progress-bar">
-                  <div class="progress" [style.width.%]="p.percentual_assistido"></div>
-                  <span class="progress-label">{{ p.percentual_assistido }}%</span>
-                </div>
-              </td>
-              <td>
-                <span class="tipo-registro" [ngClass]="p.registrada_automaticamente ? 'auto' : 'manual'">
-                  {{ p.registrada_automaticamente ? '⚙️ Automático' : '✏️ Manual' }}
-                </span>
-              </td>
-              <td>{{ p.data_acesso | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td *ngIf="p.data_conclusao">{{ p.data_conclusao | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td *ngIf="!p.data_conclusao" style="color: #999;">-</td>
-              <td>
-                <button class="btn-editar" (click)="abrirEdicao(p)" title="Editar presença manualmente">
-                  ✏️ Editar
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando registros de presença...</p></div>
+      }
 
-      <div class="no-data" *ngIf="presencas.length === 0 && !carregando">
-        <p>Nenhum registro de presença ainda.</p>
-      </div>
+      @if (erro) {
+        <div class="msg msg--error">{{ erro }} <button (click)="carregarPresencas()">Tentar novamente</button></div>
+      }
 
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando registros de presença...</p>
-      </div>
+      @if (!carregando && presencas.length > 0) {
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Aula</th>
+                <th>Percentual</th>
+                <th>Tipo</th>
+                <th>Data Acesso</th>
+                <th>Conclusão</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of presencas; track p.id) {
+                <tr [class.row-absent]="p.percentual_assistido < 75">
+                  <td class="cell-strong">{{ p.usuario_nome }}</td>
+                  <td>{{ p.aula_titulo }}</td>
+                  <td>
+                    <div class="progress-wrap">
+                      <div class="progress-bar">
+                        <div class="progress-fill" [style.width.%]="p.percentual_assistido" [class.fill-ok]="p.percentual_assistido >= 75" [class.fill-low]="p.percentual_assistido < 75"></div>
+                      </div>
+                      <span class="progress-label">{{ p.percentual_assistido }}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge" [class]="p.registrada_automaticamente ? 'badge--success' : 'badge--info'">
+                      {{ p.registrada_automaticamente ? 'Automático' : 'Manual' }}
+                    </span>
+                  </td>
+                  <td class="col-date">{{ p.data_acesso | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="col-date">
+                    @if (p.data_conclusao) { {{ p.data_conclusao | date:'dd/MM/yyyy HH:mm' }} }
+                    @else { <span class="muted">—</span> }
+                  </td>
+                  <td class="cell-actions">
+                    <button class="btn-icon btn-icon--edit" title="Editar presença" (click)="abrirEdicao(p)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
-      <div class="error" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarPresencas()">Tentar novamente</button>
-      </div>
+      @if (!carregando && presencas.length === 0 && !erro) {
+        <div class="empty-state">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <p>Nenhum registro de presença ainda.</p>
+        </div>
+      }
     </div>
 
-    <!-- Modal de Edição Manual de Presença -->
-    <div class="modal-overlay" *ngIf="presencaEmEdicao" (click)="fecharEdicao()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>✏️ Editar Presença Manualmente</h3>
-          <button class="btn-fechar" (click)="fecharEdicao()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="info-edicao">
-            <p><strong>Aluno:</strong> {{ presencaEmEdicao.usuario_nome }}</p>
-            <p><strong>Aula:</strong> {{ presencaEmEdicao.aula_titulo }}</p>
+    @if (presencaEmEdicao) {
+      <div class="modal-overlay" (click)="fecharEdicao()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3>Editar Presença Manualmente</h3>
+            <button class="modal-close-btn" (click)="fecharEdicao()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-          <div class="form-group">
-            <label for="percentual">Percentual Assistido (%)</label>
-            <input
-              id="percentual"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              [(ngModel)]="percentualEdicao"
-              class="slider"
-            />
-            <div class="slider-value" [ngClass]="percentualEdicao >= 75 ? 'presente' : 'ausente'">
-              {{ percentualEdicao }}%
-              <span *ngIf="percentualEdicao >= 75"> — ✅ Presença registrada</span>
-              <span *ngIf="percentualEdicao < 75"> — ❌ Ausente (mín. 75%)</span>
+          <div class="modal-body">
+            <div class="info-box-sm">
+              <p><strong>Aluno:</strong> {{ presencaEmEdicao.usuario_nome }}</p>
+              <p><strong>Aula:</strong> {{ presencaEmEdicao.aula_titulo }}</p>
             </div>
+            <div class="form-row">
+              <label>Percentual Assistido ({{ percentualEdicao }}%)</label>
+              <input type="range" min="0" max="100" step="1" [(ngModel)]="percentualEdicao" class="slider" />
+              <div class="slider-info" [class.present]="percentualEdicao >= 75" [class.absent]="percentualEdicao < 75">
+                @if (percentualEdicao >= 75) { Presença registrada (mín. 75%) }
+                @else { Ausente — abaixo do mínimo de 75% }
+              </div>
+            </div>
+            <div class="aviso-manual">Esta edição será registrada como <strong>manual</strong>.</div>
+            @if (erroEdicao) { <div class="form-error">{{ erroEdicao }}</div> }
           </div>
-          <div class="aviso-manual">
-            ⚠️ Esta edição será registrada como <strong>manual</strong>.
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharEdicao()" [disabled]="salvandoEdicao">Cancelar</button>
+            <button class="btn-primary" (click)="salvarEdicao()" [disabled]="salvandoEdicao">{{ salvandoEdicao ? 'Salvando...' : 'Salvar' }}</button>
           </div>
-          <div class="error" *ngIf="erroEdicao">{{ erroEdicao }}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancelar" (click)="fecharEdicao()" [disabled]="salvandoEdicao">Cancelar</button>
-          <button class="btn-salvar" (click)="salvarEdicao()" [disabled]="salvandoEdicao">
-            {{ salvandoEdicao ? 'Salvando...' : '💾 Salvar' }}
-          </button>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
-    .page-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+    :host { display: block; }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      gap: 15px;
-    }
+    .page-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .page-topbar h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
 
-    .page-header h2 {
-      margin: 0;
-      color: #333;
-    }
+    .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 24px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .btn-filter {
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background-color 0.2s;
-      white-space: nowrap;
-    }
+    .msg { padding: 12px 16px; border-radius: var(--radius); font-size: var(--font-size-sm); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .msg--error { background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent); }
+    .msg--error button { background: none; border: none; color: var(--color-danger); cursor: pointer; font-weight: 600; text-decoration: underline; }
 
-    .btn-filter:hover {
-      background-color: #2980b9;
-    }
+    .table-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); min-width: 700px; }
+    th { padding: 12px 14px; text-align: left; font-weight: 600; color: var(--color-text-muted); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--color-border); color: var(--color-text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--color-surface-2); }
+    tr.row-absent td { background: color-mix(in srgb, var(--color-danger) 4%, transparent); }
+    .cell-strong { font-weight: 600; }
+    .col-date { font-size: 0.8125rem; color: var(--color-text-muted); }
+    .muted { color: var(--color-text-muted); }
 
-    .presenca-table {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
+    .progress-wrap { display: flex; align-items: center; gap: 8px; }
+    .progress-bar { flex: 1; height: 8px; background: var(--color-border); border-radius: 99px; overflow: hidden; min-width: 80px; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
+    .fill-ok  { background: var(--color-success); }
+    .fill-low { background: var(--color-danger); }
+    .progress-label { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    .badge { display: inline-flex; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--info    { background: color-mix(in srgb, var(--color-info) 15%, transparent);    color: var(--color-info); }
 
-    thead {
-      background: #f5f5f5;
-      border-bottom: 2px solid #ddd;
-    }
-
-    th {
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      color: #333;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    td {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    tbody tr:hover {
-      background-color: #f9f9f9;
-    }
-
-    tbody tr.nao-presente {
-      background-color: #fef5f5;
-    }
-
-    .aluno-nome {
-      font-weight: 600;
-      color: #333;
-    }
-
-    .progress-bar {
-      position: relative;
-      height: 24px;
-      background: #f0f0f0;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .progress {
-      height: 100%;
-      background: linear-gradient(90deg, #27ae60, #2ecc71);
-      transition: width 0.3s;
-    }
-
-    .progress-bar.low .progress {
-      background: linear-gradient(90deg, #e74c3c, #c0392b);
-    }
-
-    .progress-label {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      color: #333;
-      font-weight: 600;
-      font-size: 12px;
-      z-index: 1;
-    }
-
-    .tipo-registro {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .tipo-registro.auto {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .tipo-registro.manual {
-      background: #cfe2ff;
-      color: #084298;
-    }
-
-    .no-data {
-      background: white;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      color: #999;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      border: 1px solid #f5c6cb;
-      text-align: center;
-    }
-
-    .error button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    @media (max-width: 768px) {
-      table { font-size: 12px; }
-      th, td { padding: 10px; }
-    }
-
-    .btn-editar {
-      background-color: #f39c12;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      transition: background-color 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-editar:hover {
-      background-color: #d68910;
-    }
+    .cell-actions { display: flex; gap: 6px; }
+    .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius); border: 1.5px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+    .btn-icon--edit { color: var(--primary); }
+    .btn-icon--edit:hover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
 
     /* Modal */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.55);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0 0 0 / 0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); max-width: 460px; width: 100%; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid var(--color-border); }
+    .modal-header h3 { margin: 0; font-size: var(--font-size-lg); color: var(--color-text); }
+    .modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius); }
+    .modal-close-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--color-border); }
 
-    .modal {
-      background: white;
-      border-radius: 10px;
-      width: 460px;
-      max-width: 95vw;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
+    .info-box-sm { background: var(--color-surface-2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; }
+    .info-box-sm p { margin: 4px 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid #eee;
-    }
+    .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-row label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-muted); }
+    .slider { width: 100%; accent-color: var(--primary); cursor: pointer; }
+    .slider-info { text-align: center; font-size: var(--font-size-sm); font-weight: 600; padding: 6px; border-radius: var(--radius); }
+    .slider-info.present { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, transparent); }
+    .slider-info.absent  { color: var(--color-danger);  background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
 
-    .modal-header h3 {
-      margin: 0;
-      color: #333;
-      font-size: 18px;
-    }
+    .aviso-manual { background: color-mix(in srgb, var(--color-warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--color-warning) 30%, transparent); border-radius: var(--radius); padding: 10px 14px; font-size: var(--font-size-sm); color: var(--color-warning); margin-top: 12px; }
 
-    .btn-fechar {
-      background: none;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      color: #999;
-      padding: 4px 8px;
-      border-radius: 4px;
-      line-height: 1;
-    }
+    .form-error { margin-top: 10px; padding: 10px 14px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent); border-radius: var(--radius); color: var(--color-danger); font-size: var(--font-size-sm); }
 
-    .btn-fechar:hover {
-      background: #f5f5f5;
-      color: #333;
-    }
-
-    .modal-body {
-      padding: 24px;
-    }
-
-    .info-edicao {
-      background: #f8f9fa;
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
-    }
-
-    .info-edicao p {
-      margin: 4px 0;
-      font-size: 14px;
-      color: #555;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    .form-group label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: #333;
-      font-size: 14px;
-    }
-
-    .slider {
-      width: 100%;
-      height: 6px;
-      appearance: none;
-      -webkit-appearance: none;
-      background: #ddd;
-      border-radius: 3px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
-      background: #3498db;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    .slider-value {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    .slider-value.presente {
-      color: #27ae60;
-    }
-
-    .slider-value.ausente {
-      color: #e74c3c;
-    }
-
-    .slider-value span {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .aviso-manual {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 13px;
-      color: #856404;
-      margin-top: 16px;
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      padding: 16px 24px;
-      border-top: 1px solid #eee;
-    }
-
-    .btn-cancelar {
-      background: white;
-      color: #666;
-      border: 1px solid #ccc;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-
-    .btn-cancelar:hover:not(:disabled) {
-      background: #f5f5f5;
-    }
-
-    .btn-salvar {
-      background: #27ae60;
-      color: white;
-      border: none;
-      padding: 10px 24px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-
-    .btn-salvar:hover:not(:disabled) {
-      background: #219a52;
-    }
-
-    .btn-salvar:disabled, .btn-cancelar:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    .btn-primary { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: var(--radius); cursor: pointer; font-weight: 600; font-size: var(--font-size-sm); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline { padding: 9px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text-muted); font-size: var(--font-size-sm); font-weight: 500; cursor: pointer; }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
   `]
 })
 export class AdminPresencaComponent implements OnInit {
@@ -523,23 +214,19 @@ export class AdminPresencaComponent implements OnInit {
   carregarPresencas(): void {
     this.carregando = true;
     this.erro = '';
-
     this.http.get<Presenca[]>('http://localhost:8000/api/presenca/').subscribe({
       next: (presencas) => {
         this.presencas = presencas || [];
         this.carregando = false;
       },
       error: (error: any) => {
-        console.error('Erro ao carregar presença:', error);
-        this.erro = 'Erro ao carregar registros de presença. Tente novamente.';
+        this.erro = error?.error?.detail || 'Erro ao carregar registros de presença.';
         this.carregando = false;
       }
     });
   }
 
-  abrirFiltros(): void {
-    alert('Filtros por curso - a implementar');
-  }
+  abrirFiltros(): void {}
 
   abrirEdicao(presenca: Presenca): void {
     this.presencaEmEdicao = presenca;
@@ -556,21 +243,17 @@ export class AdminPresencaComponent implements OnInit {
     if (!this.presencaEmEdicao) return;
     this.salvandoEdicao = true;
     this.erroEdicao = '';
-
     this.http.put<Presenca>(
       `http://localhost:8000/api/presenca/${this.presencaEmEdicao.id}`,
       { percentual_assistido: this.percentualEdicao }
     ).subscribe({
       next: (atualizado) => {
         const idx = this.presencas.findIndex(p => p.id === atualizado.id);
-        if (idx !== -1) {
-          this.presencas[idx] = { ...this.presencas[idx], ...atualizado };
-        }
+        if (idx !== -1) { this.presencas[idx] = { ...this.presencas[idx], ...atualizado }; }
         this.salvandoEdicao = false;
         this.presencaEmEdicao = null;
       },
       error: (error: any) => {
-        console.error('Erro ao editar presença:', error);
         this.erroEdicao = error?.error?.detail || 'Erro ao salvar. Tente novamente.';
         this.salvandoEdicao = false;
       }

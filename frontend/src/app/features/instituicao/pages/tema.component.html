@@ -1,111 +1,95 @@
 <div class="tema-page">
 
-  <!-- Page Header -->
   <div class="page-header">
     <div class="header-text">
       <h1>Identidade Visual</h1>
       <p>Personalize as cores, tipografia e logo da sua instituição</p>
     </div>
-    <button class="btn-presets" (click)="showPresets = !showPresets">
-      <span>🎨</span> Usar preset
-    </button>
+    <button class="btn-presets" (click)="showPresets = !showPresets">Usar preset</button>
   </div>
 
-  <!-- Loading -->
-  <div class="loading-state" *ngIf="carregando">
-    <div class="spinner"></div>
-    <span>Carregando tema...</span>
-  </div>
+  @if (carregando) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Carregando tema...</span>
+    </div>
+  }
 
-  <!-- Preset Picker Overlay -->
-  <div class="preset-overlay" *ngIf="showPresets && !carregando" (click)="showPresets = false">
-    <div class="preset-panel" (click)="$event.stopPropagation()">
-      <div class="preset-panel-header">
-        <h3>Escolher preset</h3>
-        <button class="preset-close" (click)="showPresets = false">✕</button>
-      </div>
-      <div class="preset-grid">
-        <button
-          *ngFor="let p of presets"
-          class="preset-card"
-          (click)="aplicarPreset(p)"
-          type="button"
-        >
-          <div class="preset-swatches">
-            <span class="preset-swatch" [style.background]="p.primary_color"></span>
-            <span class="preset-swatch" [style.background]="p.secondary_color"></span>
-            <span class="preset-swatch" [style.background]="p.background_color"></span>
-          </div>
-          <span class="preset-name">{{ p.nome }}</span>
-        </button>
+  @if (showPresets && !carregando) {
+    <div class="preset-overlay" (click)="showPresets = false">
+      <div class="preset-panel" (click)="$event.stopPropagation()">
+        <div class="preset-panel-header">
+          <h3>Escolher preset</h3>
+          <button class="preset-close" (click)="showPresets = false">✕</button>
+        </div>
+        <div class="preset-grid">
+          @for (p of presets; track p.nome) {
+            <button class="preset-card" (click)="aplicarPreset(p)" type="button">
+              <div class="preset-swatches">
+                <span class="preset-swatch" [style.background]="p.primary_color"></span>
+                <span class="preset-swatch" [style.background]="p.secondary_color"></span>
+                <span class="preset-swatch" [style.background]="p.background_color"></span>
+              </div>
+              <span class="preset-name">{{ p.nome }}</span>
+            </button>
+          }
+        </div>
       </div>
     </div>
-  </div>
+  }
 
-  <!-- Workspace -->
-  <div class="workspace" *ngIf="!carregando">
+  @if (!carregando) {
+  <div class="workspace">
 
     <!-- ── Left: Controls Panel ── -->
     <div class="controls-panel">
 
       <!-- ── Temas Salvos ─────────────────────────── -->
-      <section class="card" *ngIf="temas.length > 0">
-        <div class="card-title">
-          <span class="card-icon">📋</span>
-          <h2>Temas Salvos</h2>
-          <span class="temas-count">{{ temas.length }}</span>
-        </div>
-        <ul class="temas-list">
-          <li *ngFor="let t of temas" class="tema-item" [class.ativo]="t.ativo">
-            <div class="tema-swatches">
-              <span class="tema-swatch" [style.background]="t.primary_color"></span>
-              <span class="tema-swatch" [style.background]="t.secondary_color"></span>
-            </div>
-            <span class="tema-nome">{{ t.nome }}</span>
-            <span class="badge-ativo" *ngIf="t.ativo">ativo</span>
-            <div class="tema-actions">
-              <button
-                *ngIf="!t.ativo"
-                class="btn-tema-ativar"
-                (click)="ativarTema(t.id)"
-                title="Ativar este tema"
-              >Ativar</button>
-              <button
-                *ngIf="!t.ativo"
-                class="btn-tema-excluir"
-                (click)="excluirTema(t.id)"
-                title="Excluir tema"
-              >✕</button>
-            </div>
-          </li>
-        </ul>
-      </section>
+      @if (temas.length > 0) {
+        <section class="card">
+          <div class="card-title">
+            <h2>Temas Salvos</h2>
+            <span class="temas-count">{{ temas.length }}</span>
+          </div>
+          <ul class="temas-list">
+            @for (t of temas; track t.id) {
+              <li class="tema-item" [class.ativo]="t.ativo">
+                <div class="tema-swatches">
+                  <span class="tema-swatch" [style.background]="t.primary_color"></span>
+                  <span class="tema-swatch" [style.background]="t.secondary_color"></span>
+                </div>
+                <span class="tema-nome">{{ t.nome }}</span>
+                @if (t.ativo) { <span class="badge-ativo">ativo</span> }
+                <div class="tema-actions">
+                  @if (!t.ativo) {
+                    <button class="btn-tema-ativar" (click)="ativarTema(t.id)" title="Ativar este tema">Ativar</button>
+                    <button class="btn-tema-excluir" (click)="excluirTema(t.id)" title="Excluir tema">✕</button>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
 
       <!-- Logo -->
       <section class="card">
         <div class="card-title">
-          <span class="card-icon">🖼️</span>
           <h2>Logo</h2>
         </div>
-
-        <div
-          class="logo-dropzone"
-          [class.has-logo]="previewLogo"
-          (click)="triggerLogoInput()"
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop($event)"
-        >
-          <ng-container *ngIf="previewLogo; else emptyZone">
+        <div class="logo-dropzone" [class.has-logo]="previewLogo" (click)="triggerLogoInput()" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+          @if (previewLogo) {
             <img [src]="previewLogo" alt="Logo" class="logo-preview-img" />
             <button class="remove-btn" (click)="removeLogo($event)" title="Remover logo">✕</button>
-          </ng-container>
-          <ng-template #emptyZone>
+          } @else {
             <div class="dropzone-placeholder">
-              <div class="dropzone-icon">📤</div>
+              <div class="dropzone-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
               <p>Arraste ou clique para fazer upload</p>
               <small>PNG, SVG, JPG · máx. 2 MB</small>
             </div>
-          </ng-template>
+          }
         </div>
         <input #logoInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)" />
       </section>
@@ -113,24 +97,19 @@
       <!-- Favicon -->
       <section class="card">
         <div class="card-title">
-          <span class="card-icon">🔖</span>
           <h2>Favicon</h2>
           <span class="card-hint">ícone da aba do browser</span>
         </div>
         <div class="favicon-row">
-          <div
-            class="favicon-dropzone"
-            [class.has-favicon]="previewFavicon"
-            (click)="triggerFaviconInput()"
-            title="Clique para fazer upload"
-          >
-            <ng-container *ngIf="previewFavicon; else emptyFavicon">
+          <div class="favicon-dropzone" [class.has-favicon]="previewFavicon" (click)="triggerFaviconInput()" title="Clique para fazer upload">
+            @if (previewFavicon) {
               <img [src]="previewFavicon" alt="Favicon" class="favicon-preview-img" />
               <button class="remove-btn remove-btn-sm" (click)="removeFavicon($event)" title="Remover favicon">✕</button>
-            </ng-container>
-            <ng-template #emptyFavicon>
-              <span class="favicon-placeholder-icon">📄</span>
-            </ng-template>
+            } @else {
+              <span class="favicon-placeholder-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+              </span>
+            }
           </div>
           <div class="favicon-hint">
             <p>Se não definido, um favicon colorido é gerado automaticamente</p>
@@ -143,93 +122,45 @@
       <!-- Colors -->
       <section class="card" [formGroup]="form">
         <div class="card-title">
-          <span class="card-icon">🎨</span>
           <h2>Cores do Tema Claro</h2>
         </div>
-
         <div class="color-fields">
-
           <div class="color-field">
             <label>Cor Primária</label>
             <div class="color-input-row">
               <div class="color-swatch-wrap">
-                <!--
-                  type="color" usa o evento `input` para updates em tempo real
-                  (ao arrastar o picker). `formControlName` usa `change` por padrão,
-                  por isso usamos binding manual via setColor().
-                -->
-                <input
-                  type="color"
-                  [value]="v.primary_color"
-                  (input)="setColor('primary_color', $event)"
-                  class="color-picker"
-                />
+                <input type="color" [value]="v.primary_color" (input)="setColor('primary_color', $event)" class="color-picker" />
                 <span class="swatch" [style.background]="v.primary_color"></span>
               </div>
-              <input
-                type="text"
-                formControlName="primary_color"
-                class="hex-input"
-                maxlength="7"
-                placeholder="#1a6b3c"
-                spellcheck="false"
-              />
+              <input type="text" formControlName="primary_color" class="hex-input" maxlength="7" placeholder="#1a6b3c" spellcheck="false" />
             </div>
           </div>
-
           <div class="color-field">
             <label>Cor Secundária</label>
             <div class="color-input-row">
               <div class="color-swatch-wrap">
-                <input
-                  type="color"
-                  [value]="v.secondary_color"
-                  (input)="setColor('secondary_color', $event)"
-                  class="color-picker"
-                />
+                <input type="color" [value]="v.secondary_color" (input)="setColor('secondary_color', $event)" class="color-picker" />
                 <span class="swatch" [style.background]="v.secondary_color"></span>
               </div>
-              <input
-                type="text"
-                formControlName="secondary_color"
-                class="hex-input"
-                maxlength="7"
-                placeholder="#0f4b2a"
-                spellcheck="false"
-              />
+              <input type="text" formControlName="secondary_color" class="hex-input" maxlength="7" placeholder="#0f4b2a" spellcheck="false" />
             </div>
           </div>
-
           <div class="color-field">
             <label>Cor de Fundo</label>
             <div class="color-input-row">
               <div class="color-swatch-wrap">
-                <input
-                  type="color"
-                  [value]="v.background_color"
-                  (input)="setColor('background_color', $event)"
-                  class="color-picker"
-                />
+                <input type="color" [value]="v.background_color" (input)="setColor('background_color', $event)" class="color-picker" />
                 <span class="swatch" [style.background]="v.background_color"></span>
               </div>
-              <input
-                type="text"
-                formControlName="background_color"
-                class="hex-input"
-                maxlength="7"
-                placeholder="#f0fdf4"
-                spellcheck="false"
-              />
+              <input type="text" formControlName="background_color" class="hex-input" maxlength="7" placeholder="#f0fdf4" spellcheck="false" />
             </div>
           </div>
-
         </div>
       </section>
 
       <!-- Dark Mode -->
       <section class="card" [formGroup]="form">
         <div class="card-title">
-          <span class="card-icon">🌙</span>
           <h2>Modo Escuro</h2>
         </div>
         <label class="dark-toggle">
@@ -279,7 +210,6 @@
       <!-- Typography -->
       <section class="card">
         <div class="card-title">
-          <span class="card-icon">🔠</span>
           <h2>Tipografia</h2>
         </div>
         <div class="font-select-wrap" [formGroup]="form">
@@ -287,7 +217,7 @@
             formControlName="font_family"
             class="font-select"
           >
-            <option *ngFor="let f of fontOptions" [value]="f.value">{{ f.label }}</option>
+            @for (f of fontOptions; track f.value) { <option [value]="f.value">{{ f.label }}</option> }
           </select>
         </div>
         <div class="font-sample" [style.font-family]="v.font_family">
@@ -298,60 +228,42 @@
       <!-- Forma & Espaçamento -->
       <section class="card" [formGroup]="form">
         <div class="card-title">
-          <span class="card-icon">⬛</span>
           <h2>Forma &amp; Espaçamento</h2>
         </div>
-
         <div class="field-group">
           <span class="field-label">Arredondamento dos cantos</span>
           <div class="radius-picker">
-            <button
-              *ngFor="let r of radiusOptions"
-              type="button"
-              class="radius-option"
-              [class.selected]="v.border_radius === r.value"
-              (click)="form.get('border_radius')!.setValue(r.value)"
-            >
-              <span class="radius-demo" [style.border-radius]="r.value"></span>
-              <span>{{ r.label }}</span>
-            </button>
+            @for (r of radiusOptions; track r.value) {
+              <button type="button" class="radius-option" [class.selected]="v.border_radius === r.value" (click)="form.get('border_radius')!.setValue(r.value)">
+                <span class="radius-demo" [style.border-radius]="r.value"></span>
+                <span>{{ r.label }}</span>
+              </button>
+            }
           </div>
         </div>
-
         <div class="field-group">
           <span class="field-label">Densidade da interface</span>
           <div class="segment-control">
-            <button
-              *ngFor="let s of spacingOptions"
-              type="button"
-              class="segment-btn"
-              [class.active]="v.spacing === s.value"
-              (click)="form.get('spacing')!.setValue(s.value)"
-            >{{ s.label }}</button>
+            @for (s of spacingOptions; track s.value) {
+              <button type="button" class="segment-btn" [class.active]="v.spacing === s.value" (click)="form.get('spacing')!.setValue(s.value)">{{ s.label }}</button>
+            }
           </div>
         </div>
       </section>
 
-      <!-- Efeitos &amp; Layout -->
+      <!-- Efeitos & Layout -->
       <section class="card" [formGroup]="form">
         <div class="card-title">
-          <span class="card-icon">✨</span>
           <h2>Efeitos &amp; Layout</h2>
         </div>
-
         <div class="field-group">
           <span class="field-label">Intensidade das sombras</span>
           <div class="segment-control">
-            <button
-              *ngFor="let s of shadowOptions"
-              type="button"
-              class="segment-btn"
-              [class.active]="v.shadow_level === s.value"
-              (click)="form.get('shadow_level')!.setValue(s.value)"
-            >{{ s.label }}</button>
+            @for (s of shadowOptions; track s.value) {
+              <button type="button" class="segment-btn" [class.active]="v.shadow_level === s.value" (click)="form.get('shadow_level')!.setValue(s.value)">{{ s.label }}</button>
+            }
           </div>
         </div>
-
         <div class="field-group">
           <div class="toggle-row">
             <div class="toggle-info">
@@ -364,189 +276,146 @@
             </label>
           </div>
         </div>
-
         <div class="field-group">
           <span class="field-label">Tipo de navegação</span>
           <div class="layout-picker">
-            <button
-              *ngFor="let l of layoutOptions"
-              type="button"
-              class="layout-option"
-              [class.selected]="v.layout_type === l.value"
-              (click)="form.get('layout_type')!.setValue(l.value)"
-            >
-              <div class="layout-demo">
-                <ng-container *ngIf="l.value === 'topbar'">
-                  <div class="ldemo-topbar"
-                    [style.background]="v.gradient_enabled
-                      ? 'linear-gradient(90deg, ' + v.primary_color + ', ' + v.secondary_color + ')'
-                      : v.primary_color"
-                  ></div>
-                  <div class="ldemo-body">
-                    <div class="ldemo-content"></div>
-                    <div class="ldemo-content ldemo-content-sm"></div>
-                  </div>
-                </ng-container>
-                <ng-container *ngIf="l.value === 'sidebar'">
-                  <div class="ldemo-with-sidebar">
-                    <div class="ldemo-sidebar"
-                      [style.background]="v.gradient_enabled
-                        ? 'linear-gradient(180deg, ' + v.primary_color + ', ' + v.secondary_color + ')'
-                        : v.primary_color"
-                    ></div>
-                    <div class="ldemo-sbody">
+            @for (l of layoutOptions; track l.value) {
+              <button type="button" class="layout-option" [class.selected]="v.layout_type === l.value" (click)="form.get('layout_type')!.setValue(l.value)">
+                <div class="layout-demo">
+                  @if (l.value === 'topbar') {
+                    <div class="ldemo-topbar" [style.background]="v.gradient_enabled ? 'linear-gradient(90deg, ' + v.primary_color + ', ' + v.secondary_color + ')' : v.primary_color"></div>
+                    <div class="ldemo-body">
                       <div class="ldemo-content"></div>
                       <div class="ldemo-content ldemo-content-sm"></div>
                     </div>
-                  </div>
-                </ng-container>
-              </div>
-              <span class="layout-label">{{ l.label }}</span>
-            </button>
+                  }
+                  @if (l.value === 'sidebar') {
+                    <div class="ldemo-with-sidebar">
+                      <div class="ldemo-sidebar" [style.background]="v.gradient_enabled ? 'linear-gradient(180deg, ' + v.primary_color + ', ' + v.secondary_color + ')' : v.primary_color"></div>
+                      <div class="ldemo-sbody">
+                        <div class="ldemo-content"></div>
+                        <div class="ldemo-content ldemo-content-sm"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <span class="layout-label">{{ l.label }}</span>
+              </button>
+            }
           </div>
         </div>
       </section>
 
       <!-- Actions -->
       <div class="actions-row">
-        <button class="btn-ghost" (click)="resetar()" [disabled]="salvando">
-          Restaurar padrão
-        </button>
+        <button class="btn-ghost" (click)="resetar()" [disabled]="salvando">Restaurar padrão</button>
         <button class="btn-primary" (click)="salvar()" [disabled]="salvando">
-          <span class="btn-spinner" *ngIf="salvando"></span>
+          @if (salvando) { <span class="btn-spinner"></span> }
           {{ salvando ? 'Salvando...' : 'Salvar tema' }}
         </button>
       </div>
 
-      <div class="msg msg-success" *ngIf="sucesso">✅ Tema salvo e aplicado com sucesso!</div>
-      <div class="msg msg-error"   *ngIf="erro">⚠️ {{ erro }}</div>
+      @if (sucesso) { <div class="msg msg-success">Tema salvo e aplicado com sucesso!</div> }
+      @if (erro)    { <div class="msg msg-error">{{ erro }}</div> }
 
     </div>
 
     <!-- ── Right: Preview + Per-Page Customization ── -->
     <div class="preview-panel">
 
-      <!-- Page tabs -->
       <div class="preview-label">Pré-visualização por página</div>
       <div class="page-tabs">
-        <button
-          *ngFor="let tab of PAGE_TABS"
-          type="button"
-          class="page-tab"
-          [class.active]="selectedPage() === tab.key"
-          (click)="selectPage(tab.key)"
-        >
-          <span class="page-tab-icon">{{ tab.icon }}</span>
-          <span class="page-tab-label">{{ tab.label }}</span>
-          <span class="page-tab-dot" *ngIf="tab.key !== 'global' && hasOverrideForPage(tab.key)"></span>
-        </button>
-      </div>
-
-      <!-- Per-page override form (visible when any page other than global is selected) -->
-      <div class="page-override-card" *ngIf="selectedPage() !== 'global'" [formGroup]="pageForm">
-        <div class="page-override-header">
-          <span class="page-override-title">Personalizar — {{ selectedPage() | titlecase }}</span>
-          <button type="button" class="btn-clear-override" (click)="clearPageOverride()" *ngIf="hasPageOverride" title="Remover override">
-            Limpar
+        @for (tab of PAGE_TABS; track tab.key) {
+          <button type="button" class="page-tab" [class.active]="selectedPage() === tab.key" (click)="selectPage(tab.key)">
+            <span class="page-tab-label">{{ tab.label }}</span>
+            @if (tab.key !== 'global' && hasOverrideForPage(tab.key)) { <span class="page-tab-dot"></span> }
           </button>
-        </div>
-        <p class="page-override-hint">Deixe em branco para herdar do tema global.</p>
-
-        <div class="page-override-fields">
-
-          <div class="color-field">
-            <label>Cor Primária</label>
-            <div class="color-input-row">
-              <div class="color-swatch-wrap">
-                <input type="color" [value]="pageForm.get('primary_color')!.value || v.primary_color"
-                  (input)="setPageColor('primary_color', $event)" class="color-picker" />
-                <span class="swatch" [style.background]="pageForm.get('primary_color')!.value || v.primary_color"></span>
-              </div>
-              <input type="text" formControlName="primary_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
-            </div>
-          </div>
-
-          <div class="color-field">
-            <label>Cor Secundária</label>
-            <div class="color-input-row">
-              <div class="color-swatch-wrap">
-                <input type="color" [value]="pageForm.get('secondary_color')!.value || v.secondary_color"
-                  (input)="setPageColor('secondary_color', $event)" class="color-picker" />
-                <span class="swatch" [style.background]="pageForm.get('secondary_color')!.value || v.secondary_color"></span>
-              </div>
-              <input type="text" formControlName="secondary_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
-            </div>
-          </div>
-
-          <div class="color-field">
-            <label>Cor de Fundo</label>
-            <div class="color-input-row">
-              <div class="color-swatch-wrap">
-                <input type="color" [value]="pageForm.get('background_color')!.value || v.background_color"
-                  (input)="setPageColor('background_color', $event)" class="color-picker" />
-                <span class="swatch" [style.background]="pageForm.get('background_color')!.value || v.background_color"></span>
-              </div>
-              <input type="text" formControlName="background_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
-            </div>
-          </div>
-
-          <div class="field-group">
-            <span class="field-label">Arredondamento</span>
-            <div class="radius-picker radius-picker--sm">
-              <button *ngFor="let r of radiusOptions" type="button" class="radius-option"
-                [class.selected]="pageForm.get('border_radius')!.value === r.value"
-                (click)="pageForm.get('border_radius')!.setValue(r.value)">
-                <span class="radius-demo" [style.border-radius]="r.value"
-                  [style.background]="pageForm.get('primary_color')!.value || v.primary_color"></span>
-                <span>{{ r.label }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <span class="field-label">Sombras</span>
-            <div class="segment-control">
-              <button *ngFor="let s of shadowOptions" type="button" class="segment-btn"
-                [class.active]="pageForm.get('shadow_level')!.value === s.value"
-                (click)="pageForm.get('shadow_level')!.setValue(s.value)">
-                {{ s.label }}
-              </button>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <div class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Gradiente</span>
-                <span class="toggle-desc">Estilo gradiente nesta página</span>
-              </div>
-              <label class="fx-toggle">
-                <input type="checkbox" formControlName="gradient_enabled" class="fx-toggle-input" />
-                <span class="fx-toggle-track"><span class="fx-toggle-thumb"></span></span>
-              </label>
-            </div>
-          </div>
-
-        </div>
+        }
       </div>
 
-      <!-- Isolated page preview using PagePreviewComponent -->
-      <div class="page-preview-wrapper">
-        <app-page-preview
-          *ngIf="selectedPage() !== 'global'"
-          [page]="pageNameForPreview"
-          [theme]="previewTheme"
-        ></app-page-preview>
-      </div>
+      @if (selectedPage() !== 'global') {
+        <div class="page-override-card" [formGroup]="pageForm">
+          <div class="page-override-header">
+            <span class="page-override-title">Personalizar — {{ selectedPage() | titlecase }}</span>
+            @if (hasPageOverride) {
+              <button type="button" class="btn-clear-override" (click)="clearPageOverride()" title="Remover override">Limpar</button>
+            }
+          </div>
+          <p class="page-override-hint">Deixe em branco para herdar do tema global.</p>
+          <div class="page-override-fields">
+            <div class="color-field">
+              <label>Cor Primária</label>
+              <div class="color-input-row">
+                <div class="color-swatch-wrap">
+                  <input type="color" [value]="pageForm.get('primary_color')!.value || v.primary_color" (input)="setPageColor('primary_color', $event)" class="color-picker" />
+                  <span class="swatch" [style.background]="pageForm.get('primary_color')!.value || v.primary_color"></span>
+                </div>
+                <input type="text" formControlName="primary_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
+              </div>
+            </div>
+            <div class="color-field">
+              <label>Cor Secundária</label>
+              <div class="color-input-row">
+                <div class="color-swatch-wrap">
+                  <input type="color" [value]="pageForm.get('secondary_color')!.value || v.secondary_color" (input)="setPageColor('secondary_color', $event)" class="color-picker" />
+                  <span class="swatch" [style.background]="pageForm.get('secondary_color')!.value || v.secondary_color"></span>
+                </div>
+                <input type="text" formControlName="secondary_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
+              </div>
+            </div>
+            <div class="color-field">
+              <label>Cor de Fundo</label>
+              <div class="color-input-row">
+                <div class="color-swatch-wrap">
+                  <input type="color" [value]="pageForm.get('background_color')!.value || v.background_color" (input)="setPageColor('background_color', $event)" class="color-picker" />
+                  <span class="swatch" [style.background]="pageForm.get('background_color')!.value || v.background_color"></span>
+                </div>
+                <input type="text" formControlName="background_color" class="hex-input" maxlength="7" placeholder="Herdar do global" spellcheck="false" />
+              </div>
+            </div>
+            <div class="field-group">
+              <span class="field-label">Arredondamento</span>
+              <div class="radius-picker radius-picker--sm">
+                @for (r of radiusOptions; track r.value) {
+                  <button type="button" class="radius-option" [class.selected]="pageForm.get('border_radius')!.value === r.value" (click)="pageForm.get('border_radius')!.setValue(r.value)">
+                    <span class="radius-demo" [style.border-radius]="r.value" [style.background]="pageForm.get('primary_color')!.value || v.primary_color"></span>
+                    <span>{{ r.label }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="field-group">
+              <span class="field-label">Sombras</span>
+              <div class="segment-control">
+                @for (s of shadowOptions; track s.value) {
+                  <button type="button" class="segment-btn" [class.active]="pageForm.get('shadow_level')!.value === s.value" (click)="pageForm.get('shadow_level')!.setValue(s.value)">{{ s.label }}</button>
+                }
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-title">Gradiente</span>
+                  <span class="toggle-desc">Estilo gradiente nesta página</span>
+                </div>
+                <label class="fx-toggle">
+                  <input type="checkbox" formControlName="gradient_enabled" class="fx-toggle-input" />
+                  <span class="fx-toggle-track"><span class="fx-toggle-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
 
-      <!-- Legacy full preview: shown only on "global" tab -->
-      <ng-container *ngIf="selectedPage() === 'global'">
+      @if (selectedPage() !== 'global') {
+        <div class="page-preview-wrapper">
+          <app-page-preview [page]="pageNameForPreview" [theme]="previewTheme"></app-page-preview>
+        </div>
+      }
 
-      <div
-        class="preview-card"
-        [style.background-color]="v.background_color"
-        [style.font-family]="v.font_family"
-      >
+      @if (selectedPage() === 'global') {
+        <div class="preview-card" [style.background-color]="v.background_color" [style.font-family]="v.font_family">
         <!-- Mock header -->
         <div class="mock-header"
           [style.background]="v.gradient_enabled
@@ -554,13 +423,8 @@
             : v.primary_color"
         >
           <div class="mock-brand">
-            <img
-              *ngIf="previewLogo"
-              [src]="previewLogo"
-              alt="logo"
-              class="mock-logo-img"
-            />
-            <div *ngIf="!previewLogo" class="mock-logo-placeholder">LOGO</div>
+            @if (previewLogo) { <img [src]="previewLogo" alt="logo" class="mock-logo-img" /> }
+            @else { <div class="mock-logo-placeholder">LOGO</div> }
             <span class="mock-brand-name">Cursaas EAD</span>
           </div>
           <div class="mock-nav">
@@ -631,18 +495,10 @@
       </div>
 
       <!-- Dark mode preview -->
-      <ng-container *ngIf="v.dark_mode">
+      @if (v.dark_mode) {
         <div class="preview-label preview-label-dark">Pré-visualização — Modo Escuro</div>
-        <div
-          class="preview-card preview-card-dark"
-          [style.background-color]="v.dark_background_color"
-          [style.font-family]="v.font_family"
-        >
-          <div class="mock-header"
-            [style.background]="v.gradient_enabled
-              ? 'linear-gradient(135deg, ' + v.dark_primary_color + ' 0%, ' + v.dark_secondary_color + ' 100%)'
-              : v.dark_primary_color"
-          >
+        <div class="preview-card preview-card-dark" [style.background-color]="v.dark_background_color" [style.font-family]="v.font_family">
+          <div class="mock-header" [style.background]="v.gradient_enabled ? 'linear-gradient(135deg, ' + v.dark_primary_color + ' 0%, ' + v.dark_secondary_color + ' 100%)' : v.dark_primary_color">
             <div class="mock-brand">
               <div class="mock-logo-placeholder">LOGO</div>
               <span class="mock-brand-name">Cursaas EAD</span>
@@ -654,20 +510,11 @@
           </div>
           <div class="mock-body">
             <div class="mock-hero-tag" [style.color]="v.dark_secondary_color">Portal EAD</div>
-            <div class="mock-hero-title" [style.color]="v.dark_primary_color">
-              Bem-vindo à sua plataforma
-            </div>
+            <div class="mock-hero-title" [style.color]="v.dark_primary_color">Bem-vindo à sua plataforma</div>
             <div class="mock-hero-sub" style="color:#94a3b8">Educação online com qualidade e praticidade</div>
             <div class="mock-btns">
-              <button class="mock-btn mock-btn-filled"
-                [style.background-color]="v.dark_primary_color"
-                [style.border-radius]="v.border_radius"
-              >Ver cursos</button>
-              <button class="mock-btn mock-btn-outline"
-                [style.color]="v.dark_secondary_color"
-                [style.border-color]="v.dark_secondary_color"
-                [style.border-radius]="v.border_radius"
-              >Saiba mais</button>
+              <button class="mock-btn mock-btn-filled" [style.background-color]="v.dark_primary_color" [style.border-radius]="v.border_radius">Ver cursos</button>
+              <button class="mock-btn mock-btn-outline" [style.color]="v.dark_secondary_color" [style.border-color]="v.dark_secondary_color" [style.border-radius]="v.border_radius">Saiba mais</button>
             </div>
             <div class="palette">
               <div class="palette-chip palette-chip-dark">
@@ -685,11 +532,11 @@
             </div>
           </div>
         </div>
-      </ng-container>
-
-      </ng-container><!-- /selectedPage === 'global' -->
+      }
+      }<!-- /selectedPage === 'global' -->
 
     </div>
 
   </div>
+}
 </div>

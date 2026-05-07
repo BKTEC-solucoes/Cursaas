@@ -39,142 +39,149 @@ interface Video {
   standalone: true,
   imports: [CommonModule, FormsModule, RichTextEditorComponent],
   template: `
-    <div class="page-container">
-      <div class="page-header">
-        <h2>Gerenciar Aulas & Vídeos</h2>
+    <div class="content-page">
+      <div class="page-topbar">
+        <h1>Gerenciar Aulas & Vídeos</h1>
         <button class="btn-primary" (click)="abrirFormulario()">+ Nova Aula</button>
       </div>
 
-      <div class="aulas-table" *ngIf="aulas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Título</th>
-              <th>Duração</th>
-              <th>Data</th>
-              <th>Vídeo</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let aula of aulas">
-              <td class="aula-titulo">{{ aula.titulo }}</td>
-              <td>{{ aula.duracao_minutos }}min</td>
-              <td>{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td>
-                <span class="video-status" *ngIf="aula.videos && aula.videos.length > 0" style="color: #28A745;">
-                  ✓ Sim
-                </span>
-                <span class="video-status" *ngIf="!aula.videos || aula.videos.length === 0" style="color: #999;">
-                  ✗ Não
-                </span>
-              </td>
-              <td class="actions">
-                <button class="btn-sm btn-view" title="Ver Aula" (click)="verAula(aula)">👁️</button>
-                <button class="btn-sm btn-edit" title="Editar" (click)="editarAula(aula)">✏️</button>
-                <button class="btn-sm btn-video" title="Upload de Vídeo" (click)="abrirUploadVideo(aula)">🎥</button>
-                <button class="btn-sm btn-delete" title="Deletar" (click)="deletarAula(aula)">🗑️</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando aulas...</p></div>
+      }
 
-      <div class="no-data" *ngIf="aulas.length === 0 && !carregando">
-        <p>Nenhuma aula criada ainda. Clique em "Nova Aula" para começar.</p>
-      </div>
+      @if (erro) {
+        <div class="msg msg--error">{{ erro }} <button (click)="carregarAulas()">Tentar novamente</button></div>
+      }
 
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando aulas...</p>
-      </div>
+      @if (!carregando && aulas.length > 0) {
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Duração</th>
+                <th>Data</th>
+                <th>Vídeo</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (aula of aulas; track aula.id) {
+                <tr>
+                  <td class="cell-strong">{{ aula.titulo }}</td>
+                  <td class="col-muted">{{ aula.duracao_minutos }}min</td>
+                  <td class="col-date">{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>
+                    @if (aula.videos && aula.videos.length > 0) {
+                      <span class="badge badge--success">Sim</span>
+                    } @else {
+                      <span class="badge badge--muted">Não</span>
+                    }
+                  </td>
+                  <td class="cell-actions">
+                    <button class="btn-icon btn-icon--view" title="Ver detalhes" (click)="verAula(aula)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon--edit" title="Editar" (click)="editarAula(aula)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon--video" title="Upload de vídeo" (click)="abrirUploadVideo(aula)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon--delete" title="Deletar" (click)="deletarAula(aula)">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
-      <div class="error" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarAulas()">Tentar novamente</button>
-      </div>
+      @if (!carregando && aulas.length === 0 && !erro) {
+        <div class="empty-state">
+          <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <p>Nenhuma aula criada ainda. Clique em "Nova Aula" para começar.</p>
+        </div>
+      }
+    </div>
 
-      <!-- Modal Ver Aula -->
-      <div class="modal-overlay" *ngIf="modalVerAberto" (click)="fecharVerAula()">
-        <div class="modal-content modal-content-lg" (click)="$event.stopPropagation()">
+    @if (modalVerAberto) {
+      <div class="modal-overlay" (click)="fecharVerAula()">
+        <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h3>👁️ Detalhes da Aula</h3>
-            <button class="btn-close" (click)="fecharVerAula()">✕</button>
+            <h3>Detalhes da Aula</h3>
+            <button class="modal-close-btn" (click)="fecharVerAula()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-          <div class="modal-body" *ngIf="aulaDetalhes">
-            <div class="detalhe-info">
-              <div class="detalhe-row">
-                <span class="detalhe-label">Título</span>
-                <span class="detalhe-valor">{{ aulaDetalhes.titulo }}</span>
-              </div>
-              <div class="detalhe-row" *ngIf="aulaDetalhes.descricao">
-                <span class="detalhe-label">Descrição</span>
-                <span class="detalhe-valor rich-content" [innerHTML]="renderDescricao(aulaDetalhes.descricao)"></span>
-              </div>
-              <div class="detalhe-row">
-                <span class="detalhe-label">Data</span>
-                <span class="detalhe-valor">{{ aulaDetalhes.data_aula | date:'dd/MM/yyyy HH:mm' }}</span>
-              </div>
-              <div class="detalhe-row" *ngIf="aulaDetalhes.duracao_minutos">
-                <span class="detalhe-label">Duração</span>
-                <span class="detalhe-valor">{{ aulaDetalhes.duracao_minutos }} minutos</span>
-              </div>
-              <div class="detalhe-row">
-                <span class="detalhe-label">Status</span>
-                <span class="detalhe-valor">
-                  <span class="badge" [ngClass]="aulaDetalhes.ativo ? 'badge-ativo' : 'badge-inativo'">
-                    {{ aulaDetalhes.ativo ? '✓ Ativa' : '✗ Inativa' }}
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            <div class="videos-section">
-              <h4>🎥 Vídeos ({{ aulaDetalhes.videos.length }})</h4>
-
-              <div class="sem-video" *ngIf="!aulaDetalhes.videos || aulaDetalhes.videos.length === 0">
-                <p>Nenhum vídeo enviado para esta aula.</p>
-                <button class="btn-primary" style="margin-top:8px;" (click)="abrirUploadVideo(aulaDetalhes!); fecharVerAula()">🎥 Enviar Vídeo</button>
+          <div class="modal-body">
+            @if (carregandoDetalhes) {
+              <div class="loading-state"><div class="spinner"></div><p>Carregando detalhes...</p></div>
+            }
+            @if (!carregandoDetalhes && aulaDetalhes) {
+              <div class="info-grid">
+                <div class="info-row"><span class="info-label">Título</span><span>{{ aulaDetalhes.titulo }}</span></div>
+                <div class="info-row"><span class="info-label">Data</span><span>{{ aulaDetalhes.data_aula | date:'dd/MM/yyyy HH:mm' }}</span></div>
+                @if (aulaDetalhes.duracao_minutos) {
+                  <div class="info-row"><span class="info-label">Duração</span><span>{{ aulaDetalhes.duracao_minutos }} minutos</span></div>
+                }
+                @if (aulaDetalhes.descricao) {
+                  <div class="info-row span2"><span class="info-label">Descrição</span><div class="rich-content" [innerHTML]="renderDescricao(aulaDetalhes.descricao)"></div></div>
+                }
               </div>
 
-              <div class="video-item" *ngFor="let v of aulaDetalhes.videos">
-                <div class="video-player-wrap">
-                  <video controls [src]="getVideoUrl(v.caminho_arquivo)" class="video-player" preload="metadata">
-                    Seu navegador não suporta reprodução de vídeo.
-                  </video>
-                </div>
-                <div class="video-meta">
-                  <span><strong>Arquivo:</strong> {{ v.arquivo_nome }}</span>
-                  <span *ngIf="v.tamanho_bytes"><strong>Tamanho:</strong> {{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span>
-                  <span *ngIf="v.duracao_segundos"><strong>Duração:</strong> {{ formatarDuracao(v.duracao_segundos) }}</span>
-                  <span *ngIf="v.formato"><strong>Formato:</strong> {{ v.formato }}</span>
-                  <span><strong>Upload:</strong> {{ v.data_upload | date:'dd/MM/yyyy HH:mm' }}</span>
-                  <span class="badge" [ngClass]="v.status === 'ativo' ? 'badge-ativo' : 'badge-inativo'">{{ v.status }}</span>
-                </div>
+              <div class="videos-section">
+                <h4>Vídeos ({{ aulaDetalhes.videos?.length || 0 }})</h4>
+                @if (!aulaDetalhes.videos || aulaDetalhes.videos.length === 0) {
+                  <div class="empty-videos">
+                    <p>Nenhum vídeo enviado para esta aula.</p>
+                    <button class="btn-primary" (click)="abrirUploadVideo(aulaDetalhes!); fecharVerAula()">Upload de Vídeo</button>
+                  </div>
+                } @else {
+                  @for (v of aulaDetalhes.videos; track v.id) {
+                    <div class="video-item">
+                      <div class="video-player-wrap">
+                        <video controls [src]="getVideoUrl(v.caminho_arquivo)" class="video-player" preload="metadata">Seu navegador não suporta reprodução de vídeo.</video>
+                      </div>
+                      <div class="video-meta">
+                        <span><strong>Arquivo:</strong> {{ v.arquivo_nome }}</span>
+                        @if (v.tamanho_bytes) { <span><strong>Tamanho:</strong> {{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span> }
+                        @if (v.duracao_segundos) { <span><strong>Duração:</strong> {{ formatarDuracao(v.duracao_segundos) }}</span> }
+                        @if (v.formato) { <span><strong>Formato:</strong> {{ v.formato }}</span> }
+                        <span><strong>Upload:</strong> {{ v.data_upload | date:'dd/MM/yyyy HH:mm' }}</span>
+                        <span class="badge" [class]="v.status === 'ativo' ? 'badge--success' : 'badge--danger'">{{ v.status }}</span>
+                      </div>
+                    </div>
+                  }
+                }
               </div>
-            </div>
+            }
           </div>
-          <div class="loading" *ngIf="carregandoDetalhes" style="padding: 40px;">
-            <div class="spinner"></div>
-            <p>Carregando detalhes...</p>
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharVerAula()">Fechar</button>
           </div>
         </div>
       </div>
+    }
 
-      <!-- Modal Nova Aula -->
-      <div class="modal-overlay" *ngIf="modalNovaAulaAberto" (click)="fecharNovaAula()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+    @if (modalNovaAulaAberto) {
+      <div class="modal-overlay" (click)="fecharNovaAula()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h3>📚 Nova Aula</h3>
-            <button class="btn-close" (click)="fecharNovaAula()">✕</button>
+            <h3>Nova Aula</h3>
+            <button class="modal-close-btn" (click)="fecharNovaAula()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <div class="modal-body">
-            <form (ngSubmit)="salvarNovaAula()">
+            <form (ngSubmit)="salvarNovaAula()" #fNova="ngForm">
               <div class="form-row">
                 <label>Curso *</label>
                 <select [(ngModel)]="formNovaAula.curso_id" name="curso_id" required>
                   <option [ngValue]="null" disabled>Selecione um curso...</option>
-                  <option *ngFor="let c of cursos" [ngValue]="c.id">{{ c.nome }}</option>
+                  @for (c of cursos; track c.id) { <option [ngValue]="c.id">{{ c.nome }}</option> }
                 </select>
               </div>
               <div class="form-row">
@@ -183,78 +190,71 @@ interface Video {
               </div>
               <div class="form-row">
                 <label>Descrição</label>
-                <app-rich-text-editor
-                  [content]="formNovaAula.descricao"
-                  placeholder="Conteúdo da aula..."
-                  (contentChange)="formNovaAula.descricao = $event"
-                />
+                <app-rich-text-editor [content]="formNovaAula.descricao" placeholder="Conteúdo da aula..." (contentChange)="formNovaAula.descricao = $event" />
               </div>
               <div class="form-row">
-                <label>Data e Hora da Aula *</label>
+                <label>Data e Hora *</label>
                 <input type="datetime-local" [(ngModel)]="formNovaAula.data_aula" name="data_aula" required />
               </div>
               <div class="form-row">
                 <label>Duração (minutos)</label>
                 <input type="number" [(ngModel)]="formNovaAula.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
               </div>
-              <div class="form-error" *ngIf="erroNovaAula">{{ erroNovaAula }}</div>
-              <div class="modal-footer" style="padding: 16px 0 0 0; border-top: 1px solid #eee; margin-top: 16px;">
-                <button type="button" class="btn-cancelar" (click)="fecharNovaAula()" [disabled]="criandoNovaAula">Cancelar</button>
-                <button type="submit" class="btn-enviar" [disabled]="criandoNovaAula">{{ criandoNovaAula ? 'Salvando...' : '💾 Salvar Aula' }}</button>
+              @if (erroNovaAula) { <div class="form-error">{{ erroNovaAula }}</div> }
+              <div class="modal-footer-inner">
+                <button type="button" class="btn-outline" (click)="fecharNovaAula()" [disabled]="criandoNovaAula">Cancelar</button>
+                <button type="submit" class="btn-primary" [disabled]="criandoNovaAula">{{ criandoNovaAula ? 'Salvando...' : 'Salvar Aula' }}</button>
               </div>
             </form>
           </div>
         </div>
       </div>
+    }
 
-      <!-- Modal Editar Aula -->
-      <div class="modal-overlay" *ngIf="modalEditarAberto" (click)="fecharEdicaoAula()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+    @if (modalEditarAberto) {
+      <div class="modal-overlay" (click)="fecharEdicaoAula()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h3>✏️ Editar Aula</h3>
-            <button class="btn-close" (click)="fecharEdicaoAula()">✕</button>
+            <h3>Editar Aula</h3>
+            <button class="modal-close-btn" (click)="fecharEdicaoAula()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <div class="modal-body">
-
-            <!-- Seção de Vídeo Atual -->
-            <div class="video-atual-section" *ngIf="aulaEmEdicao && aulaEmEdicao.videos && aulaEmEdicao.videos.length > 0">
-              <h4>🎥 Vídeo Atual</h4>
-              <div class="video-atual-item" *ngFor="let v of aulaEmEdicao.videos">
-                <div class="video-atual-info">
-                  <span class="video-nome">📹 {{ v.arquivo_nome }}</span>
-                  <span class="video-tamanho" *ngIf="v.tamanho_bytes">{{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span>
-                </div>
-                <button class="btn-excluir-video"
-                  (click)="excluirVideo(aulaEmEdicao!, v)"
-                  [disabled]="excluindoVideoId === v.id"
-                  title="Excluir vídeo">
-                  {{ excluindoVideoId === v.id ? 'Excluindo...' : '🗑️ Excluir Vídeo' }}
-                </button>
+            @if (aulaEmEdicao && aulaEmEdicao.videos && aulaEmEdicao.videos.length > 0) {
+              <div class="video-atual-section">
+                <h4>Vídeo Atual</h4>
+                @for (v of aulaEmEdicao.videos; track v.id) {
+                  <div class="video-atual-item">
+                    <div class="video-atual-info">
+                      <span class="video-nome">{{ v.arquivo_nome }}</span>
+                      @if (v.tamanho_bytes) { <span class="video-size">{{ (v.tamanho_bytes / 1024 / 1024).toFixed(2) }} MB</span> }
+                    </div>
+                    <button class="btn-del-video" (click)="excluirVideo(aulaEmEdicao!, v)" [disabled]="excluindoVideoId === v.id">
+                      {{ excluindoVideoId === v.id ? 'Excluindo...' : 'Excluir Vídeo' }}
+                    </button>
+                  </div>
+                }
+                @if (erroExcluirVideo) { <div class="form-error">{{ erroExcluirVideo }}</div> }
+                <hr class="divisor" />
               </div>
-              <div class="form-error" *ngIf="erroExcluirVideo">{{ erroExcluirVideo }}</div>
-              <hr class="divisor" />
-            </div>
-
+            }
             <form (ngSubmit)="salvarEdicaoAula()">
               <div class="form-row">
                 <label>Título *</label>
-                <input type="text" [(ngModel)]="formEdicao.titulo" name="titulo" required placeholder="Título da aula" />
+                <input type="text" [(ngModel)]="formEdicao.titulo" name="titulo" required />
               </div>
               <div class="form-row">
                 <label>Descrição</label>
-                <app-rich-text-editor
-                  [content]="formEdicao.descricao"
-                  placeholder="Conteúdo da aula..."
-                  (contentChange)="formEdicao.descricao = $event"
-                />
+                <app-rich-text-editor [content]="formEdicao.descricao" placeholder="Conteúdo da aula..." (contentChange)="formEdicao.descricao = $event" />
               </div>
               <div class="form-row">
-                <label>Data e Hora da Aula *</label>
+                <label>Data e Hora *</label>
                 <input type="datetime-local" [(ngModel)]="formEdicao.data_aula" name="data_aula" required />
               </div>
               <div class="form-row">
                 <label>Duração (minutos)</label>
-                <input type="number" [(ngModel)]="formEdicao.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+                <input type="number" [(ngModel)]="formEdicao.duracao_minutos" name="duracao_minutos" min="1" />
               </div>
               <div class="form-row">
                 <label>Status</label>
@@ -263,693 +263,174 @@ interface Video {
                   <option [ngValue]="false">Inativa</option>
                 </select>
               </div>
-              <div class="form-error" *ngIf="erroEdicaoAula">{{ erroEdicaoAula }}</div>
-              <div class="modal-footer" style="padding: 16px 0 0 0; border-top: 1px solid #eee; margin-top: 16px;">
-                <button type="button" class="btn-cancelar" (click)="fecharEdicaoAula()" [disabled]="salvandoEdicao">Cancelar</button>
-                <button type="submit" class="btn-enviar" [disabled]="salvandoEdicao">{{ salvandoEdicao ? 'Salvando...' : '💾 Salvar' }}</button>
+              @if (erroEdicaoAula) { <div class="form-error">{{ erroEdicaoAula }}</div> }
+              <div class="modal-footer-inner">
+                <button type="button" class="btn-outline" (click)="fecharEdicaoAula()" [disabled]="salvandoEdicao">Cancelar</button>
+                <button type="submit" class="btn-primary" [disabled]="salvandoEdicao">{{ salvandoEdicao ? 'Salvando...' : 'Salvar' }}</button>
               </div>
             </form>
           </div>
         </div>
       </div>
+    }
 
-      <!-- Modal Upload Vídeo -->
-      <div class="modal-overlay" *ngIf="modalUploadAberto" (click)="fecharModalUpload()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+    @if (modalUploadAberto) {
+      <div class="modal-overlay" (click)="fecharModalUpload()">
+        <div class="modal-card" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3>Upload de Vídeo</h3>
-            <button class="btn-close" (click)="fecharModalUpload()">✕</button>
+            <button class="modal-close-btn" (click)="fecharModalUpload()">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-
           <div class="modal-body">
-            <p class="aula-nome" *ngIf="aulaParaUpload"><strong>Aula:</strong> {{ aulaParaUpload.titulo }}</p>
-
-            <div class="upload-area" 
-              [class.dragover]="dragover"
-              (dragover)="onDragOver($event)"
-              (dragleave)="onDragLeave($event)"
-              (drop)="onFileDrop($event)">
-              
-              <div class="upload-content">
-                <span class="upload-icon">📹</span>
-                <p><strong>Arraste um vídeo aqui</strong></p>
-                <p class="small">ou</p>
-                <label class="btn-selecionar">
-                  <span>Selecione um arquivo</span>
-                  <input type="file" 
-                    #fileInput
-                    (change)="onFileSelected($event)" 
-                    accept="video/*" 
-                    style="display: none;">
-                </label>
+            @if (aulaParaUpload) {
+              <p class="upload-aula-nome"><strong>Aula:</strong> {{ aulaParaUpload.titulo }}</p>
+            }
+            <div class="upload-zone" [class.dragover]="dragover" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onFileDrop($event)">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+              <p>Arraste um vídeo aqui ou</p>
+              <label class="btn-select-file">
+                Selecionar Arquivo
+                <input type="file" #fileInput (change)="onFileSelected($event)" accept="video/*" style="display:none" />
+              </label>
+              <small>MP4, WebM, AVI, MOV — máx. 500 MB</small>
+            </div>
+            @if (arquivoSelecionado) {
+              <div class="file-info">
+                <p><strong>{{ arquivoSelecionado.name }}</strong></p>
+                <p class="muted">{{ (arquivoSelecionado.size / 1024 / 1024).toFixed(2) }} MB</p>
               </div>
-
-              <p class="formatos-suportados">
-                <small>Formatos suportados: MP4, WebM, AVI, MOV (máx 500 MB)</small>
-              </p>
-            </div>
-
-            <div class="arquivo-selecionado" *ngIf="arquivoSelecionado">
-              <p><strong>Arquivo:</strong> {{ arquivoSelecionado.name }}</p>
-              <p><strong>Tamanho:</strong> {{ (arquivoSelecionado.size / 1024 / 1024).toFixed(2) }} MB</p>
-            </div>
-
-            <div class="progresso-upload" *ngIf="uploadEmProgresso">
-              <div class="progress-bar">
-                <div class="progress" [style.width.%]="percentualUpload"></div>
+            }
+            @if (uploadEmProgresso) {
+              <div class="upload-progress">
+                <div class="progress-bar"><div class="progress-fill" [style.width.%]="percentualUpload"></div></div>
+                <p>{{ percentualUpload }}% enviando...</p>
               </div>
-              <p>{{ percentualUpload }}% - Enviando...</p>
-            </div>
-
-            <div class="success-message" *ngIf="uploadSucesso">
-              <p>✓ Vídeo enviado com sucesso!</p>
-            </div>
-
-            <div class="error-message" *ngIf="erroUpload">
-              <p>✗ {{ erroUpload }}</p>
-            </div>
+            }
+            @if (uploadSucesso) {
+              <div class="msg msg--success">Vídeo enviado com sucesso!</div>
+            }
+            @if (erroUpload) {
+              <div class="form-error">{{ erroUpload }}</div>
+            }
           </div>
-
           <div class="modal-footer">
-            <button class="btn-cancelar" (click)="fecharModalUpload()" [disabled]="uploadEmProgresso">
-              Cancelar
-            </button>
-            <button class="btn-enviar" 
-              (click)="enviarVideo()" 
-              [disabled]="!arquivoSelecionado || uploadEmProgresso">
-              {{ uploadEmProgresso ? 'Enviando...' : 'Enviar Vídeo' }}
-            </button>
+            <button class="btn-outline" (click)="fecharModalUpload()" [disabled]="uploadEmProgresso">Cancelar</button>
+            <button class="btn-primary" (click)="enviarVideo()" [disabled]="!arquivoSelecionado || uploadEmProgresso">{{ uploadEmProgresso ? 'Enviando...' : 'Enviar Vídeo' }}</button>
           </div>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
-    .page-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-      gap: 15px;
-    }
-
-    .page-header h2 {
-      margin: 0;
-      color: #333;
-    }
-
-    .btn-primary {
-      background-color: #e74c3c;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background-color 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-primary:hover {
-      background-color: #c0392b;
-    }
-
-    .aulas-table {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead {
-      background: #f5f5f5;
-      border-bottom: 2px solid #ddd;
-    }
-
-    th {
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      color: #333;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    td {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    tbody tr:hover {
-      background-color: #f9f9f9;
-    }
-
-    .aula-titulo {
-      font-weight: 600;
-      color: #333;
-    }
-
-    .video-status {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-sm {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px 8px;
-      transition: transform 0.2s;
-    }
-
-    .btn-sm:hover {
-      transform: scale(1.2);
-    }
-
-    .btn-edit { color: #3498db; }
-    .btn-video { color: #e74c3c; }
-    .btn-delete { color: #95a5a6; }
-    .btn-view { color: #8e44ad; }
-
-    .no-data {
-      background: white;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      color: #999;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #e74c3c;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 20px;
-      border: 1px solid #f5c6cb;
-      text-align: center;
-    }
-
-    .error button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .form-row {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 14px;
-    }
-
-    .form-row label {
-      font-weight: 600;
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: #333;
-    }
-
-    .form-row input,
-    .form-row textarea,
-    .form-row select {
-      padding: 8px 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: inherit;
-    }
-
-    .form-row textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    .form-error {
-      margin-top: 4px;
-      color: #721c24;
-      background: #f8d7da;
-      padding: 8px 10px;
-      border-radius: 4px;
-      border: 1px solid #f5c6cb;
-      font-size: 13px;
-    }
-
-    /* MODAL STYLES */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-content {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-content-lg {
-      max-width: 780px;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .modal-header h3 {
-      margin: 0;
-      color: #333;
-      font-size: 18px;
-    }
-
-    .btn-close {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: #999;
-      padding: 0;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-close:hover {
-      color: #333;
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .aula-nome {
-      margin: 0 0 20px 0;
-      color: #666;
-      font-size: 14px;
-    }
-
-    .detalhe-info {
-      background: #f8f9fa;
-      border-radius: 6px;
-      padding: 16px;
-      margin-bottom: 24px;
-    }
-
-    .detalhe-row {
-      display: flex;
-      gap: 12px;
-      padding: 6px 0;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-
-    .detalhe-row:last-child {
-      border-bottom: none;
-    }
-
-    .detalhe-label {
-      font-weight: 600;
-      color: #555;
-      min-width: 90px;
-    }
-
-    .detalhe-valor {
-      color: #333;
-    }
-
-    .videos-section h4 {
-      margin: 0 0 14px 0;
-      color: #333;
-      font-size: 16px;
-    }
-
-    .sem-video {
-      background: #f8f9fa;
-      border-radius: 6px;
-      padding: 24px;
-      text-align: center;
-      color: #999;
-    }
-
-    .video-item {
-      border: 1px solid #eee;
-      border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 16px;
-    }
-
-    .video-player-wrap {
-      background: #000;
-    }
-
-    .video-player {
-      width: 100%;
-      max-height: 360px;
-      display: block;
-    }
-
-    .video-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px 24px;
-      padding: 12px 14px;
-      background: #f8f9fa;
-      font-size: 13px;
-      color: #555;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .badge-ativo {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .badge-inativo {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    .video-atual-section {
-      margin-bottom: 20px;
-    }
-
-    .video-atual-section h4 {
-      margin: 0 0 10px 0;
-      font-size: 15px;
-      color: #333;
-    }
-
-    .video-atual-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      padding: 10px 14px;
-      flex-wrap: wrap;
-    }
-
-    .video-atual-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .video-nome {
-      font-size: 13px;
-      font-weight: 600;
-      color: #333;
-      word-break: break-all;
-    }
-
-    .video-tamanho {
-      font-size: 12px;
-      color: #888;
-    }
-
-    .btn-excluir-video {
-      background: #dc3545;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-      transition: background 0.2s;
-    }
-
-    .btn-excluir-video:hover:not(:disabled) {
-      background: #c82333;
-    }
-
-    .btn-excluir-video:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .divisor {
-      border: none;
-      border-top: 1px solid #eee;
-      margin: 16px 0;
-    }
-
-    .upload-area {
-      border: 2px dashed #ddd;
-      border-radius: 8px;
-      padding: 30px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 15px;
-    }
-
-    .upload-area:hover {
-      border-color: #e74c3c;
-      background-color: #ffe8e8;
-    }
-
-    .upload-area.dragover {
-      border-color: #e74c3c;
-      background-color: #ffe8e8;
-      transform: scale(1.02);
-    }
-
-    .upload-content {
-      margin-bottom: 15px;
-    }
-
-    .upload-icon {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 10px;
-    }
-
-    .upload-content p {
-      margin: 8px 0;
-      color: #333;
-    }
-
-    .upload-content p.small {
-      font-size: 12px;
-      color: #999;
-      margin: 5px 0;
-    }
-
-    .btn-selecionar {
-      display: inline-block;
-      background: #e74c3c;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-
-    .btn-selecionar:hover {
-      background-color: #c0392b;
-    }
-
-    .formatos-suportados {
-      margin: 10px 0 0 0;
-      color: #999;
-      font-size: 12px;
-    }
-
-    .arquivo-selecionado {
-      background: #f0f0f0;
-      padding: 15px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-    }
-
-    .arquivo-selecionado p {
-      margin: 5px 0;
-      color: #333;
-      font-size: 13px;
-    }
-
-    .progresso-upload {
-      margin-bottom: 15px;
-    }
-
-    .progress-bar {
-      height: 4px;
-      background: #f0f0f0;
-      border-radius: 2px;
-      overflow: hidden;
-      margin-bottom: 8px;
-    }
-
-    .progress {
-      height: 100%;
-      background: linear-gradient(90deg, #e74c3c, #c0392b);
-      transition: width 0.3s;
-    }
-
-    .progresso-upload p {
-      margin: 0;
-      color: #666;
-      font-size: 13px;
-    }
-
-    .success-message {
-      background: #d4edda;
-      color: #155724;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-      border: 1px solid #c3e6cb;
-    }
-
-    .success-message p {
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .error-message {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-      border: 1px solid #f5c6cb;
-    }
-
-    .error-message p {
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .modal-footer {
-      display: flex;
-      gap: 10px;
-      padding: 15px 20px;
-      border-top: 1px solid #eee;
-      justify-content: flex-end;
-    }
-
-    .btn-cancelar {
-      padding: 10px 20px;
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-
-    .btn-cancelar:hover:not(:disabled) {
-      background-color: #efefef;
-    }
-
-    .btn-cancelar:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-enviar {
-      padding: 10px 20px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-
-    .btn-enviar:hover:not(:disabled) {
-      background-color: #c0392b;
-    }
-
-    .btn-enviar:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 768px) {
-      table { font-size: 12px; }
-      th, td { padding: 10px; }
-      .actions { flex-direction: column; }
-      .modal-content { width: 95%; }
-    }
+    :host { display: block; }
+
+    .page-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; }
+    .page-topbar h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
+
+    .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: var(--radius); cursor: pointer; font-weight: 600; font-size: var(--font-size-sm); transition: opacity 0.15s; white-space: nowrap; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-outline { padding: 9px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text-muted); font-size: var(--font-size-sm); font-weight: 500; cursor: pointer; }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .loading-state, .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 24px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .msg { padding: 10px 14px; border-radius: var(--radius); font-size: var(--font-size-sm); }
+    .msg--error { background: color-mix(in srgb, var(--color-danger) 8%, transparent); color: var(--color-danger); border: 1px solid color-mix(in srgb, var(--color-danger) 20%, transparent); display: flex; align-items: center; gap: 10px; }
+    .msg--error button { background: none; border: none; color: var(--color-danger); cursor: pointer; font-weight: 600; text-decoration: underline; }
+    .msg--success { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent); }
+
+    .table-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm); }
+    table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); min-width: 600px; }
+    th { padding: 12px 14px; text-align: left; font-weight: 600; color: var(--color-text-muted); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--color-border); color: var(--color-text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--color-surface-2); }
+    .cell-strong { font-weight: 600; }
+    .col-muted { color: var(--color-text-muted); }
+    .col-date { font-size: 0.8125rem; color: var(--color-text-muted); }
+    .muted { color: var(--color-text-muted); }
+
+    .badge { display: inline-flex; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger) 15%, transparent);  color: var(--color-danger); }
+    .badge--muted   { background: var(--color-surface-2); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
+    .cell-actions { display: flex; gap: 6px; align-items: center; }
+    .btn-icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius); border: 1.5px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+    .btn-icon--view  { color: var(--color-info); }
+    .btn-icon--view:hover  { border-color: var(--color-info); background: color-mix(in srgb, var(--color-info) 8%, transparent); }
+    .btn-icon--edit  { color: var(--primary); }
+    .btn-icon--edit:hover  { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+    .btn-icon--video { color: var(--color-success); }
+    .btn-icon--video:hover { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+    .btn-icon--delete { color: var(--color-danger); }
+    .btn-icon--delete:hover { border-color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0 0 0 / 0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); max-width: 520px; width: 100%; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; max-height: 90vh; }
+    .modal-card--lg { max-width: 740px; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+    .modal-header h3 { margin: 0; font-size: var(--font-size-lg); color: var(--color-text); }
+    .modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius); line-height: 1; }
+    .modal-close-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+    .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--color-border); flex-shrink: 0; }
+    .modal-footer-inner { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+
+    /* Form */
+    .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .form-row label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-muted); }
+    .form-row input, .form-row select { padding: 9px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); outline: none; background: var(--color-surface-2); color: var(--color-text); font-family: inherit; }
+    .form-row input:focus, .form-row select:focus { border-color: var(--primary); background: var(--color-surface); }
+    .form-error { margin-top: 10px; padding: 10px 14px; background: color-mix(in srgb, var(--color-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent); border-radius: var(--radius); color: var(--color-danger); font-size: var(--font-size-sm); }
+
+    /* Info grid (Ver Aula) */
+    .info-grid { background: var(--color-surface-2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .info-row { display: flex; flex-direction: column; gap: 3px; font-size: var(--font-size-sm); }
+    .info-row.span2 { grid-column: span 2; }
+    .info-label { font-weight: 700; color: var(--color-text-muted); font-size: 0.75rem; text-transform: uppercase; }
+    .rich-content { color: var(--color-text); line-height: 1.6; }
+
+    /* Videos */
+    .videos-section h4 { margin: 0 0 12px; font-size: var(--font-size-base); color: var(--color-text); }
+    .empty-videos { background: var(--color-surface-2); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--color-text-muted); font-size: var(--font-size-sm); }
+    .empty-videos p { margin: 0 0 12px; }
+    .video-item { border: 1px solid var(--color-border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+    .video-player-wrap { background: #000; }
+    .video-player { width: 100%; max-height: 320px; display: block; }
+    .video-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 10px 14px; background: var(--color-surface-2); font-size: var(--font-size-sm); color: var(--color-text-muted); align-items: center; }
+
+    /* Video atual (editar) */
+    .video-atual-section { margin-bottom: 16px; }
+    .video-atual-section h4 { margin: 0 0 8px; font-size: var(--font-size-base); color: var(--color-text); }
+    .video-atual-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 10px 14px; flex-wrap: wrap; }
+    .video-atual-info { display: flex; flex-direction: column; gap: 2px; }
+    .video-nome { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); word-break: break-all; }
+    .video-size { font-size: 0.75rem; color: var(--color-text-muted); }
+    .btn-del-video { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); border: 1.5px solid color-mix(in srgb, var(--color-danger) 25%, transparent); padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; white-space: nowrap; }
+    .btn-del-video:disabled { opacity: 0.6; cursor: not-allowed; }
+    .divisor { border: none; border-top: 1px solid var(--color-border); margin: 14px 0; }
+
+    /* Upload */
+    .upload-aula-nome { margin: 0 0 14px; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+    .upload-zone { border: 2px dashed var(--color-border); border-radius: var(--radius-lg); padding: 32px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: border-color 0.2s, background 0.2s; color: var(--color-text-muted); font-size: var(--font-size-sm); margin-bottom: 14px; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 4%, transparent); }
+    .upload-zone p { margin: 0; }
+    .upload-zone small { color: var(--color-text-muted); }
+    .btn-select-file { background: var(--primary); color: #fff; padding: 8px 16px; border-radius: var(--radius); cursor: pointer; font-weight: 600; font-size: var(--font-size-sm); }
+    .file-info { background: var(--color-surface-2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+    .file-info p { margin: 4px 0; font-size: var(--font-size-sm); color: var(--color-text); }
+    .upload-progress { margin-bottom: 12px; }
+    .progress-bar { height: 6px; background: var(--color-border); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.3s; }
+    .upload-progress p { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
   `]
 })
 export class AdminAulasComponent implements OnInit {

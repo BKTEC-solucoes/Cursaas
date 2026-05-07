@@ -43,135 +43,305 @@ interface Curso {
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="page-container">
+    <div class="content-page">
       <div class="page-header">
-        <h2>📚 Meus Cursos</h2>
-        <span class="badge-count" *ngIf="!carregando && cursos.length > 0">{{ cursos.length }} curso(s)</span>
-        <a class="btn-catalogo" routerLink="/aluno/catalogo">🛒 Explorar Catálogo</a>
+        <div>
+          <h1 class="page-title">Meus Cursos</h1>
+          <p class="page-subtitle">Cursos em que você está inscrito</p>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:var(--space-3)">
+          @if (!carregando && cursos.length > 0) {
+            <span class="badge-count">{{ cursos.length }} curso(s)</span>
+          }
+          <a class="btn-catalogo" routerLink="/aluno/catalogo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Explorar Catálogo
+          </a>
+        </div>
       </div>
 
       <!-- Loading -->
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando seus cursos...</p>
-      </div>
+      @if (carregando) {
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Carregando seus cursos...</p>
+        </div>
+      }
 
       <!-- Erro -->
-      <div class="error-card" *ngIf="erro && !carregando">
-        <p>❌ {{ erro }}</p>
-        <button class="btn-primary" (click)="carregarCursos()">Tentar novamente</button>
-      </div>
+      @if (erro && !carregando) {
+        <div class="error-card">
+          <p>{{ erro }}</p>
+          <button class="btn-primary" (click)="carregarCursos()">Tentar novamente</button>
+        </div>
+      }
 
       <!-- Aguardando aprovação -->
-      <div class="pending-state" *ngIf="!carregando && !erro && cursos.length === 0">
-        <div class="pending-icon">⏳</div>
-        <h3>Cadastro em análise</h3>
-        <p>Sua solicitação de acesso foi enviada e está aguardando aprovação do administrador.</p>
-        <p class="pending-sub">Após a aprovação, seus cursos aparecerão aqui automaticamente. Enquanto isso, explore o catálogo de cursos disponíveis.</p>
-        <a class="btn-catalogo-inline" routerLink="/aluno/catalogo">🛒 Ver Catálogo</a>
-      </div>
+      @if (!carregando && !erro && cursos.length === 0) {
+        <div class="pending-state">
+          <div class="pending-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Cadastro em análise</h3>
+          <p>Sua solicitação de acesso foi enviada e está aguardando aprovação do administrador.</p>
+          <p>Após a aprovação, seus cursos aparecerão aqui automaticamente.</p>
+          <a class="btn-catalogo-inline" routerLink="/aluno/catalogo">Explorar Catálogo</a>
+        </div>
+      }
 
       <!-- Lista de cursos -->
-      <div class="cursos-grid" *ngIf="!carregando && cursos.length > 0">
-        <div class="curso-card" *ngFor="let curso of cursos">
+      @if (!carregando && cursos.length > 0) {
+        <div class="cursos-grid">
+        @for (curso of cursos; track curso.id) {
           <!-- Cabeçalho do card -->
           <div class="curso-header">
             <div class="curso-info">
               <h3 class="curso-titulo">{{ curso.nome }}</h3>
               <span class="status-badge" [class.ativo]="curso.ativo" [class.inativo]="!curso.ativo">
-                {{ curso.ativo ? '✓ Ativo' : '✗ Inativo' }}
+                {{ curso.ativo ? 'Ativo' : 'Inativo' }}
               </span>
             </div>
             <button class="btn-toggle" (click)="toggleDetalhes(curso.id)">
-              {{ expandido[curso.id] ? '▲ Ocultar detalhes' : '▼ Ver detalhes' }}
+              {{ expandido[curso.id] ? 'Ocultar detalhes' : 'Ver detalhes' }}
             </button>
           </div>
 
           <!-- Descrição sempre visível -->
-          <p class="curso-descricao" *ngIf="curso.descricao">{{ curso.descricao }}</p>
-          <p class="curso-descricao sem-descricao" *ngIf="!curso.descricao">Sem descrição disponível.</p>
+          @if (curso.descricao) {
+            <p class="curso-descricao">{{ curso.descricao }}</p>
+          } @else {
+            <p class="curso-descricao sem-descricao">Sem descrição disponível.</p>
+          }
 
           <!-- Estatísticas rápidas -->
           <div class="curso-stats">
-            <span class="stat">📖 {{ curso.aulas.length }} aula(s)</span>
-            <span class="stat">📝 {{ curso.provas.length }} prova(s)</span>
-            <span class="stat">👥 {{ curso.percentual_presenca_minima }}% presença mínima</span>
+            <span class="stat">{{ curso.aulas.length }} aula(s)</span>
+            <span class="stat">{{ curso.provas.length }} prova(s)</span>
+            <span class="stat">{{ curso.percentual_presenca_minima }}% presença mínima</span>
           </div>
 
           <!-- Preço do Curso -->
-          <div class="curso-preco" *ngIf="curso.pago">
-            <span class="preco-label">💳 Valor:</span>
-            <span class="preco-valor">{{ (curso.valor || 0) | currency:'BRL':'symbol':'1.2-2' }}</span>
-          </div>
-          <div class="curso-preco gratuito" *ngIf="!curso.pago">
-            <span class="preco-label">🎁 Acesso:</span>
-            <span class="preco-valor">Gratuito</span>
-          </div>
+          @if (curso.pago) {
+            <div class="curso-preco">
+              <span class="preco-label">Valor:</span>
+              <span class="preco-valor">{{ (curso.valor || 0) | currency:'BRL':'symbol':'1.2-2' }}</span>
+            </div>
+          } @else {
+            <div class="curso-preco gratuito">
+              <span class="preco-label">Acesso:</span>
+              <span class="preco-valor">Gratuito</span>
+            </div>
+          }
+
           <!-- Detalhes expandíveis -->
-          <div class="curso-detalhes" *ngIf="expandido[curso.id]">
+          @if (expandido[curso.id]) {
+            <div class="curso-detalhes">
 
-            <!-- Aulas -->
-            <div class="secao" *ngIf="curso.aulas.length > 0">
-              <h4>📖 Aulas</h4>
-              <div class="item-lista" *ngFor="let aula of curso.aulas">
-                <div class="item-header">
-                  <span class="item-titulo">{{ aula.titulo }}</span>
-                  <span class="item-data">{{ aula.data_aula | date:'dd/MM/yyyy' }}</span>
+              <!-- Aulas -->
+              @if (curso.aulas.length > 0) {
+                <div class="secao">
+                  <h4>Aulas</h4>
+                  @for (aula of curso.aulas; track aula.id) {
+                    <div class="item-lista">
+                      <div class="item-header">
+                        <span class="item-titulo">{{ aula.titulo }}</span>
+                        <span class="item-data">{{ aula.data_aula | date:'dd/MM/yyyy' }}</span>
+                      </div>
+                      @if (aula.descricao) { <p class="item-descricao">{{ aula.descricao }}</p> }
+                      @if (aula.duracao_minutos) { <span class="item-meta">{{ aula.duracao_minutos }} min</span> }
+                    </div>
+                  }
                 </div>
-                <p class="item-descricao" *ngIf="aula.descricao">{{ aula.descricao }}</p>
-                <span class="item-meta" *ngIf="aula.duracao_minutos">⏱️ {{ aula.duracao_minutos }} min</span>
-              </div>
-            </div>
-
-            <div class="secao secao-vazia" *ngIf="curso.aulas.length === 0">
-              <h4>📖 Aulas</h4>
-              <p class="vazio">Nenhuma aula cadastrada ainda.</p>
-            </div>
-
-            <!-- Provas -->
-            <div class="secao" *ngIf="curso.provas.length > 0">
-              <h4>📝 Provas</h4>
-              <div class="item-lista prova-item" *ngFor="let prova of curso.provas">
-                <div class="item-header">
-                  <span class="item-titulo">{{ prova.titulo }}</span>
-                  <span class="prova-status" [class.disponivel]="isProvaDisponivel(prova)" [class.encerrada]="isProvaEncerrada(prova)" [class.futura]="isProvaFutura(prova)">
-                    {{ isProvaDisponivel(prova) ? '🟢 Disponível' : isProvaFutura(prova) ? '🕐 Em breve' : '🔴 Encerrada' }}
-                  </span>
+              } @else {
+                <div class="secao secao-vazia">
+                  <h4>Aulas</h4>
+                  <p class="vazio">Nenhuma aula cadastrada ainda.</p>
                 </div>
-                <p class="item-descricao" *ngIf="prova.descricao">{{ prova.descricao }}</p>
-                <div class="prova-meta">
-                  <span>🗓️ {{ prova.data_inicio | date:'dd/MM/yyyy HH:mm' }} → {{ prova.data_fim | date:'dd/MM/yyyy HH:mm' }}</span>
-                  <span>❓ {{ prova.total_questoes }} questão(ões)</span>
-                  <span>🔄 {{ prova.tentativas_permitidas }} tentativa(s)</span>
+              }
+
+              <!-- Provas -->
+              @if (curso.provas.length > 0) {
+                <div class="secao">
+                  <h4>Provas</h4>
+                  @for (prova of curso.provas; track prova.id) {
+                    <div class="item-lista prova-item">
+                      <div class="item-header">
+                        <span class="item-titulo">{{ prova.titulo }}</span>
+                        <span class="prova-status" [class.disponivel]="isProvaDisponivel(prova)" [class.encerrada]="isProvaEncerrada(prova)" [class.futura]="isProvaFutura(prova)">
+                          {{ isProvaDisponivel(prova) ? 'Disponível' : isProvaFutura(prova) ? 'Em breve' : 'Encerrada' }}
+                        </span>
+                      </div>
+                      @if (prova.descricao) { <p class="item-descricao">{{ prova.descricao }}</p> }
+                      <div class="prova-meta">
+                        <span>{{ prova.data_inicio | date:'dd/MM/yyyy HH:mm' }} — {{ prova.data_fim | date:'dd/MM/yyyy HH:mm' }}</span>
+                        <span>{{ prova.total_questoes }} questão(ões)</span>
+                        <span>{{ prova.tentativas_permitidas }} tentativa(s)</span>
+                      </div>
+                      @if (isProvaDisponivel(prova)) {
+                        <a class="btn-fazer-prova" [routerLink]="['/aluno/provas', prova.id]">Fazer Prova</a>
+                      }
+                    </div>
+                  }
                 </div>
-                <a class="btn-fazer-prova" [routerLink]="['/aluno/provas', prova.id]" *ngIf="isProvaDisponivel(prova)">
-                  Fazer Prova →
-                </a>
-              </div>
-            </div>
+              }
 
-            <div class="secao secao-vazia" *ngIf="curso.provas.length === 0">
-              <h4>📝 Provas</h4>
-              <p class="vazio">Nenhuma prova cadastrada ainda.</p>
-            </div>
+              @if (curso.provas.length === 0) {
+                <div class="secao secao-vazia">
+                  <h4>Provas</h4>
+                  <p class="vazio">Nenhuma prova cadastrada ainda.</p>
+                </div>
+              }
 
-          </div>
+            </div>
+          }
+        }
         </div>
-      </div>
+      }
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
+    :host { display: block; }
+
+    .btn-catalogo {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      background: var(--primary); color: #fff;
+      padding: var(--space-2) var(--space-4); border-radius: var(--radius);
+      font-size: var(--font-size-sm); font-weight: 700; text-decoration: none;
+      transition: background var(--transition-fast);
+    }
+    .btn-catalogo:hover { background: var(--secondary); }
+
+    .badge-count {
+      background: var(--color-surface-2); color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      padding: 3px 10px; border-radius: var(--radius-full);
+      font-size: var(--font-size-xs); font-weight: 600;
     }
 
-    .page-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
+    .loading { text-align: center; padding: 60px var(--space-4); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-card {
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+      color: var(--color-danger); padding: var(--space-5);
+      border-radius: var(--radius-lg); text-align: center;
+      border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+    }
+    .btn-primary {
+      background: var(--primary); color: #fff; border: none;
+      padding: var(--space-2) var(--space-5); border-radius: var(--radius);
+      cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; margin-top: var(--space-3);
+    }
+
+    .cursos-grid { display: flex; flex-direction: column; gap: var(--space-4); }
+
+    .curso-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-6);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+    .curso-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+    .curso-header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); }
+    .curso-info   { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+    .curso-titulo { margin: 0; font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); }
+
+    .status-badge { font-size: var(--font-size-xs); font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); }
+    .status-badge.ativo   { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .status-badge.inativo { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
+
+    .btn-toggle {
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      color: var(--color-text-muted); padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-xs);
+      white-space: nowrap; transition: background var(--transition-fast);
+    }
+    .btn-toggle:hover { background: var(--color-border); color: var(--color-text); }
+
+    .curso-descricao { color: var(--color-text-muted); font-size: var(--font-size-sm); margin: 0 0 var(--space-3); line-height: 1.5; }
+    .sem-descricao   { font-style: italic; }
+
+    .curso-stats { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .stat {
+      font-size: var(--font-size-xs); color: var(--color-text-muted);
+      background: var(--color-surface-2); padding: 3px 10px; border-radius: var(--radius);
+      border: 1px solid var(--color-border);
+    }
+
+    .curso-preco {
+      display: flex; align-items: center; gap: var(--space-2);
+      font-size: var(--font-size-sm); padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius); margin: var(--space-3) 0;
+      border-left: 4px solid var(--primary);
+      background: color-mix(in srgb, var(--primary) 6%, var(--color-surface));
+    }
+    .curso-preco.gratuito {
+      border-left-color: var(--color-success);
+      background: color-mix(in srgb, var(--color-success) 6%, var(--color-surface));
+    }
+    .preco-label { font-weight: 600; color: var(--color-text-muted); min-width: 60px; }
+    .preco-valor { font-weight: 700; color: var(--color-text); }
+    .curso-preco.gratuito .preco-valor { color: var(--color-success); }
+
+    .curso-detalhes {
+      margin-top: var(--space-5); border-top: 1px solid var(--color-border);
+      padding-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5);
+    }
+    .secao h4 {
+      margin: 0 0 var(--space-3); font-size: var(--font-size-sm); font-weight: 700;
+      color: var(--color-text); border-left: 3px solid var(--primary); padding-left: var(--space-3);
+    }
+    .secao-vazia h4 { border-left-color: var(--color-border); }
+    .vazio { font-size: var(--font-size-xs); color: var(--color-text-muted); font-style: italic; margin: 0; }
+
+    .item-lista {
+      background: var(--color-surface-2); border: 1px solid var(--color-border);
+      border-radius: var(--radius); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-2);
+    }
+    .item-lista:last-child { margin-bottom: 0; }
+    .item-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: 4px; }
+    .item-titulo { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text); }
+    .item-data   { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
+    .item-descricao { font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 4px 0 6px; }
+    .item-meta  { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+
+    .prova-status { font-size: var(--font-size-xs); font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); white-space: nowrap; }
+    .prova-status.disponivel { background: color-mix(in srgb, var(--color-success) 14%, transparent); color: var(--color-success); }
+    .prova-status.encerrada  { background: color-mix(in srgb, var(--color-danger) 14%, transparent);  color: var(--color-danger); }
+    .prova-status.futura     { background: color-mix(in srgb, var(--color-warning) 14%, transparent); color: var(--color-warning); }
+
+    .prova-meta { display: flex; flex-wrap: wrap; gap: var(--space-3); font-size: var(--font-size-xs); color: var(--color-text-muted); margin: var(--space-2) 0; }
+
+    .btn-fazer-prova {
+      display: inline-block; background: var(--primary); color: #fff;
+      padding: var(--space-1) var(--space-4); border-radius: var(--radius);
+      font-size: var(--font-size-xs); font-weight: 700; text-decoration: none;
+      transition: background var(--transition-fast);
+    }
+    .btn-fazer-prova:hover { background: var(--secondary); }
+
+    .pending-state {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow);
+      padding: 48px var(--space-8); text-align: center;
+    }
+    .pending-icon { font-size: 52px; margin-bottom: var(--space-4); }
+    .pending-state h3 { font-family: var(--font-display); font-size: var(--font-size-xl); color: var(--color-text); margin: 0 0 var(--space-3); }
+    .pending-state p  { color: var(--color-text-muted); font-size: var(--font-size-sm); margin: 0 0 var(--space-2); max-width: 480px; margin-left: auto; margin-right: auto; }
+    .btn-catalogo-inline {
+      display: inline-flex; align-items: center; gap: var(--space-2);
+      margin-top: var(--space-5); background: var(--primary); color: #fff;
+      padding: var(--space-3) var(--space-6); border-radius: var(--radius);
+      font-size: var(--font-size-sm); font-weight: 700; text-decoration: none;
+      transition: background var(--transition-fast);
+    }
+    .btn-catalogo-inline:hover { background: var(--secondary); }
+
+    @media (max-width: 600px) {
+      .curso-header { flex-direction: column; }
+      .prova-meta   { flex-direction: column; gap: var(--space-1); }
     }
 
     .page-header h2 {
