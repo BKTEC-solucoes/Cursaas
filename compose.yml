@@ -27,8 +27,41 @@ services:
         UVICORN_APP: "app.main:app"
     env_file:
       - .env
+    volumes:
+      # Sem este volume os videos enviados sumiam a cada recriacao do container:
+      # UPLOAD_DIR fica dentro do filesystem efemero da imagem.
+      - uploads_data:/app/uploads
     expose:
       - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Side-car de login com Google. Estava ausente do Compose: o botao "Entrar com
+  # Google" apontava para localhost:3000, que nao existia na stack.
+  backend-node:
+    build:
+      context: .
+      dockerfile: docker/backend-node.Dockerfile
+      args:
+        NODE_DIR: backend-node
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      # Precisa ser identico ao SECRET_KEY do FastAPI: os dois servicos assinam
+      # tokens que o outro valida.
+      JWT_SECRET: ${SECRET_KEY}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+    expose:
+      - "3000"
     depends_on:
       db:
         condition: service_healthy
@@ -53,7 +86,9 @@ services:
     depends_on:
       - frontend
       - backend
+      - backend-node
     restart: unless-stopped
 
 volumes:
   db_data:
+  uploads_data:
