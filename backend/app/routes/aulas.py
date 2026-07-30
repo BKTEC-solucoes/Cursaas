@@ -284,27 +284,63 @@ def upload_video(
         )
 
 @router.get("/video/{filename}")
-def get_video_file(filename: str):
+def get_video_file(
+    filename: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
+):
     """
     Serve arquivos de vídeo para reprodução.
-    
+
+    Exige `Authorization: Bearer`. O frontend não pode usar `<video src>` direto
+    aqui — precisa baixar via HttpClient (que passa pelo authInterceptor) e
+    reproduzir a partir de uma object URL. Ver `VideoService` no Angular.
+
     **Parâmetros:**
     - `filename` (str): Nome do arquivo de vídeo
-    
+
     **Retorna:**
     - Arquivo de vídeo para streaming
-    
+
     **Erros:**
+    - 403: Vídeo pertence a um curso de outro tenant
     - 404: Vídeo não encontrado
     """
-    file_path = os.path.join(settings.UPLOAD_DIR, "videos", filename)
-    
-    if not os.path.exists(file_path):
+    # O vídeo precisa existir em `videos` para que exista um curso — e portanto
+    # um tenant — contra o qual autorizar. Servir pelo nome do arquivo sem esta
+    # busca deixaria qualquer autenticado baixar mídia de qualquer faculdade.
+    #
+    # `caminho_arquivo` guarda o path completo gravado no upload (separador varia
+    # com o SO), então casamos pelo sufixo. Wildcards de LIKE vindos da URL são
+    # escapados para o filtro não virar uma varredura.
+    padrao = filename.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    video = (
+        db.query(Video)
+        .filter(Video.caminho_arquivo.like(f"%{padrao}", escape="\\"))
+        .first()
+    )
+    if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vídeo não encontrado"
         )
-    
+
+    aula = db.query(Aula).filter(Aula.id == video.aula_id).first()
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first() if aula else None
+    tc.assert_access(curso.faculdade_id if curso else None)
+
+    # `filename` vem da URL: normaliza e confina em uploads/videos para que
+    # nenhuma sequência de travessia ("..", caminho absoluto) escape do diretório.
+    videos_dir = Path(settings.UPLOAD_DIR).resolve() / "videos"
+    file_path = (videos_dir / filename).resolve()
+
+    if not file_path.is_file() or videos_dir not in file_path.parents:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vídeo não encontrado"
+        )
+
     return FileResponse(
         file_path, 
         media_type="video/mp4",
@@ -312,17 +348,23 @@ def get_video_file(filename: str):
     )
 
 @router.get("/{aula_id}/video", response_model=VideoResponse)
-def get_video(aula_id: int, db: Session = Depends(get_db)):
+def get_video(
+    aula_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
+):
     """
     Obtém informações do vídeo de uma aula.
-    
+
     **Parâmetros:**
     - `aula_id` (int): ID da aula
-    
+
     **Retorna:**
     - Dados do vídeo (nome, tamanho, formato, status, data de upload)
-    
+
     **Erros:**
+    - 403: Aula pertence a outro tenant
     - 404: Aula ou vídeo não encontrado
     """
     aula = db.query(Aula).filter(Aula.id == aula_id).first()
@@ -331,7 +373,10 @@ def get_video(aula_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aula {aula_id} não encontrada"
         )
-    
+
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+    tc.assert_access(curso.faculdade_id if curso else None)
+
     video = db.query(Video).filter(Video.aula_id == aula_id).first()
     if not video:
         raise HTTPException(
@@ -342,38 +387,58 @@ def get_video(aula_id: int, db: Session = Depends(get_db)):
     return VideoResponse.model_validate(video)
 
 @router.delete("/{aula_id}/video/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_video(aula_id: int, video_id: int, db: Session = Depends(get_db)):
+def delete_video(
+    aula_id: int,
+    video_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
+):
     """
     Deleta o vídeo de uma aula (apenas admin).
-    
+
     **Parâmetros:**
     - `aula_id` (int): ID da aula
     - `video_id` (int): ID do vídeo
-    
+
     **Retorna:**
     - 204 No Content (sem corpo)
-    
+
     **Erros:**
+    - 403: Não é admin, ou aula pertence a outro tenant
     - 404: Vídeo não encontrado
     """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem excluir vídeos",
+        )
+
     video = db.query(Video).filter(
         Video.id == video_id,
         Video.aula_id == aula_id
     ).first()
-    
+
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Vídeo {video_id} não encontrado para a aula {aula_id}"
         )
-    
+
+    aula = db.query(Aula).filter(Aula.id == aula_id).first()
+    curso = db.query(Curso).filter(Curso.id == aula.curso_id).first() if aula else None
+    tc.assert_access(curso.faculdade_id if curso else None)
+    ensure_admin_can_access_course(db, current_user, aula.curso_id)
+
     try:
         # Deletar arquivo do disco
         if os.path.exists(video.caminho_arquivo):
             os.remove(video.caminho_arquivo)
-    except:
+    except OSError:
+        # Registro sai do banco de qualquer forma; arquivo órfão em disco é
+        # preferível a deixar o vídeo acessível por já ter falhado o unlink.
         pass
-    
+
     # Deletar registro do banco
     db.delete(video)
     db.commit()

@@ -1,42 +1,50 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import CourseRequest, Instituicao, Faculdade, VinculoAlunoFaculdade, SolicitacaoCadastro, TemaPreset
+# Import explícito: registra TODOS os modelos em Base.metadata antes do
+# create_all. As rotas importam models de forma transitiva, mas depender disso
+# faria uma tabela sumir do schema ao se reorganizar imports.
+from app import models  # noqa: F401
 from app.security.middleware import TenantMiddleware
 from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro
 
 logger = logging.getLogger(__name__)
 
 
-def ensure_schema_updates():
-    """Garante que as tabelas essenciais estejam criadas."""
-    inspector = inspect(engine)
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """
+    Cria as tabelas ausentes no startup.
 
-    # Criar tabelas se não existirem
-    CourseRequest.__table__.create(bind=engine, checkfirst=True)
-    Instituicao.__table__.create(bind=engine, checkfirst=True)
-    Faculdade.__table__.create(bind=engine, checkfirst=True)
-    VinculoAlunoFaculdade.__table__.create(bind=engine, checkfirst=True)
-    SolicitacaoCadastro.__table__.create(bind=engine, checkfirst=True)
-    TemaPreset.__table__.create(bind=engine, checkfirst=True)
+    Isto rodava em tempo de import (`Base.metadata.create_all()` no corpo do
+    módulo), o que fazia um simples `import app.main` abrir conexão com o banco:
+    qualquer teste unitário exigia MySQL no ar, e o processo nem subia se o
+    banco estivesse fora. Movido para o lifespan, o módulo importa sem I/O.
 
+    Atenção ao limite: `create_all` cria tabelas NOVAS, mas nunca altera as
+    existentes. Adição de coluna continua exigindo migração aplicada à mão em
+    database/migration_*.sql.
+    """
+    Base.metadata.create_all(bind=engine)
+    logger.info("Schema verificado (create_all).")
+    yield
 
-Base.metadata.create_all(bind=engine)
-ensure_schema_updates()
 
 app = FastAPI(
     title="Cursaas - Portal EAD",
     description="API para o portal de educacao a distancia Cursaas",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -75,8 +83,19 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "videos"), exist_ok=True)
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "profile_pictures"), exist_ok=True)
 
-# Servir arquivos de upload como conteúdo estático
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# Servir arquivos de upload como conteúdo estático.
+#
+# Apenas profile_pictures — são avatares, consumidos por <img> sem header de
+# autenticação. Os vídeos NÃO entram aqui: montar UPLOAD_DIR inteiro deixava
+# /uploads/videos/<arquivo> público, contornando toda a autorização de
+# /api/aulas/video/{filename}. Nomes de vídeo são previsíveis
+# (aula_<id>_video_<timestamp>), então isso equivalia a expor a mídia de todas
+# as faculdades.
+app.mount(
+    "/uploads/profile_pictures",
+    StaticFiles(directory=os.path.join(settings.UPLOAD_DIR, "profile_pictures")),
+    name="profile_pictures",
+)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticacao"])
 app.include_router(cursos.router, prefix="/api/cursos", tags=["Cursos"])
