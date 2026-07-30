@@ -1,8 +1,12 @@
+import logging
 from typing import Optional, Set
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models import Usuario, RoleEnum, AdminRoleEnum, AdminCurso
+
+logger = logging.getLogger(__name__)
 
 
 def is_super_or_legacy_admin(user: Usuario) -> bool:
@@ -11,49 +15,68 @@ def is_super_or_legacy_admin(user: Usuario) -> bool:
     return user.admin_role is None or user.admin_role == AdminRoleEnum.super_admin
 
 
+def _tenant_aprovado(db: Session, user: Usuario) -> bool:
+    """True se a faculdade (ou a instituição legada) do usuário está aprovada."""
+    from app.models import Faculdade, Instituicao
+
+    if user.faculdade_id:
+        faculdade = db.query(Faculdade).filter(Faculdade.id == user.faculdade_id).first()
+        if faculdade and not faculdade.aprovada:
+            return False
+
+    if user.instituicao_id:
+        inst = db.query(Instituicao).filter(Instituicao.id == user.instituicao_id).first()
+        if inst and not inst.aprovada:
+            return False
+
+    return True
+
+
 def get_allowed_course_ids(db: Session, user: Usuario) -> Optional[Set[int]]:
-    """Retorna IDs permitidos para o admin. None significa sem restrição.
-    
-    - Super Admin (global): acesso a todos os cursos (None = sem restrição)
-    - Instrutor aprovado: acesso apenas aos cursos que criou
-    - Instrutor pendente (instituição não aprovada): acesso bloqueado (conjunto vazio)
-    - Legado (sem instituição): acesso a todos (None = sem restrição)
+    """
+    Retorna os IDs de curso que o admin pode gerenciar. `None` = sem restrição.
+
+    Esta função responde "QUAIS cursos", não "de qual faculdade" — o recorte de
+    tenant é do TenantContext, e as rotas aplicam os dois. Aqui só entra a
+    restrição por autoria/vínculo dentro do tenant.
+
+        super_admin ........ None (sem restrição; o tenant já filtra)
+        legado (NULL) ...... None (idem)
+        instrutor .......... cursos que criou + cursos vinculados em admin_cursos
+        demais ............. set() (nenhum)
+
+    A versão anterior decidia por `instituicao_id`, coluna legada anterior ao
+    multi-tenant. Instrutor da era `faculdade_id` (com instituicao_id NULL) caía
+    no ramo final e não enxergava curso NENHUM.
     """
     if user.role != RoleEnum.admin:
         return None
 
-    print(f"[DEBUG] User {user.id} ({user.email}): instituicao_id={user.instituicao_id}, admin_role={user.admin_role}")
-
-    # Se tem instituição, verificar se foi aprovada
-    if user.instituicao_id:
-        from app.models import Instituicao, Curso
-        inst = db.query(Instituicao).filter(Instituicao.id == user.instituicao_id).first()
-        print(f"[DEBUG] Instituição {user.instituicao_id}: aprovada={inst.aprovada if inst else 'NOT FOUND'}")
-        
-        # Se instituição não foi aprovada, bloqueia acesso total
-        if inst and not inst.aprovada:
-            print(f"[DEBUG] Bloqueando acesso - instituição não aprovada")
-            return set()  # conjunto vazio = acesso negado a todos os cursos
-        
-        # Se instituição foi aprovada e é instrutor, retorna apenas seus cursos
-        if user.admin_role == AdminRoleEnum.instrutor:
-            ids = db.query(Curso.id).filter(Curso.criado_por_id == user.id).all()
-            result = {cid for (cid,) in ids}
-            print(f"[DEBUG] Instrutor aprovado - cursos criados: {result}")
-            return result
-        
-        # Super admin (com instituição): sem restrição
-        if user.admin_role == AdminRoleEnum.super_admin:
-            print(f"[DEBUG] Super admin com instituição - sem restrição")
-            return None
-    
-    # Super admin ou legado (sem instituição): sem restrição
     if is_super_or_legacy_admin(user):
-        print(f"[DEBUG] Super admin/legado - sem restrição")
         return None
-    
-    # Outros casos: sem acesso
-    print(f"[DEBUG] Bloqueando acesso - admin_role não reconhecido: {user.admin_role}")
+
+    # Faculdade pendente de aprovação bloqueia todo o acesso a cursos.
+    # `Faculdade.aprovada` é o equivalente multi-tenant de `Instituicao.aprovada`;
+    # a instituição legada continua valendo para contas anteriores à migração.
+    if not _tenant_aprovado(db, user):
+        return set()
+
+    if user.admin_role == AdminRoleEnum.instrutor:
+        from app.models import Curso
+
+        criados = {
+            cid for (cid,) in db.query(Curso.id).filter(Curso.criado_por_id == user.id).all()
+        }
+        vinculados = {
+            cid for (cid,) in db.query(AdminCurso.curso_id).filter(AdminCurso.admin_id == user.id).all()
+        }
+        return criados | vinculados
+
+    logger.warning(
+        "admin_role não reconhecido para user_id=%s (%r): negando acesso a cursos",
+        user.id,
+        user.admin_role,
+    )
     return set()
 
 

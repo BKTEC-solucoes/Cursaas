@@ -820,6 +820,10 @@ class CursoBase(BaseModel):
     percentual_presenca_minima: int = Field(default=75, ge=0, le=100)
 
 class CursoCreate(CursoBase):
+    # Só super admins informam este campo: para os demais o tenant vem do próprio
+    # usuário (TenantContext.stamp) e o valor enviado aqui é ignorado.
+    faculdade_id: Optional[int] = None
+
     @model_validator(mode="after")
     def validate_paid_course_rules(self):
         if self.pago:

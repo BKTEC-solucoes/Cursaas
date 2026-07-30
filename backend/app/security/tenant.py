@@ -56,8 +56,10 @@ Exemplos de uso
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import false
 
-from app.routes.auth import get_current_faculdade_id
+from app.models import AdminRoleEnum, Usuario
+from app.security.deps import get_current_user
 
 
 class TenantContext:
@@ -67,11 +69,25 @@ class TenantContext:
     Inject via::
 
         tc: TenantContext = Depends(tenant_context)
+
+    Três estados possíveis — ``faculdade_id is None`` NÃO implica super admin:
+
+    ===================  ==================  ================================
+    Estado               is_super_admin      Efeito nos filtros
+    ===================  ==================  ================================
+    super admin          True                sem filtro (vê todos os tenants)
+    vinculado a tenant   False (id != None)  filtra por faculdade_id
+    sem tenant           False (id == None)  não vê NADA
+    ===================  ==================  ================================
+
+    O terceiro estado é real e comum: admin criado por convite, aluno ainda não
+    aprovado, conta legada anterior ao multi-tenant. Tratá-lo como super admin
+    (bug histórico) entregava todos os tenants a qualquer conta órfã.
     """
 
-    def __init__(self, faculdade_id: Optional[int]) -> None:
+    def __init__(self, faculdade_id: Optional[int], is_super_admin: bool) -> None:
         self.faculdade_id = faculdade_id
-        self.is_super_admin: bool = faculdade_id is None
+        self.is_super_admin = is_super_admin
 
     # ------------------------------------------------------------------
     # Filtro em queries (endpoints de listagem)
@@ -80,7 +96,8 @@ class TenantContext:
     def filter_query(self, query, column):
         """
         Aplica ``WHERE <column> = faculdade_id`` à query SQLAlchemy.
-        Super admins recebem a query sem filtro.
+        Super admins recebem a query sem filtro; quem não tem tenant recebe uma
+        query que não retorna linha alguma.
 
         Exemplo::
 
@@ -88,6 +105,10 @@ class TenantContext:
         """
         if self.is_super_admin:
             return query
+        if self.faculdade_id is None:
+            # Sem tenant: nega tudo. Devolver a query sem filtro aqui exporia
+            # todos os tenants; devolver `column IS NULL` exporia as linhas órfãs.
+            return query.filter(false())
         return query.filter(column == self.faculdade_id)
 
     # ------------------------------------------------------------------
@@ -97,7 +118,9 @@ class TenantContext:
     def assert_access(self, resource_faculdade_id: Optional[int]) -> None:
         """
         Lança HTTP 403 se o tenant do chamador difere do tenant do recurso.
-        Super admins sempre passam.
+        Super admins sempre passam. Chamador sem tenant nunca passa — inclusive
+        para recursos órfãos (``faculdade_id IS NULL``), senão ``None == None``
+        liberaria o acesso.
 
         Exemplo::
 
@@ -105,7 +128,7 @@ class TenantContext:
         """
         if self.is_super_admin:
             return
-        if resource_faculdade_id != self.faculdade_id:
+        if self.faculdade_id is None or resource_faculdade_id != self.faculdade_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Acesso negado: recurso pertence a outro tenant",
@@ -134,8 +157,11 @@ class TenantContext:
     def stamp(self, obj: object, field: str = "faculdade_id") -> object:
         """
         Atribui ``obj.<field> = self.faculdade_id`` em novos objetos antes de
-        persistir no banco. Super admins não recebem o stamp (já devem definir
-        o campo manualmente).
+        persistir no banco. Super admins não recebem o stamp — precisam informar
+        o tenant explicitamente no payload, já que não têm um próprio.
+
+        Lança 403 para chamador sem tenant: criar a linha com ``faculdade_id
+        NULL`` produziria um registro órfão, invisível para todo mundo.
 
         Exemplo::
 
@@ -143,16 +169,24 @@ class TenantContext:
             tc.stamp(novo_curso)        # define novo_curso.faculdade_id
             db.add(novo_curso)
         """
-        if not self.is_super_admin:
-            setattr(obj, field, self.faculdade_id)
+        if self.is_super_admin:
+            return obj
+        setattr(obj, field, self.require_tenant())
         return obj
 
 
 def tenant_context(
-    faculdade_id: Optional[int] = Depends(get_current_faculdade_id),
+    current_user: Usuario = Depends(get_current_user),
 ) -> TenantContext:
     """
     FastAPI dependency.  Produz um :class:`TenantContext` com escopo na
     requisição atual.
+
+    Lê o usuário do banco (e não as claims do JWT) para que uma mudança de papel
+    ou de vínculo tenha efeito imediato, sem esperar o token expirar.
     """
-    return TenantContext(faculdade_id)
+    is_super_admin = current_user.admin_role == AdminRoleEnum.super_admin
+    return TenantContext(
+        faculdade_id=None if is_super_admin else current_user.faculdade_id,
+        is_super_admin=is_super_admin,
+    )

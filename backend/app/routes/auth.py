@@ -13,64 +13,13 @@ from app.services.auth_service import AuthService
 from app.services.avatar_service import gerar_avatar_iniciais
 from app.models import Usuario, RoleEnum, AdminRoleEnum as ModelAdminRoleEnum, AdminCurso, Curso
 from app.config import settings
+# get_current_user vive em security/deps.py para quebrar o ciclo de import com
+# security/tenant.py; reexportado aqui porque as rotas importam daqui.
+from app.security.deps import get_current_user
+from app.security.tenant import TenantContext, tenant_context
 
 router = APIRouter()
 security = HTTPBearer()
-
-async def get_current_user(
-    request: Request,
-    db: Session = Depends(get_db)
-) -> Usuario:
-    """
-    Dependency para obter o usuário atual a partir do JWT token.
-    Usado em endpoints protegidos.
-    """
-    # Extrair token do header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token não fornecido",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = auth_header.split(" ")[1]
-    
-    # Decodificar token
-    payload = AuthService.decode_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido ou expirado",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Buscar usuário no banco pelo ID (não pelo email, para evitar inconsistências)
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token sem identificador de usuário",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = db.query(Usuario).filter(Usuario.id == user_id).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário não encontrado",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.ativo:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário desativado",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    return user
-
 
 def _resolve_request_user(request: Request, db: Session) -> Optional[Usuario]:
     """Resolve usuário a partir do token do header Authorization, se existir."""
@@ -146,7 +95,13 @@ def get_current_faculdade_id(
     """
     Retorna o faculdade_id do usuário autenticado.
     Super admins retornam None (acesso a todos os tenants).
-    Qualquer outro usuário deve ter faculdade_id definido.
+
+    ⚠️  NÃO use este retorno para decidir isolamento de tenant. ``None`` é
+    ambíguo: significa tanto "super admin" quanto "usuário sem faculdade
+    vinculada" (admin criado por convite, aluno não aprovado, conta legada).
+    Confundir os dois dava acesso irrestrito a contas órfãs.
+    Para filtros e checagens use ``TenantContext`` (app/security/tenant.py),
+    que carrega ``is_super_admin`` separado de ``faculdade_id``.
     """
     from app.models import AdminRoleEnum as ModelAdminRoleEnum
     if current_user.admin_role == ModelAdminRoleEnum.super_admin:
@@ -361,6 +316,7 @@ def listar_admins(
     page_size: int = 10,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """Lista administradores com filtros, busca e paginação."""
     if current_user.role != RoleEnum.admin:
@@ -369,7 +325,10 @@ def listar_admins(
             detail="Acesso restrito a administradores"
         )
 
+    # Sem o filtro de tenant esta rota devolvia todos os admins de todas as
+    # faculdades, com telefone, CPF e endereço.
     query = db.query(Usuario).filter(Usuario.role == RoleEnum.admin)
+    query = tc.filter_query(query, Usuario.faculdade_id)
 
     if busca:
         termo = f"%{busca.strip().lower()}%"
@@ -469,13 +428,13 @@ def editar_admin(
     
     is_super_admin = current_user.admin_role == ModelAdminRoleEnum.super_admin
     is_legacy_admin = current_user.admin_role is None
-    
+
     if not (is_super_admin or is_legacy_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Apenas Super Admin e Admin Legado podem editar administradores"
         )
-    
+
     # Buscar admin a editar
     admin = db.query(Usuario).filter(Usuario.id == admin_id, Usuario.role == RoleEnum.admin).first()
     if not admin:
@@ -483,7 +442,32 @@ def editar_admin(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Administrador não encontrado"
         )
-    
+
+    # Isolamento entre tenants: um admin só edita admins da própria faculdade.
+    if not is_super_admin and admin.faculdade_id != current_user.faculdade_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado: administrador pertence a outra faculdade",
+        )
+
+    # Mudança de privilégio é restrita — e nunca sobre si mesmo.
+    #
+    # Antes, qualquer admin legado (admin_role NULL) podia se promover a
+    # super_admin com um PUT no próprio id. Duas travas:
+    #   1. só super_admin altera admin_role;
+    #   2. ninguém altera o próprio admin_role, nem super_admin.
+    if dados.admin_role is not None and dados.admin_role != admin.admin_role:
+        if not is_super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas Super Admin pode alterar o perfil de um administrador",
+            )
+        if admin.id == current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você não pode alterar o seu próprio perfil de administrador",
+            )
+
     # Validar que nenhum outro admin tem o novo email
     if dados.email and dados.email.lower() != admin.email.lower():
         existing = db.query(Usuario).filter(

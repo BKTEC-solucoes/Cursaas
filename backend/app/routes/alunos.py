@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
@@ -7,6 +9,8 @@ from app.routes.auth import get_current_user
 from app.security.tenant import TenantContext, tenant_context
 from app.services.auth_service import AuthService
 from app.services.admin_course_access import get_allowed_course_ids
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -45,8 +49,19 @@ def create_aluno(
     usuario_data: UsuarioCreate,
     db: Session = Depends(get_db),
     _: Usuario = Depends(_require_admin),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """Cria um novo aluno (admin)"""
+    # Aluno sem faculdade_id fica órfão: invisível em toda listagem filtrada por
+    # tenant e 403 em qualquer assert_access. Super admin não tem tenant próprio
+    # e por isso não cria aluno por aqui.
+    if tc.faculdade_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não foi possível determinar a faculdade do aluno. "
+                   "Super admins devem usar POST /api/faculdades/{faculdade_id}/alunos.",
+        )
+
     existing = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email já cadastrado")
@@ -77,6 +92,7 @@ def create_aluno(
         numero_matricula=usuario_data.numero_matricula,
         turma=usuario_data.turma,
         historico_escolar=usuario_data.historico_escolar,
+        faculdade_id=tc.faculdade_id,
     )
     return novo
 
@@ -86,6 +102,7 @@ def get_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """Obtém detalhes de um aluno (admin)"""
     if current_user.role != RoleEnum.admin:
@@ -94,6 +111,8 @@ def get_aluno(
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id, Usuario.role == RoleEnum.aluno).first()
     if not aluno:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    tc.assert_access(aluno.faculdade_id)
 
     allowed = get_allowed_course_ids(db, current_user)
     if allowed is not None:
@@ -114,11 +133,14 @@ def update_aluno(
     dados: UsuarioUpdate,
     db: Session = Depends(get_db),
     _: Usuario = Depends(_require_admin),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """Atualiza informações de um aluno (admin)"""
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id, Usuario.role == RoleEnum.aluno).first()
     if not aluno:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    tc.assert_access(aluno.faculdade_id)
 
     if dados.nome is not None:
         aluno.nome = dados.nome
@@ -166,21 +188,42 @@ def delete_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
     _: Usuario = Depends(_require_admin),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """Deleta um aluno (admin)"""
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id, Usuario.role == RoleEnum.aluno).first()
     if not aluno:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    tc.assert_access(aluno.faculdade_id)
+
     db.delete(aluno)
     db.commit()
     return None
 
 @router.get("/{aluno_id}/cursos", response_model=list[CursoDetailResponse])
-def get_cursos_aluno(aluno_id: int, db: Session = Depends(get_db)):
-    """Lista os cursos em que o aluno está inscrito, com aulas e provas."""
+def get_cursos_aluno(
+    aluno_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
+):
+    """
+    Lista os cursos em que o aluno está inscrito, com aulas e provas.
+
+    O próprio aluno vê os seus; admins veem os de alunos do mesmo tenant.
+    """
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
     if not aluno:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno {aluno_id} não encontrado")
+
+    if current_user.id != aluno_id:
+        if current_user.role != RoleEnum.admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só pode consultar os seus próprios cursos",
+            )
+        tc.assert_access(aluno.faculdade_id)
 
     inscricoes = (
         db.query(InscricaoCurso)
@@ -198,5 +241,5 @@ def get_cursos_aluno(aluno_id: int, db: Session = Depends(get_db)):
             continue
         cursos.append(CursoDetailResponse.model_validate(inscricao.curso))
 
-    print(f"[alunos] get_cursos_aluno aluno_id={aluno_id} retornou {len(cursos)} curso(s)")
+    logger.debug("get_cursos_aluno aluno_id=%s retornou %d curso(s)", aluno_id, len(cursos))
     return cursos

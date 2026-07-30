@@ -283,10 +283,24 @@ def desvincular_aluno(
 # ---------------------------------------------------------------------------
 
 def _guard_tenant(user: Usuario, faculdade_id: int) -> None:
-    """Permite acesso apenas se o usuário pertence ao tenant ou é super_admin."""
+    """
+    Permite acesso apenas a gestores do tenant (admin/instituição) ou super_admin.
+
+    Checar só `user.faculdade_id` — como era antes — não era suficiente: as rotas
+    de vínculo usam apenas `get_current_user`, então QUALQUER usuário da
+    faculdade passava. Na prática um aluno podia listar todos os colegas,
+    vincular e desvincular alunos e alterar matrículas.
+    """
     from app.models import AdminRoleEnum as ModelAdminRoleEnum
     if user.admin_role == ModelAdminRoleEnum.super_admin:
         return
+
+    if user.role not in (RoleEnum.admin, RoleEnum.instituicao):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a administradores e contas de instituição",
+        )
+
     if user.faculdade_id != faculdade_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

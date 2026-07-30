@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import CourseRequest, Curso, InscricaoCurso, StatusCursoEnum, StatusSolicitacaoEnum, Usuario
 from app.routes.auth import get_current_user
 from app.schemas import CourseRequestCreate, CourseRequestResponse, CourseRequestUpdate
+from app.security.tenant import TenantContext, tenant_context
 
 router = APIRouter()
 
@@ -102,11 +103,18 @@ def list_requests(
     status_filter: StatusSolicitacaoEnum | None = Query(default=StatusSolicitacaoEnum.pending, alias="status"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role.value != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas admin pode listar solicitacoes")
 
-    query = db.query(CourseRequest).order_by(CourseRequest.created_at.desc())
+    # CourseRequest não tem faculdade_id: o tenant vem do curso solicitado.
+    query = (
+        db.query(CourseRequest)
+        .join(Curso, CourseRequest.curso_id == Curso.id)
+        .order_by(CourseRequest.created_at.desc())
+    )
+    query = tc.filter_query(query, Curso.faculdade_id)
     if status_filter is not None:
         query = query.filter(CourseRequest.status == status_filter)
 
@@ -134,6 +142,7 @@ def update_request_status(
     payload: CourseRequestUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role.value != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas admin pode atualizar solicitacoes")
@@ -141,6 +150,11 @@ def update_request_status(
     course_request = db.query(CourseRequest).filter(CourseRequest.id == request_id).first()
     if not course_request:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitacao nao encontrada")
+
+    # Aprovar matricula o aluno no curso: sem esta checagem, um admin de outra
+    # faculdade concedia acesso a um curso que não é dele.
+    curso = db.query(Curso).filter(Curso.id == course_request.curso_id).first()
+    tc.assert_access(curso.faculdade_id if curso else None)
 
     course_request.status = StatusSolicitacaoEnum(payload.status)
 

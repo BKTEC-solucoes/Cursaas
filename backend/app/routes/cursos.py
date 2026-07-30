@@ -143,19 +143,27 @@ def create_curso(
     curso_data: CursoCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar cursos")
 
-    existing = db.query(Curso).filter(Curso.nome == curso_data.nome).first()
-    if existing:
+    # Nome é único DENTRO da faculdade — duas instituições podem ter "Cálculo I".
+    nome_duplicado = tc.filter_query(
+        db.query(Curso).filter(Curso.nome == curso_data.nome),
+        Curso.faculdade_id,
+    ).first()
+    if nome_duplicado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Ja existe um curso com o nome '{curso_data.nome}'",
         )
 
     valor = _normalize_course_price(curso_data.pago, curso_data.valor)
-    initial_status = StatusCursoEnum.aprovado
+    # Curso pago entra na fila de aprovação (/api/admin/solicitacoes). Forçar
+    # 'aprovado' aqui tornava esse fluxo inteiro código morto: nenhum curso
+    # chegava a ficar pendente. Mesma regra de criar_curso_instituicao.
+    initial_status = StatusCursoEnum.pendente if curso_data.pago else StatusCursoEnum.aprovado
 
     db_curso = Curso(
         nome=curso_data.nome,
@@ -167,6 +175,18 @@ def create_curso(
         ativo=True,
         criado_por_id=current_user.id,
     )
+    # Sem isto o curso nasce com faculdade_id NULL: some de toda listagem
+    # filtrada por tenant e devolve 403 em qualquer assert_access.
+    if tc.is_super_admin:
+        # Super admin não tem tenant próprio — precisa dizer de quem é o curso.
+        if curso_data.faculdade_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Super admin deve informar 'faculdade_id' ao criar um curso",
+            )
+        db_curso.faculdade_id = curso_data.faculdade_id
+    else:
+        tc.stamp(db_curso)
 
     db.add(db_curso)
     db.commit()
