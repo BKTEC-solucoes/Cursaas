@@ -283,14 +283,23 @@ export class AlunoDashboardComponent implements OnInit {
   }
 
   loadStats(): void {
-    // Carrega dados dos endpoints da API
-    this.apiService.getCursos().subscribe({
+    const usuario = this.authService.getCurrentUser();
+    if (!usuario) {
+      this.meusCursos = 0;
+      return;
+    }
+
+    // Matrículas reais do aluno, não o catálogo.
+    //
+    // Isto usava getCursos(), que bate em /cursos/catalogo — a VITRINE da
+    // faculdade. O card dizia "Cursos Inscritos" exibindo a contagem de tudo
+    // que a instituição publicou, então um aluno sem matrícula nenhuma via
+    // dezenas de "cursos inscritos".
+    this.apiService.getCursosAluno(usuario.id).subscribe({
       next: (cursos: any) => {
         this.meusCursos = Array.isArray(cursos) ? cursos.length : 0;
       },
       error: () => this.meusCursos = 0
     });
-
-    // Você pode adicionar mais chamadas conforme os endpoints estiverem disponíveis
   }
 }

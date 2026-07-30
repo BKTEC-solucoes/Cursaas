@@ -30,6 +30,13 @@ export const routes: Routes = [
     loadChildren: () => import('./auth/auth.routes').then(m => m.AUTH_ROUTES)
   },
   {
+    // Marketplace público de uma faculdade. SEM guard: é a vitrine que a
+    // instituição divulga, e o tenant vem do slug na URL, não de sessão.
+    path: 'f/:slug',
+    loadComponent: () =>
+      import('./marketplace/marketplace.component').then(m => m.MarketplaceComponent)
+  },
+  {
     path: 'lojas',
     canActivate: [authGuard],
     component: LojasComponent

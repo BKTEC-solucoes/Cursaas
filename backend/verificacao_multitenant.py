@@ -195,6 +195,40 @@ st, body = req("PUT", f"/auth/admins/{id_beta}", token=t_super, corpo={"nome": "
 check("super admin edita admin de qualquer tenant (200)", st == 200, (st, body))
 
 print()
+print("== marketplace publico por faculdade (/f/{slug}) ==")
+# Endpoint publico e sem sessao: o tenant vem do slug na URL. O escopo e
+# obrigatorio -- antes, sem slug, devolvia os cursos de TODAS as faculdades
+# para qualquer visitante anonimo.
+st, body = req("GET", "/cursos/catalogo")
+check("catalogo anonimo SEM slug -> 400 (nao vaza todos os tenants)",
+      st == 400, (st, body))
+
+st, body = req("GET", "/cursos/catalogo?faculdade=nao-existe")
+check("catalogo com slug inexistente -> 404", st == 404, (st, body))
+
+st, cat_alfa = req("GET", "/cursos/catalogo?faculdade=alfa")
+ids_cat_alfa = {c["id"] for c in cat_alfa} if st == 200 else set()
+check("catalogo publico da Alfa traz so cursos da Alfa",
+      st == 200 and ids_cat_alfa and ids_cat_alfa <= cursos_do_tenant(1),
+      (st, ids_cat_alfa))
+
+st, cat_beta = req("GET", "/cursos/catalogo?faculdade=beta")
+ids_cat_beta = {c["id"] for c in cat_beta} if st == 200 else set()
+check("catalogo publico da Beta traz so cursos da Beta",
+      st == 200 and ids_cat_beta and ids_cat_beta <= cursos_do_tenant(2),
+      (st, ids_cat_beta))
+
+check("os dois marketplaces nao compartilham curso",
+      not (ids_cat_alfa & ids_cat_beta), (ids_cat_alfa, ids_cat_beta))
+
+st, body = req("GET", "/faculdades/publica/tema/alfa")
+st2, body2 = req("GET", "/faculdades/publica/tema/beta")
+check("tema publico por slug difere entre tenants",
+      st == 200 and st2 == 200 and body["primary_color"] != body2["primary_color"],
+      (body.get("primary_color") if st == 200 else st,
+       body2.get("primary_color") if st2 == 200 else st2))
+
+print()
 print("== #3 rotas antes sem autenticacao ==")
 st, body = req("GET", "/alunos/6/cursos")
 check("GET /alunos/{id}/cursos sem token -> 401", st == 401, (st, body))

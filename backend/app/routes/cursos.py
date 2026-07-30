@@ -1,10 +1,11 @@
 from decimal import Decimal
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Curso, InscricaoCurso, Usuario, AdminCurso, AdminRoleEnum, StatusCursoEnum, Aula, RoleEnum, VinculoAlunoFaculdade, VinculoStatusEnum
+from app.models import Curso, Faculdade, InscricaoCurso, Usuario, AdminCurso, AdminRoleEnum, StatusCursoEnum, Aula, RoleEnum, VinculoAlunoFaculdade, VinculoStatusEnum
 from app.schemas import (
     CursoAdminResponse,
     CursoCreate,
@@ -83,29 +84,62 @@ def list_cursos(
 @router.get("/catalogo", response_model=list[CursoResponse])
 def list_catalogo(
     request: Request,
+    faculdade: Optional[str] = Query(
+        None,
+        description="Slug da faculdade cujo marketplace ser\u00e1 exibido (ex: 'alfa')",
+    ),
     db: Session = Depends(get_db),
 ):
-    try:
+    """
+    Cat\u00e1logo p\u00fablico do marketplace de UMA faculdade.
+
+    Endpoint p\u00fablico (sem autentica\u00e7\u00e3o) \u2014 cada faculdade tem seu marketplace em
+    `/f/{slug}` no frontend.
+
+    O escopo de tenant \u00e9 **obrigat\u00f3rio**, por uma de duas vias:
+      1. `?faculdade=<slug>` \u2014 o caso do marketplace p\u00fablico;
+      2. usu\u00e1rio autenticado vinculado a uma faculdade \u2014 o caso do aluno logado.
+
+    Sem nenhuma das duas, responde 400. Antes esta rota ca\u00eda no `else` e
+    devolvia os cursos de TODAS as faculdades para qualquer visitante an\u00f4nimo,
+    vazando o cat\u00e1logo de um tenant para os outros.
+    """
+    faculdade_id: Optional[int] = None
+
+    if faculdade:
+        tenant = (
+            db.query(Faculdade)
+            .filter(Faculdade.slug == faculdade, Faculdade.ativa == True)
+            .first()
+        )
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Faculdade n\u00e3o encontrada ou inativa",
+            )
+        faculdade_id = tenant.id
+    else:
         usuario = _resolve_request_user(request, db)
-        query = db.query(Curso).filter(Curso.ativo == True, Curso.status == StatusCursoEnum.aprovado)
+        if usuario is not None:
+            faculdade_id = usuario.faculdade_id
 
-        # Filtra pelo tenant do aluno logado
-        if usuario is not None and usuario.role == RoleEnum.aluno and usuario.faculdade_id is not None:
-            query = query.filter(Curso.faculdade_id == usuario.faculdade_id)
+    if faculdade_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe ?faculdade=<slug> para ver o cat\u00e1logo de uma faculdade.",
+        )
 
-        cursos = query.order_by(Curso.data_criacao.desc()).all()
-        print(f"[cursos] list_catalogo retornou {len(cursos)} curso(s)")
-        result = []
-        for curso in cursos:
-            try:
-                result.append(CursoResponse.model_validate(curso))
-            except Exception as e:
-                print(f"\u26a0\ufe0f  Erro ao validar curso ID {curso.id}: {e}")
-                continue
-        return result
-    except Exception as e:
-        print(f"\u274c Erro ao listar cat\u00e1logo: {e}")
-        return []
+    cursos = (
+        db.query(Curso)
+        .filter(
+            Curso.ativo == True,
+            Curso.status == StatusCursoEnum.aprovado,
+            Curso.faculdade_id == faculdade_id,
+        )
+        .order_by(Curso.data_criacao.desc())
+        .all()
+    )
+    return [CursoResponse.model_validate(c) for c in cursos]
 
 
 @router.get("/admin/all", response_model=list[CursoAdminResponse])

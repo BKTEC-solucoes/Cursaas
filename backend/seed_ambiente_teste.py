@@ -101,7 +101,9 @@ def _recriar_schema() -> None:
     Base.metadata.create_all(bind=engine)
 
 
-def _criar_faculdade(db: Session, nome: str, slug: str, primary: str) -> Faculdade:
+def _criar_faculdade(
+    db: Session, nome: str, slug: str, primary: str, dark_primary: str
+) -> Faculdade:
     faculdade = Faculdade(
         nome=nome,
         slug=slug,
@@ -112,10 +114,14 @@ def _criar_faculdade(db: Session, nome: str, slug: str, primary: str) -> Faculda
     db.add(faculdade)
     db.flush()
 
+    # Cor clara E escura por tenant: sem diferenciar a escura, os dois
+    # marketplaces ficam idênticos em quem usa o SO em dark mode, e o
+    # white-label deixa de ser testável visualmente.
     tema = FaculdadeTema(
         faculdade_id=faculdade.id,
         nome=f"Tema {nome}",
         primary_color=primary,
+        dark_primary_color=dark_primary,
     )
     db.add(tema)
     db.flush()
@@ -186,8 +192,8 @@ def _criar_curso(db: Session, faculdade: Faculdade, criado_por: Usuario, nome: s
 
 def semear() -> None:
     with Session(engine) as db:
-        alfa = _criar_faculdade(db, "Faculdade Alfa", "alfa", "#1a6b3c")
-        beta = _criar_faculdade(db, "Faculdade Beta", "beta", "#1d4ed8")
+        alfa = _criar_faculdade(db, "Faculdade Alfa", "alfa", "#1a6b3c", "#34d399")
+        beta = _criar_faculdade(db, "Faculdade Beta", "beta", "#1d4ed8", "#60a5fa")
 
         # Super admin: sem tenant PORQUE é super admin — o TenantContext
         # distingue esse caso de "usuário órfão" pelo admin_role.
