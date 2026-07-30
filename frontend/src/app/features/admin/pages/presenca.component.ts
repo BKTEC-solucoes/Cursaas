@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface Presenca {
   id: number;
@@ -524,7 +525,7 @@ export class AdminPresencaComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Presenca[]>('http://localhost:8000/api/presenca/').subscribe({
+    this.http.get<Presenca[]>(`${environment.apiUrl}/presenca/`).subscribe({
       next: (presencas) => {
         this.presencas = presencas || [];
         this.carregando = false;
@@ -558,7 +559,7 @@ export class AdminPresencaComponent implements OnInit {
     this.erroEdicao = '';
 
     this.http.put<Presenca>(
-      `http://localhost:8000/api/presenca/${this.presencaEmEdicao.id}`,
+      `${environment.apiUrl}/presenca/${this.presencaEmEdicao.id}`,
       { percentual_assistido: this.percentualEdicao }
     ).subscribe({
       next: (atualizado) => {

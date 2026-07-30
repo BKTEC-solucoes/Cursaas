@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface InstituicaoInfo {
   id: number;
@@ -208,7 +209,7 @@ export class InstituicaoPerfilComponent implements OnInit {
   }
 
   carregar(): void {
-    this.http.get<InstituicaoInfo>('http://localhost:8000/api/instituicoes/minha', { headers: this.headers() }).subscribe({
+    this.http.get<InstituicaoInfo>(`${environment.apiUrl}/instituicoes/minha`, { headers: this.headers() }).subscribe({
       next: (data) => { this.instituicao = data; this.carregando = false; },
       error: (err) => { this.erro = err?.error?.detail ?? 'Erro ao carregar dados.'; this.carregando = false; },
     });
@@ -243,7 +244,7 @@ export class InstituicaoPerfilComponent implements OnInit {
     if (this.form.telefone.trim())      payload['telefone']      = this.form.telefone.trim();
     if (this.form.dominio_email.trim()) payload['dominio_email'] = this.form.dominio_email.trim();
 
-    this.http.patch<InstituicaoInfo>('http://localhost:8000/api/instituicoes/minha', payload, { headers: this.headers() }).subscribe({
+    this.http.patch<InstituicaoInfo>(`${environment.apiUrl}/instituicoes/minha`, payload, { headers: this.headers() }).subscribe({
       next: (data) => {
         this.instituicao = data;
         this.salvando = false;

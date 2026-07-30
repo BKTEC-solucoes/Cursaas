@@ -8,10 +8,11 @@ import { BlocoTextoComponent, BlocoVideoModernoComponent, RichTextEditorComponen
 import type { BlocoEditavel, TipoBloco } from '../../../shared/components';
 import type { Video } from '../../../shared/components';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface Curso { id: number; nome: string; }
 
-const API = 'http://localhost:8000/api';
+const API = environment.apiUrl;
 
 /** Tenta parsear o JSON de descricao de volta para blocos. */
 function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
@@ -632,7 +633,8 @@ export class AdminAulaFormComponent implements OnInit {
   // ── API ───────────────────────────────────────────────────────────────────
 
   private headers(): HttpHeaders {
-    const token = this.authService.getToken?.() ?? localStorage.getItem('token') ?? '';
+    // Fallback lê 'access_token' — a chave que o AuthService realmente usa.
+    const token = this.authService.getToken?.() ?? localStorage.getItem('access_token') ?? '';
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 

@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { RichTextEditorComponent } from './rich-text-editor.component';
+import { environment } from '../../../environments/environment';
 
 export type TipoBloco = 'titulo' | 'texto' | 'video';
 
@@ -386,11 +387,13 @@ export class BlocoVideoComponent implements OnChanges, OnDestroy {
     if (!this.aulaId) return;
     this.uploadErro = '';
     this.uploadProgress = 0;
-    const token = localStorage.getItem('token') ?? '';
+    // AuthService grava sob 'access_token'; ler 'token' devolvia sempre '' e o
+    // backend rejeitava o "Bearer " vazio com 401.
+    const token = localStorage.getItem('access_token') ?? '';
     const formData = new FormData();
     formData.append('file', file);
     this.http.post<any>(
-      `http://localhost:8000/api/aulas/${this.aulaId}/upload-video`,
+      `${environment.apiUrl}/aulas/${this.aulaId}/upload-video`,
       formData,
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }), reportProgress: true, observe: 'events' }
     ).subscribe({
@@ -400,7 +403,7 @@ export class BlocoVideoComponent implements OnChanges, OnDestroy {
         } else if (ev.type === HttpEventType.Response) {
           const v = ev.body;
           const nome = (v.caminho_arquivo as string).split('\\').pop() || v.arquivo_nome;
-          this.uploadConcluido.emit({ url: `http://localhost:8000/api/aulas/video/${nome}`, videoId: v.id });
+          this.uploadConcluido.emit({ url: `${environment.apiUrl}/aulas/video/${nome}`, videoId: v.id });
           this.uploadProgress = null;
         }
       },
@@ -414,9 +417,11 @@ export class BlocoVideoComponent implements OnChanges, OnDestroy {
   removerVideoUpload(): void {
     if (!this.aulaId || !this.videoUploadId || this.removendoVideo) return;
     this.removendoVideo = true;
-    const token = localStorage.getItem('token') ?? '';
+    // AuthService grava sob 'access_token'; ler 'token' devolvia sempre '' e o
+    // backend rejeitava o "Bearer " vazio com 401.
+    const token = localStorage.getItem('access_token') ?? '';
     this.http.delete(
-      `http://localhost:8000/api/aulas/${this.aulaId}/video/${this.videoUploadId}`,
+      `${environment.apiUrl}/aulas/${this.aulaId}/video/${this.videoUploadId}`,
       { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
     ).subscribe({
       next: () => { this.removendoVideo = false; this.uploadErro = ''; this.uploadRemovido.emit(); },

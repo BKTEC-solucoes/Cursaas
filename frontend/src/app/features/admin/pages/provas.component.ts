@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment';
 
 interface Prova {
   id: number;
@@ -462,7 +463,7 @@ export class AdminProvasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
     
-    this.http.get<Prova[]>('http://localhost:8000/api/provas/').subscribe({
+    this.http.get<Prova[]>(`${environment.apiUrl}/provas/`).subscribe({
       next: (provas) => {
         this.provas = provas || [];
         this.aplicarFiltros();
@@ -477,7 +478,7 @@ export class AdminProvasComponent implements OnInit {
   }
 
   carregarCursos(): void {
-    this.http.get<any[]>('http://localhost:8000/api/cursos/').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/cursos/`).subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
       },
@@ -560,7 +561,7 @@ export class AdminProvasComponent implements OnInit {
       return;
     }
 
-    this.http.delete(`http://localhost:8000/api/provas/${prova.id}`).subscribe({
+    this.http.delete(`${environment.apiUrl}/provas/${prova.id}`).subscribe({
       next: () => {
         this.mostrarMensagem('Prova deletada com sucesso!', 'success');
         this.carregarProvas();

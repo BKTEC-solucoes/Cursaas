@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface InstituicaoInfo {
   id: number;
@@ -167,9 +168,9 @@ export class InstituicaoDashboardComponent implements OnInit {
   ngOnInit(): void {
     const headers = this.headers();
     forkJoin({
-      inst: this.http.get<InstituicaoInfo>('http://localhost:8000/api/instituicoes/minha', { headers }).pipe(catchError(() => of(null))),
-      alunos: this.http.get<any[]>('http://localhost:8000/api/instituicoes/minha/alunos', { headers }).pipe(catchError(() => of([]))),
-      solicitacoes: this.http.get<any[]>('http://localhost:8000/api/instituicoes/minha/solicitacoes', { headers }).pipe(catchError(() => of([]))),
+      inst: this.http.get<InstituicaoInfo>(`${environment.apiUrl}/instituicoes/minha`, { headers }).pipe(catchError(() => of(null))),
+      alunos: this.http.get<any[]>(`${environment.apiUrl}/instituicoes/minha/alunos`, { headers }).pipe(catchError(() => of([]))),
+      solicitacoes: this.http.get<any[]>(`${environment.apiUrl}/instituicoes/minha/solicitacoes`, { headers }).pipe(catchError(() => of([]))),
     }).subscribe(({ inst, alunos, solicitacoes }) => {
       this.instituicao = inst;
       this.totalAlunos = (alunos as any[]).length;

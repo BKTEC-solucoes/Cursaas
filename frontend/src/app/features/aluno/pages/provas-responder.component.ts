@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { LetraPipe } from '../../../shared/pipes/letra.pipe';
+import { environment } from '../../../../environments/environment';
 
 interface Opcao {
   id: number;
@@ -671,7 +672,7 @@ export class ProvasResponderComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Prova>(`http://localhost:8000/api/provas/${this.provaId}`).subscribe({
+    this.http.get<Prova>(`${environment.apiUrl}/provas/${this.provaId}`).subscribe({
       next: (prova) => {
         this.prova = prova;
         this.carregando = false;
@@ -701,7 +702,7 @@ export class ProvasResponderComponent implements OnInit {
       respostas: respostas
     };
 
-    this.http.post<any>(`http://localhost:8000/api/provas/${this.provaId}/responder`, payload).subscribe({
+    this.http.post<any>(`${environment.apiUrl}/provas/${this.provaId}/responder`, payload).subscribe({
       next: (resultado) => {
         this.resultado = resultado;
         this.enviada = true;

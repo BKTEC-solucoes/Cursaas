@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface Instituicao {
   id: number;
@@ -295,7 +296,7 @@ interface Instituicao {
   `]
 })
 export class AdminInstituicaoDetalheComponent implements OnInit {
-  private readonly apiUrl = 'http://localhost:8000/api';
+  private readonly apiUrl = environment.apiUrl;
 
   inst: Instituicao | null = null;
   carregando = false;

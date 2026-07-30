@@ -2,6 +2,7 @@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface Aluno {
   id: number;
@@ -450,7 +451,7 @@ export class AdminAlunosComponent implements OnInit {
 
   form: AlunoForm = formVazio();
 
-  private readonly apiUrl = 'http://localhost:8000/api/alunos';
+  private readonly apiUrl = `${environment.apiUrl}/alunos`;
 
   constructor(private http: HttpClient) {}
 

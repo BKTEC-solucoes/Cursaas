@@ -7,6 +7,7 @@ import { catchError, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService, ThemePreset, ThemeListItem, PageOverride } from '../../../core/services/theme.service';
 import { PagePreviewComponent, PreviewPage, PreviewTheme } from './previews/page-preview.component';
+import { environment } from '../../../../environments/environment';
 
 interface TemaValues {
   primary_color: string;
@@ -76,7 +77,7 @@ const DEFAULT_VALUES: TemaValues = {
   spacing:               'comfortable',
 };
 
-const API = 'http://localhost:8000/api';
+const API = environment.apiUrl;
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 @Component({

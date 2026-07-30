@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface ResultadoProva {
   id: number;
@@ -410,7 +411,7 @@ export class AdminProvaResultadosComponent implements OnInit {
   carregarProva(): void {
     if (!this.provaId) return;
 
-    this.http.get(`http://localhost:8000/api/provas/${this.provaId}`).subscribe({
+    this.http.get(`${environment.apiUrl}/provas/${this.provaId}`).subscribe({
       next: (prova: any) => {
         this.prova = prova;
       },
@@ -426,7 +427,7 @@ export class AdminProvaResultadosComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<ResultadoProva[]>(`http://localhost:8000/api/provas/${this.provaId}/respostas`).subscribe({
+    this.http.get<ResultadoProva[]>(`${environment.apiUrl}/provas/${this.provaId}/respostas`).subscribe({
       next: (resultados) => {
         this.resultados = resultados || [];
         this.calcularEstatisticas();

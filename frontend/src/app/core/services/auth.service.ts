@@ -37,7 +37,7 @@ export interface GoogleLoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8000/api';
+  private apiUrl = environment.apiUrl;
   private googleAuthUrl = environment.googleAuthBackendUrl;
   private currentUserSubject = new BehaviorSubject<UserInfo | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -63,10 +63,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('tenant_theme');
-    this.tokenSubject.next(null);
-    this.currentUserSubject.next(null);
+    this.limparSessao();
     this.router.navigate(['/login']);
   }
 
@@ -74,8 +71,49 @@ export class AuthService {
     return localStorage.getItem('access_token');
   }
 
+  /**
+   * True apenas se existe token E ele ainda não expirou.
+   *
+   * Checar só a presença do token — como era antes — deixava o authGuard
+   * liberar a rota com token vencido: a tela montava, cada request tomava 401 e
+   * o interceptor deslogava no meio da navegação. Ler o `exp` corta isso antes.
+   *
+   * Isto é conveniência de UX, não segurança: quem manda é a validação no
+   * backend. O payload do JWT é legível por qualquer um e não é verificado aqui.
+   */
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+    if (!token) return false;
+
+    if (this.isTokenExpirado(token)) {
+      this.limparSessao();
+      return false;
+    }
+    return true;
+  }
+
+  /** Lê o claim `exp` (segundos desde a epoch). Token ilegível conta como expirado. */
+  private isTokenExpirado(token: string): boolean {
+    try {
+      const partes = token.split('.');
+      if (partes.length !== 3) return true;
+
+      const base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      if (typeof payload.exp !== 'number') return false; // sem exp: deixa o backend decidir
+
+      return payload.exp * 1000 <= Date.now();
+    } catch {
+      return true;
+    }
+  }
+
+  /** Limpa o estado local sem redirecionar (logout() faz o redirect). */
+  private limparSessao(): void {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('tenant_theme');
+    this.tokenSubject.next(null);
+    this.currentUserSubject.next(null);
   }
 
   private loadUserInfo(): void {
@@ -87,9 +125,7 @@ export class AuthService {
       } catch (error) {
         console.error('Error decoding token:', error);
         // Token inválido, limpar do localStorage
-        localStorage.removeItem('access_token');
-        this.tokenSubject.next(null);
-        this.currentUserSubject.next(null);
+        this.limparSessao();
       }
     }
   }

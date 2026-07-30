@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-video-player',
@@ -242,7 +243,7 @@ export class VideoPlayerComponent implements OnInit, OnDestroy {
 
   private trackingSubscription?: Subscription;
   private readonly updateInterval = 10000;
-  private readonly apiUrl = 'http://localhost:8000/api';
+  private readonly apiUrl = environment.apiUrl;
   private alunoId: number | null = null;
 
   constructor(

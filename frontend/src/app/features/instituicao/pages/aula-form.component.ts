@@ -8,10 +8,11 @@ import { BlocoTextoComponent, BlocoVideoModernoComponent, RichTextEditorComponen
 import type { BlocoEditavel, TipoBloco } from '../../../shared/components';
 import type { Video } from '../../../shared/components';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface Curso { id: number; nome: string; }
 
-const API = 'http://localhost:8000/api';
+const API = environment.apiUrl;
 
 function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
   try {

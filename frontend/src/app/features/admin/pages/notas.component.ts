@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface Nota {
   id: number;
@@ -629,7 +630,7 @@ export class AdminNotasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Nota[]>('http://localhost:8000/api/notas/').subscribe({
+    this.http.get<Nota[]>(`${environment.apiUrl}/notas/`).subscribe({
       next: (notas) => {
         // nota_final vem como string do backend (Decimal do Python)
         const normalizadas = (notas || []).map(n => ({
@@ -701,7 +702,7 @@ export class AdminNotasComponent implements OnInit {
     this.carregandoRespostas = true;
     this.erroRespostas = '';
 
-    this.http.get<any>(`http://localhost:8000/api/provas/${nota.prova_id}/respostas-aluno/${nota.usuario_id}`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/provas/${nota.prova_id}/respostas-aluno/${nota.usuario_id}`).subscribe({
       next: (data) => {
         this.questoesRespostas = data.questoes || [];
         this.carregandoRespostas = false;
@@ -729,7 +730,7 @@ export class AdminNotasComponent implements OnInit {
     if (!this.notaRespostas || isNaN(valor) || valor <= 0) return;
 
     this.http.put(
-      `http://localhost:8000/api/provas/${this.notaRespostas.prova_id}/questoes/${q.id}`,
+      `${environment.apiUrl}/provas/${this.notaRespostas.prova_id}/questoes/${q.id}`,
       { pontos: valor }
     ).subscribe({
       next: () => { q.pontos = valor; },
@@ -754,7 +755,7 @@ export class AdminNotasComponent implements OnInit {
       observacoes: this.obsEditada || null
     };
 
-    this.http.put<Nota>(`http://localhost:8000/api/notas/${this.notaEmEdicao.id}`, payload).subscribe({
+    this.http.put<Nota>(`${environment.apiUrl}/notas/${this.notaEmEdicao.id}`, payload).subscribe({
       next: (notaAtualizada) => {
         const idx = this.notas.findIndex(n => n.id === this.notaEmEdicao!.id);
         if (idx !== -1) {

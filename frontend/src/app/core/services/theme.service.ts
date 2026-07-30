@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { tap, catchError, map, distinctUntilChanged, finalize, shareReplay } from 'rxjs/operators';
 import { generatePalette, applyPaletteToRoot, applyDarkOverrideToRoot } from './color-palette';
+import { environment } from '../../../environments/environment';
 
 export interface PageOverride {
   primary_color?: string;
@@ -166,7 +167,7 @@ const GRADIENT_ATTR = 'data-gradient';
 const STORAGE_KEY      = 'tenant_theme';
 const STORAGE_KEY_DARK = 'tenant_dark_mode';
 const STORAGE_KEY_PREF = 'user_dark_pref';   // 'light' | 'dark' | 'system'
-const API              = 'http://localhost:8000/api';
+const API              = environment.apiUrl;
 /** Tempo máximo antes de revalidar o tema com o backend (1 hora) */
 const CACHE_TTL_MS         = 60 * 60 * 1000;
 /**

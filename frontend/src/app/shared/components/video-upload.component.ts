@@ -17,6 +17,7 @@ import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 export interface Video {
   id?: string;
@@ -874,7 +875,7 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
   dragOver = false;
 
   private destroy$ = new Subject<void>();
-  private readonly API = 'http://localhost:8000/api';
+  private readonly API = environment.apiUrl;
   private readonly FORMATOS_ACEITOS = ['video/mp4', 'video/webm', 'video/ogg'];
   private readonly TAMANHO_MAXIMO = 500 * 1024 * 1024; // 500MB
 

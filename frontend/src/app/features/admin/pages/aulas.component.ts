@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,6 +6,8 @@ import { Router } from '@angular/router';
 import { generateHTML } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { RichTextEditorComponent } from '../../../shared/components';
+import { VideoService } from '../../../core/services/video.service';
+import { environment } from '../../../../environments/environment';
 
 interface Aula {
   id: number;
@@ -139,7 +141,7 @@ interface Video {
 
               <div class="video-item" *ngFor="let v of aulaDetalhes.videos">
                 <div class="video-player-wrap">
-                  <video controls [src]="getVideoUrl(v.caminho_arquivo)" class="video-player" preload="metadata">
+                  <video controls [src]="getVideoUrl(v.caminho_arquivo) | async" class="video-player" preload="metadata">
                     Seu navegador não suporta reprodução de vídeo.
                   </video>
                 </div>
@@ -952,7 +954,7 @@ interface Video {
     }
   `]
 })
-export class AdminAulasComponent implements OnInit {
+export class AdminAulasComponent implements OnInit, OnDestroy {
   aulas: Aula[] = [];
   cursos: Curso[] = [];
   carregando = false;
@@ -1001,7 +1003,16 @@ export class AdminAulasComponent implements OnInit {
   erroUpload = '';
   dragover = false;
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private videoService: VideoService,
+  ) {}
+
+  ngOnDestroy(): void {
+    // Libera as object URLs dos vídeos baixados nesta tela.
+    this.videoService.liberar();
+  }
 
   ngOnInit(): void {
     this.carregarAulas();
@@ -1012,7 +1023,7 @@ export class AdminAulasComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Aula[]>('http://localhost:8000/api/aulas/').subscribe({
+    this.http.get<Aula[]>(`${environment.apiUrl}/aulas/`).subscribe({
       next: (aulas) => {
         this.aulas = aulas || [];
         this.carregando = false;
@@ -1030,7 +1041,7 @@ export class AdminAulasComponent implements OnInit {
     this.carregandoDetalhes = true;
     this.modalVerAberto = true;
 
-    this.http.get<any>(`http://localhost:8000/api/aulas/${aula.id}`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/aulas/${aula.id}`).subscribe({
       next: (detalhe) => {
         this.aulaDetalhes = detalhe;
         this.carregandoDetalhes = false;
@@ -1046,11 +1057,15 @@ export class AdminAulasComponent implements OnInit {
     this.aulaDetalhes = null;
   }
 
-  getVideoUrl(caminhoArquivo: string): string {
-    // caminho_arquivo é o path completo no servidor (ex: uploads\videos\aula_1_video_123.mp4)
-    // Extrai só o nome do arquivo e serve pelo endpoint estático /uploads/videos/
-    const filename = caminhoArquivo.replace(/\\/g, '/').split('/').pop() || '';
-    return `http://localhost:8000/uploads/videos/${filename}`;
+  /**
+   * Object URL do vídeo, resolvida via download autenticado.
+   *
+   * O VideoService devolve o MESMO Observable para um dado arquivo (cache
+   * interno), então chamar isto do template com `| async` é seguro: não recria
+   * a subscription a cada ciclo de detecção de mudanças.
+   */
+  getVideoUrl(caminhoArquivo: string) {
+    return this.videoService.carregar(caminhoArquivo);
   }
 
   formatarDuracao(segundos: number): string {
@@ -1075,7 +1090,7 @@ export class AdminAulasComponent implements OnInit {
   }
 
   carregarCursos(): void {
-    this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
+    this.http.get<Curso[]>(`${environment.apiUrl}/cursos/`).subscribe({
       next: (cursos) => { this.cursos = cursos || []; },
       error: () => {}
     });
@@ -1115,7 +1130,7 @@ export class AdminAulasComponent implements OnInit {
       duracao_minutos: this.formNovaAula.duracao_minutos || null
     };
 
-    this.http.post('http://localhost:8000/api/aulas/', payload).subscribe({
+    this.http.post(`${environment.apiUrl}/aulas/`, payload).subscribe({
       next: () => {
         this.criandoNovaAula = false;
         this.modalNovaAulaAberto = false;
@@ -1135,7 +1150,7 @@ export class AdminAulasComponent implements OnInit {
     this.excluindoVideoId = video.id;
     this.erroExcluirVideo = '';
 
-    this.http.delete(`http://localhost:8000/api/aulas/${aula.id}/video/${video.id}`).subscribe({
+    this.http.delete(`${environment.apiUrl}/aulas/${aula.id}/video/${video.id}`).subscribe({
       next: () => {
         this.excluindoVideoId = null;
         // Remover vídeo da lista local da aula em edição
@@ -1199,7 +1214,7 @@ export class AdminAulasComponent implements OnInit {
       ativo: this.formEdicao.ativo
     };
 
-    this.http.put(`http://localhost:8000/api/aulas/${this.aulaEmEdicao!.id}`, payload).subscribe({
+    this.http.put(`${environment.apiUrl}/aulas/${this.aulaEmEdicao!.id}`, payload).subscribe({
       next: () => {
         this.salvandoEdicao = false;
         this.modalEditarAberto = false;
@@ -1299,7 +1314,7 @@ export class AdminAulasComponent implements OnInit {
     const formData = new FormData();
     formData.append('file', this.arquivoSelecionado);
 
-    const url = `http://localhost:8000/api/aulas/${this.aulaParaUpload.id}/upload-video`;
+    const url = `${environment.apiUrl}/aulas/${this.aulaParaUpload.id}/upload-video`;
 
     this.http.post(url, formData, {
       reportProgress: true,

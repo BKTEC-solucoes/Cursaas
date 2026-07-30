@@ -6,6 +6,7 @@ import { Subject, EMPTY } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, merge } from 'rxjs/operators';
 import { ADMIN_ROLE_OPTIONS, AdminRole, ADMIN_ROLE_LABELS, type Permission } from '../../../core/permissions';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { environment } from '../../../../environments/environment';
 
 interface AdminForm {
   nome: string;
@@ -1378,8 +1379,8 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     instrutor:   'Gerencia cursos, aulas, provas, notas e presença. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
   };
 
-  private readonly adminApiUrl  = 'http://localhost:8000/api/auth/admin-registro';
-  private readonly adminsListUrl = 'http://localhost:8000/api/auth/admins';
+  private readonly adminApiUrl  = `${environment.apiUrl}/auth/admin-registro`;
+  private readonly adminsListUrl = `${environment.apiUrl}/auth/admins`;
 
   constructor(private http: HttpClient, public permissionsService: PermissionsService) {}
 
@@ -1401,7 +1402,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
           return EMPTY;
         }
         this.emailStatus = 'checking';
-        const url = new URL('http://localhost:8000/api/auth/check-email');
+        const url = new URL(`${environment.apiUrl}/auth/check-email`);
         url.searchParams.set('email', email);
         if (this.editandoAdminId) {
           url.searchParams.set('exclude_id', String(this.editandoAdminId));
@@ -1510,7 +1511,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
 
   // ── Convites ──────────────────────────────────────────────────────────────
 
-  private readonly convitesUrl = 'http://localhost:8000/api/convites';
+  private readonly convitesUrl = `${environment.apiUrl}/convites`;
 
   private carregarConvites(): void {
     if (!this.permissionsService.can('administradores:write')) return;
@@ -1609,14 +1610,14 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     formData.append('file', file);
 
     this.http.post<any>(
-      'http://localhost:8000/api/auth/upload-profile-picture',
+      `${environment.apiUrl}/auth/upload-profile-picture`,
       formData,
       { headers: this.getHeaders() }
     ).subscribe({
       next: (resp) => {
         URL.revokeObjectURL(previewUrl);
         // Armazena apenas a URL do arquivo em disco (não base64)
-        this.adminForm.foto_perfil = `http://localhost:8000/${resp.path}`;
+        this.adminForm.foto_perfil = `${environment.baseUrl}/${resp.path}`;
         this.adminFormErro = '';
       },
       error: () => {
@@ -1634,7 +1635,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     }
 
     this.http.post<any>(
-      'http://localhost:8000/api/auth/generate-avatar',
+      `${environment.apiUrl}/auth/generate-avatar`,
       null,
       {
         params: { nome: this.adminForm.nome },
@@ -1695,7 +1696,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     const payload = { curso_ids: this.cursosTemp };
 
     this.http
-      .put<any>(`http://localhost:8000/api/auth/admins/${adminId}`, payload, { headers: this.getHeaders() })
+      .put<any>(`${environment.apiUrl}/auth/admins/${adminId}`, payload, { headers: this.getHeaders() })
       .subscribe({
         next: () => {
           this.salvandoCursos = false;
@@ -1720,7 +1721,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     if (!confirm(`Excluir o administrador "${admin.nome}" permanentemente? Esta ação não pode ser desfeita.`)) return;
 
     this.http.delete(
-      `http://localhost:8000/api/auth/admins/${admin.id}`,
+      `${environment.apiUrl}/auth/admins/${admin.id}`,
       { headers: this.getHeaders() }
     ).subscribe({
       next: () => {
@@ -1825,7 +1826,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
 
       this.http
         .put<any>(
-          `http://localhost:8000/api/auth/admins/${this.editandoAdminId}`,
+          `${environment.apiUrl}/auth/admins/${this.editandoAdminId}`,
           payload,
           { headers: this.getHeaders() }
         )
@@ -1890,7 +1891,7 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
   }
 
   private carregarCursosDisponiveis() {
-    this.http.get<CursoOption[]>('http://localhost:8000/api/cursos', { headers: this.getHeaders() }).subscribe({
+    this.http.get<CursoOption[]>(`${environment.apiUrl}/cursos`, { headers: this.getHeaders() }).subscribe({
       next: (cursos) => {
         this.cursosDisponiveis = cursos;
       },

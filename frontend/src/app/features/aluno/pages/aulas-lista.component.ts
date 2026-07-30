@@ -6,6 +6,7 @@ import { forkJoin } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { generateHTML } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
+import { environment } from '../../../../environments/environment';
 
 interface CursoEnrollado {
   id: number;
@@ -337,7 +338,7 @@ export class AulasListaComponent implements OnInit {
     this.erro = '';
 
     this.http.get<CursoEnrollado[]>(
-      `http://localhost:8000/api/alunos/${user.id}/cursos`,
+      `${environment.apiUrl}/alunos/${user.id}/cursos`,
       { headers: this.getHeaders() }
     ).subscribe({
       next: (cursos) => {
@@ -349,7 +350,7 @@ export class AulasListaComponent implements OnInit {
 
         const requests = cursos.map(curso =>
           this.http.get<Aula[]>(
-            `http://localhost:8000/api/aulas/?curso_id=${curso.id}&limit=200`,
+            `${environment.apiUrl}/aulas/?curso_id=${curso.id}&limit=200`,
             { headers: this.getHeaders() }
           )
         );

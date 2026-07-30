@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { environment } from '../../../../environments/environment';
 
 interface Curso {
   id: number;
@@ -587,7 +588,7 @@ export class AdminProvaFormComponent implements OnInit {
   }
 
   carregarCursos(): void {
-    this.http.get<Curso[]>('http://localhost:8000/api/cursos/').subscribe({
+    this.http.get<Curso[]>(`${environment.apiUrl}/cursos/`).subscribe({
       next: (cursos) => {
         this.cursos = cursos || [];
       },
@@ -601,7 +602,7 @@ export class AdminProvaFormComponent implements OnInit {
     if (!this.provaId) return;
 
     this.carregando = true;
-    this.http.get(`http://localhost:8000/api/provas/${this.provaId}`).subscribe({
+    this.http.get(`${environment.apiUrl}/provas/${this.provaId}`).subscribe({
       next: (prova: any) => {
         this.provaForm.patchValue({
           titulo: prova.titulo,
@@ -739,8 +740,8 @@ export class AdminProvaFormComponent implements OnInit {
     };
 
     const request = this.provaId 
-      ? this.http.put(`http://localhost:8000/api/provas/${this.provaId}`, dadosProva)
-      : this.http.post('http://localhost:8000/api/provas/', dadosProva);
+      ? this.http.put(`${environment.apiUrl}/provas/${this.provaId}`, dadosProva)
+      : this.http.post(`${environment.apiUrl}/provas/`, dadosProva);
 
     request.subscribe({
       next: (response: any) => {

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface Prova {
   id: number;
@@ -616,7 +617,7 @@ export class AlunoProvaResponderComponent implements OnInit {
     this.carregando = true;
     this.erro = '';
 
-    this.http.get<Prova>(`http://localhost:8000/api/provas/${this.provaId}`).subscribe({
+    this.http.get<Prova>(`${environment.apiUrl}/provas/${this.provaId}`).subscribe({
       next: (prova) => {
         this.prova = prova;
         this.verificarDisponibilidade();
@@ -737,7 +738,7 @@ export class AlunoProvaResponderComponent implements OnInit {
       respostas: respostasArray
     };
 
-    this.http.post(`http://localhost:8000/api/provas/${this.provaId}/responder`, payload).subscribe({
+    this.http.post(`${environment.apiUrl}/provas/${this.provaId}/responder`, payload).subscribe({
       next: (resultado: any) => {
         if (this.timer) {
           clearInterval(this.timer);

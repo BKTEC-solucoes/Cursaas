@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface PresencaAula {
   id: number;
@@ -263,7 +264,7 @@ export class AlunoPresencaComponent implements OnInit {
     const token = this.auth.getToken();
     const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
 
-    this.http.get<PresencaAula[]>(`http://localhost:8000/api/presenca/${alunoId}`, { headers }).subscribe({
+    this.http.get<PresencaAula[]>(`${environment.apiUrl}/presenca/${alunoId}`, { headers }).subscribe({
       next: (data) => {
         this.presencas = data.sort((a, b) => new Date(a.aula_data).getTime() - new Date(b.aula_data).getTime());
         this.carregando = false;

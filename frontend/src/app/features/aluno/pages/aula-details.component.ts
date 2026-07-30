@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
@@ -6,6 +6,7 @@ import { generateHTML } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 
 import { ApiService, CourseRequest } from '../../../shared/services/api.service';
+import { VideoService } from '../../../core/services/video.service';
 
 interface BlocoRender {
   tipo: 'texto' | 'video' | 'video-upload';
@@ -319,7 +320,7 @@ interface BlocoRender {
     }
   `]
 })
-export class AulaDetailsComponent implements OnInit {
+export class AulaDetailsComponent implements OnInit, OnDestroy {
   aulaId?: number;
   aula: any;
   curso: any;
@@ -337,7 +338,27 @@ export class AulaDetailsComponent implements OnInit {
     private router: Router,
     private apiService: ApiService,
     private sanitizer: DomSanitizer,
+    private videoService: VideoService,
   ) {}
+
+  ngOnDestroy(): void {
+    // Libera as object URLs dos vídeos baixados nesta tela.
+    this.videoService.liberar();
+  }
+
+  /**
+   * Cria um bloco de vídeo com `videoUrl` vazia e preenche quando o download
+   * autenticado terminar. O endpoint exige Bearer token, então a URL não pode
+   * ir direto para `<video src>` — ver VideoService.
+   */
+  private blocoVideoUpload(caminhoOuUrl: string): BlocoRender {
+    const bloco: BlocoRender = { tipo: 'video-upload' as const, videoUrl: '' };
+    this.videoService.carregar(caminhoOuUrl).subscribe({
+      next: (url) => { bloco.videoUrl = url; },
+      error: () => { bloco.videoUrl = ''; },
+    });
+    return bloco;
+  }
 
   ngOnInit(): void {
     this.route.params.subscribe((params) => {
@@ -365,10 +386,9 @@ export class AulaDetailsComponent implements OnInit {
 
         // Fallback: se a descricao não contém uploads, usa aula.videos direto
         if (!blocos.some(b => b.tipo === 'video-upload') && aula.videos?.length > 0) {
-          const uploads = (aula.videos as any[]).map((v: any) => {
-            const nome = (v.caminho_arquivo as string).split(/[\/\\]/).pop() || v.arquivo_nome;
-            return { tipo: 'video-upload' as const, videoUrl: `http://localhost:8000/api/aulas/video/${nome}` };
-          });
+          const uploads = (aula.videos as any[]).map((v: any) =>
+            this.blocoVideoUpload(v.caminho_arquivo || v.arquivo_nome),
+          );
           blocos.unshift(...uploads);
         }
 
@@ -447,7 +467,7 @@ export class AulaDetailsComponent implements OnInit {
                     return url ? [{ tipo: 'video' as const, safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url) }] : [];
                   }
                   if (v.tipo === 'upload') {
-                    return [{ tipo: 'video-upload' as const, videoUrl: v.url }];
+                    return [this.blocoVideoUpload(v.url)];
                   }
                   return [] as BlocoRender[];
                 });

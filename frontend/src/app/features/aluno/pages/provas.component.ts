@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface CursoEnrollado {
   id: number;
@@ -287,7 +288,7 @@ export class AlunoProvasComponent implements OnInit {
     this.erro = '';
 
     this.http.get<CursoEnrollado[]>(
-      `http://localhost:8000/api/alunos/${user.id}/cursos`,
+      `${environment.apiUrl}/alunos/${user.id}/cursos`,
       { headers: this.getHeaders() }
     ).subscribe({
       next: (cursos) => {
@@ -299,7 +300,7 @@ export class AlunoProvasComponent implements OnInit {
 
         const requests = cursos.map(curso =>
           this.http.get<Prova[]>(
-            `http://localhost:8000/api/provas/?curso_id=${curso.id}&limit=100`,
+            `${environment.apiUrl}/provas/?curso_id=${curso.id}&limit=100`,
             { headers: this.getHeaders() }
           )
         );

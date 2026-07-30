@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface Solicitacao {
   id: number;
@@ -248,7 +249,7 @@ export class InstituicaoSolicitacoesComponent implements OnInit {
   }
 
   carregar(): void {
-    this.http.get<Solicitacao[]>('http://localhost:8000/api/instituicoes/minha/solicitacoes', { headers: this.headers() }).subscribe({
+    this.http.get<Solicitacao[]>(`${environment.apiUrl}/instituicoes/minha/solicitacoes`, { headers: this.headers() }).subscribe({
       next: (data) => { this.solicitacoes = data; this.carregando = false; },
       error: (err) => { this.erro = err?.error?.detail ?? 'Erro ao carregar solicitações.'; this.carregando = false; },
     });
@@ -265,7 +266,7 @@ export class InstituicaoSolicitacoesComponent implements OnInit {
 
   aprovar(s: Solicitacao): void {
     this.processando[s.id] = 'aprovando';
-    const url = `http://localhost:8000/api/instituicoes/minha/solicitacoes/${s.id}/aprovar`;
+    const url = `${environment.apiUrl}/instituicoes/minha/solicitacoes/${s.id}/aprovar`;
     this.http.patch(url, {}, { headers: this.headers() }).subscribe({
       next: () => {
         s.status = 'aprovada';
@@ -298,7 +299,7 @@ export class InstituicaoSolicitacoesComponent implements OnInit {
     this.processandoRecusa = true;
     const s = this.modalRecusa;
     const params = `motivo=${encodeURIComponent(this.motivoRecusa.trim())}`;
-    const url = `http://localhost:8000/api/instituicoes/minha/solicitacoes/${s.id}/recusar?${params}`;
+    const url = `${environment.apiUrl}/instituicoes/minha/solicitacoes/${s.id}/recusar?${params}`;
     this.http.patch(url, {}, { headers: this.headers() }).subscribe({
       next: () => {
         s.status = 'recusada';

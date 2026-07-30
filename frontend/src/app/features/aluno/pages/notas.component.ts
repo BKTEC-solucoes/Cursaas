@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { filter, take, switchMap } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 interface Nota {
   id: number;
@@ -216,7 +217,7 @@ export class AlunoNotasComponent implements OnInit {
     this.authService.currentUser$.pipe(
       filter(user => user !== null),
       take(1),
-      switchMap(user => this.http.get<Nota[]>(`http://localhost:8000/api/notas/${user!.id}`))
+      switchMap(user => this.http.get<Nota[]>(`${environment.apiUrl}/notas/${user!.id}`))
     ).subscribe({
       next: (notas) => {
         this.notas = (notas || [])

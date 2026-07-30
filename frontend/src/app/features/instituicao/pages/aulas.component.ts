@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient, HttpEventType, HttpRequest } from '@angular/common/http';
 
 import { ApiService } from '../../../shared/services/api.service';
+import { VideoService } from '../../../core/services/video.service';
+import { environment } from '../../../../environments/environment';
 
 interface AulaItem {
   id: number;
@@ -140,7 +142,7 @@ interface CursoItem {
               </div>
               <div class="video-item" *ngFor="let v of aulaDetalhe.videos">
                 <div class="video-player-wrap">
-                  <video controls [src]="getVideoUrl(v.caminho_arquivo)" class="video-player" preload="metadata">
+                  <video controls [src]="getVideoUrl(v.caminho_arquivo) | async" class="video-player" preload="metadata">
                     Seu navegador não suporta reprodução de vídeo.
                   </video>
                 </div>
@@ -541,7 +543,7 @@ interface CursoItem {
     }
   `]
 })
-export class InstituicaoAulasComponent implements OnInit {
+export class InstituicaoAulasComponent implements OnInit, OnDestroy {
   aulas: AulaItem[] = [];
   cursos: CursoItem[] = [];
   carregando = false;
@@ -588,9 +590,19 @@ export class InstituicaoAulasComponent implements OnInit {
   erroUpload = '';
   dragover = false;
 
-  private readonly apiBase = 'http://localhost:8000/api';
+  private readonly apiBase = environment.apiUrl;
 
-  constructor(private apiService: ApiService, private http: HttpClient, private router: Router) {}
+  constructor(
+    private apiService: ApiService,
+    private http: HttpClient,
+    private router: Router,
+    private videoService: VideoService,
+  ) {}
+
+  ngOnDestroy(): void {
+    // Libera as object URLs dos vídeos baixados nesta tela.
+    this.videoService.liberar();
+  }
 
   ngOnInit(): void {
     this.carregarCursos();
@@ -835,9 +847,13 @@ export class InstituicaoAulasComponent implements OnInit {
     });
   }
 
-  getVideoUrl(caminho: string): string {
-    const filename = caminho.replace(/\\/g, '/').split('/').pop() ?? '';
-    return `${this.apiBase.replace('/api', '')}/uploads/videos/${filename}`;
+  /**
+   * Object URL do vídeo, resolvida via download autenticado.
+   * O VideoService cacheia o Observable por arquivo, então usar com `| async`
+   * no template não recria a subscription a cada ciclo de mudança.
+   */
+  getVideoUrl(caminho: string) {
+    return this.videoService.carregar(caminho);
   }
 
   formatarDuracao(segundos: number): string {

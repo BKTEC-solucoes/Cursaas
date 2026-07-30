@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface ConviteInfo {
   email: string;
@@ -311,7 +312,7 @@ export class AceitarConviteComponent implements OnInit {
   tocados = new Set<string>();
 
   private token = '';
-  private readonly api = 'http://localhost:8000/api/convites';
+  private readonly api = `${environment.apiUrl}/convites`;
 
   constructor(
     private route: ActivatedRoute,
