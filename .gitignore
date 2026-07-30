@@ -61,9 +61,10 @@ Desktop.ini
 .yarn
 yarn-error.log
 
-# Arquivos de lock (opcional - descomente se não quiser fazer track)
-# package-lock.json
-# yarn.lock
+# Arquivos de lock: SÃO versionados de propósito — travam a árvore de
+# dependências e tornam o `npm ci` dos Dockerfiles reproduzível.
+# (Antes havia um `package-lock.json` solto mais abaixo neste arquivo, que
+# conflitava com o backend-node/package-lock.json commitado.)
 
 # Node backend auxiliar
 backend-node/node_modules/
@@ -72,4 +73,3 @@ backend-node/dist/
 # Ambiente local (generico)
 .env
 .venv/
-package-lock.json
