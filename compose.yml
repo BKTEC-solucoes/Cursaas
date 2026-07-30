@@ -83,6 +83,10 @@ services:
       - "80:80"
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Webroot do desafio ACME. Fica no compose base, e nao no overlay de TLS,
+      # porque a emissao inicial do certificado acontece com o nginx ainda em
+      # HTTP puro: o overlay so pode entrar depois que o certificado existe.
+      - certbot_www:/var/www/certbot:ro
     depends_on:
       - frontend
       - backend
@@ -92,3 +96,8 @@ services:
 volumes:
   db_data:
   uploads_data:
+  # Declarados aqui, e nao so no overlay de TLS, para que o Compose os crie com
+  # o nome e os labels do projeto antes da emissao inicial do certificado — que
+  # roda via `docker run` e precisa dos volumes ja existentes.
+  certbot_www:
+  certbot_conf:

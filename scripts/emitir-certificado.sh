@@ -34,15 +34,29 @@ for nome in "$DOMINIO" "www.$DOMINIO"; do
   fi
 done
 
-# O nginx precisa estar no ar servindo /.well-known/acme-challenge/ pelo webroot
-# compartilhado; e assim que o Let's Encrypt confirma que voce controla o dominio.
-docker compose -f compose.yml -f compose.tls.yml up -d nginx
+# A emissao roda com o compose BASE, em HTTP puro.
+#
+# Subir o overlay de TLS aqui seria circular: default.tls.conf declara
+# ssl_certificate apontando para um arquivo que so vai existir depois desta
+# emissao, e o nginx se recusa a iniciar sem ele. Sem nginx no ar, nada serve o
+# desafio, e a emissao falha — travando os dois lados.
+#
+# O compose base ja monta o mesmo volume certbot_www e serve
+# /.well-known/acme-challenge/ a partir dele, entao o desafio funciona em HTTP.
+docker compose up -d nginx
 
-docker compose -f compose.yml -f compose.tls.yml run --rm \
-  --entrypoint certbot certbot \
+# `docker run` e nao `docker compose run`: o servico certbot so existe no
+# overlay de TLS, que ainda nao pode ser carregado neste ponto. Os volumes ja
+# foram criados pelo compose base (prefixo do projeto = nome do diretorio).
+PROJETO=$(basename "$PWD")
+docker run --rm \
+  -v "${PROJETO}_certbot_conf:/etc/letsencrypt" \
+  -v "${PROJETO}_certbot_www:/var/www/certbot" \
+  certbot/certbot:latest \
   certonly --webroot -w /var/www/certbot \
   -d "$DOMINIO" -d "www.$DOMINIO" \
   --email "$EMAIL" --agree-tos --no-eff-email
 
+# So agora, com o certificado em disco, o nginx consegue subir em modo TLS.
 docker compose -f compose.yml -f compose.tls.yml up -d
 echo "Certificado emitido. Stack no ar em https://$DOMINIO"
