@@ -14,7 +14,6 @@ const startServer = async () => {
   await testDatabaseConnection();
 
   const userRepository = new UserRepository(pool);
-  await userRepository.ensureTable();
 
   const oauthClient = new OAuth2Client(env.googleClientId);
   const tokenService = new TokenService({

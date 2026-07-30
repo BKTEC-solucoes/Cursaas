@@ -24,20 +24,20 @@ class GoogleAuthService {
       throw new AppError('Email do Google não verificado', 401);
     }
 
-    const name = payload.name?.trim() || email.split('@')[0];
-    const picture = payload.picture || null;
+    const user = await this.userRepository.findByEmail(email);
 
-    let user = await this.userRepository.findByEmail(email);
-
+    // O Google prova QUEM é o usuário, não que ele tem acesso. A conta precisa
+    // existir em `usuarios`, provisionada pelo fluxo oficial. Auto-criar aqui
+    // daria conta no sistema a qualquer pessoa com um e-mail Google.
     if (!user) {
-      user = await this.userRepository.create({
-        name,
-        email,
-        picture,
-        provider: 'google',
-      });
-    } else if (user.name !== name || user.picture !== picture) {
-      user = await this.userRepository.updateProfile(user.id, { name, picture });
+      throw new AppError(
+        'Nenhuma conta Cursaas vinculada a este e-mail. Solicite acesso à sua instituição.',
+        403
+      );
+    }
+
+    if (!user.ativo) {
+      throw new AppError('Usuário desativado', 403);
     }
 
     const appToken = this.tokenService.generateForUser(user);
@@ -46,7 +46,7 @@ class GoogleAuthService {
       token: appToken,
       user: {
         email: user.email,
-        name: user.name,
+        name: user.nome,
       },
     };
   }

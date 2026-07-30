@@ -30,8 +30,14 @@ const validateRequiredEnv = () => {
     missing.push('GOOGLE_CLIENT_ID');
   }
 
-  if (isUnsetOrPlaceholder(process.env.JWT_SECRET, 'troque_por_uma_chave_forte')) {
-    missing.push('JWT_SECRET');
+  // JWT_SECRET precisa ser BYTE A BYTE igual ao SECRET_KEY do FastAPI — os dois
+  // serviços assinam tokens que o outro valida. O mínimo de 32 caracteres espelha
+  // o validator de backend/app/config.py.
+  if (
+    isUnsetOrPlaceholder(process.env.JWT_SECRET, 'troque_por_uma_chave_forte') ||
+    process.env.JWT_SECRET.length < 32
+  ) {
+    missing.push('JWT_SECRET (mínimo 32 caracteres, idêntico ao SECRET_KEY do FastAPI)');
   }
 
   if (missing.length > 0) {
