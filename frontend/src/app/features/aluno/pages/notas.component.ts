@@ -21,182 +21,161 @@ interface Nota {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="page-container">
+    <div class="content-page">
       <div class="page-header">
-        <h2>📊 Minhas Notas</h2>
+        <h1 class="page-title">Minhas Notas</h1>
+        <p class="page-subtitle">Resultados e feedback das suas avaliações</p>
       </div>
 
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando notas...</p>
-      </div>
+      @if (carregando) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Carregando notas...</p>
+        </div>
+      }
 
-      <div class="error-msg" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarNotas()">Tentar novamente</button>
-      </div>
+      @if (erro) {
+        <div class="alert alert--danger">
+          <p>{{ erro }}</p>
+          <button class="btn btn--sm btn--outline-danger" (click)="carregarNotas()">Tentar novamente</button>
+        </div>
+      }
 
-      <div class="table-container" *ngIf="!carregando && !erro && notas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Prova</th>
-              <th>Nota</th>
-              <th>Tentativa</th>
-              <th>Enviado em</th>
-              <th>Corrigido em</th>
-              <th>Observações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let nota of notas">
-              <td class="prova-titulo">{{ nota.prova_titulo }}</td>
-              <td class="nota-valor">
-                <span *ngIf="nota.nota_final != null" [ngClass]="'nivel-' + getNivel(nota.nota_final)">
-                  {{ nota.nota_final.toFixed(1) }}
-                </span>
-                <span *ngIf="nota.nota_final == null" class="pendente-badge">⏳ Aguardando correção</span>
-              </td>
-              <td class="tentativa-val">{{ nota.tentativa }}ª</td>
-              <td class="data-col">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td class="data-col">
-                <span *ngIf="nota.data_correcao">{{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }}</span>
-                <span *ngIf="!nota.data_correcao" class="sem-correcao">—</span>
-              </td>
-              <td class="obs-col">
-                <span *ngIf="nota.observacoes" class="obs-text">{{ nota.observacoes }}</span>
-                <span *ngIf="!nota.observacoes" class="sem-correcao">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (!carregando && !erro && notas.length > 0) {
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Prova</th>
+                  <th class="text-center">Nota</th>
+                  <th class="text-center">Tentativa</th>
+                  <th>Enviado em</th>
+                  <th>Corrigido em</th>
+                  <th>Observações</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (nota of notas; track nota.id) {
+                  <tr>
+                    <td class="fw-600">{{ nota.prova_titulo }}</td>
+                    <td class="text-center">
+                      @if (nota.nota_final != null) {
+                        <span class="badge badge--{{ getNivel(nota.nota_final) }}">
+                          {{ nota.nota_final.toFixed(1) }}
+                        </span>
+                      } @else {
+                        <span class="badge badge--warning">Aguardando</span>
+                      }
+                    </td>
+                    <td class="text-center text-muted">{{ nota.tentativa }}ª</td>
+                    <td class="text-sm text-muted">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td class="text-sm text-muted">
+                      @if (nota.data_correcao) { {{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }} }
+                      @else { <span class="text-muted">—</span> }
+                    </td>
+                    <td class="text-sm">
+                      @if (nota.observacoes) { <em>{{ nota.observacoes }}</em> }
+                      @else { <span class="text-muted">—</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
 
-      <div class="no-data" *ngIf="!carregando && !erro && notas.length === 0">
-        <p>📭 Nenhuma nota registrada ainda. Realize uma prova para ver seus resultados aqui.</p>
-      </div>
+      @if (!carregando && !erro && notas.length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <p class="empty-title">Nenhuma nota ainda</p>
+          <p class="text-muted">Realize uma prova para ver seus resultados aqui.</p>
+        </div>
+      }
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+    :host { display: block; }
 
-    .page-header {
-      margin-bottom: 24px;
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
     }
+    .table-responsive { overflow-x: auto; }
 
-    .page-header h2 {
-      margin: 0;
-      color: #333;
+    .table { width: 100%; border-collapse: collapse; }
+    .table th {
+      background: var(--color-surface-2); padding: var(--space-3) var(--space-4);
+      text-align: left; font-size: var(--font-size-xs); font-weight: 700;
+      color: var(--color-text-muted); border-bottom: 2px solid var(--color-border);
+      text-transform: uppercase; letter-spacing: .05em;
     }
-
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #27ae60;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 15px;
-    }
-
-    @keyframes spin {
-      0%   { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .error-msg {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-    }
-    .error-msg button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #721c24;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .table-container {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th {
-      background: #f8f9fa;
-      padding: 14px 16px;
-      text-align: left;
-      font-size: 13px;
-      font-weight: 700;
-      color: #555;
-      border-bottom: 2px solid #eee;
-    }
-
-    td {
-      padding: 14px 16px;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 14px;
-      color: #444;
+    .table td {
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+      font-size: var(--font-size-sm); color: var(--color-text);
       vertical-align: middle;
     }
+    .table tr:last-child td { border-bottom: none; }
+    .table-zebra tr:nth-child(even) td { background: var(--color-surface-2); }
+    .table-zebra tr:hover td { background: color-mix(in srgb, var(--primary) 5%, var(--color-surface)); }
+    .text-center { text-align: center; }
 
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fafafa; }
-
-    .prova-titulo { font-weight: 600; color: #333; }
-
-    .nota-valor { font-weight: 700; text-align: center; }
-
-    .nivel-excelente { color: #27ae60; font-size: 16px; }
-    .nivel-bom       { color: #2980b9; font-size: 16px; }
-    .nivel-regular   { color: #f39c12; font-size: 16px; }
-    .nivel-insuficiente { color: #e74c3c; font-size: 16px; }
-
-    .pendente-badge {
-      background: #fff3cd;
-      color: #856404;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: var(--radius-full);
+      font-size: var(--font-size-xs); font-weight: 700; white-space: nowrap;
     }
+    .badge--excelente   { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--bom         { background: color-mix(in srgb, var(--color-info) 15%, transparent);    color: var(--color-info); }
+    .badge--regular     { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--insuficiente{ background: color-mix(in srgb, var(--color-danger) 15%, transparent);  color: var(--color-danger); }
+    .badge--warning     { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
 
-    .tentativa-val { color: #666; text-align: center; }
-    .data-col { font-size: 13px; color: #777; white-space: nowrap; }
-    .sem-correcao { color: #bbb; }
-    .obs-col { max-width: 220px; }
-    .obs-text { font-size: 13px; color: #555; font-style: italic; }
-
-    .no-data {
-      background: white;
-      padding: 60px 20px;
-      text-align: center;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      color: #999;
+    .alert {
+      padding: var(--space-4); border-radius: var(--radius);
+      margin-bottom: var(--space-4);
     }
+    .alert--danger {
+      background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+      color: var(--color-danger);
+    }
+    .btn { display: inline-flex; align-items: center; gap: var(--space-2);
+           padding: var(--space-2) var(--space-4); border-radius: var(--radius);
+           font-size: var(--font-size-sm); font-weight: 600; cursor: pointer;
+           text-decoration: none; border: none; transition: background var(--transition-fast); }
+    .btn--sm { padding: var(--space-1) var(--space-3); font-size: var(--font-size-xs); }
+    .btn--outline-danger {
+      background: transparent;
+      border: 1px solid var(--color-danger); color: var(--color-danger);
+      margin-top: var(--space-2);
+    }
+    .btn--outline-danger:hover { background: color-mix(in srgb, var(--color-danger) 10%, transparent); }
+
+    .loading-state {
+      text-align: center; padding: var(--space-16, 64px) var(--space-4);
+      color: var(--color-text-muted);
+    }
+    .spinner {
+      display: inline-block; width: 36px; height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: var(--space-3);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .fw-600 { font-weight: 600; }
+    .text-sm { font-size: var(--font-size-sm); }
+    .text-muted { color: var(--color-text-muted); }
   `]
 })
 export class AlunoNotasComponent implements OnInit {

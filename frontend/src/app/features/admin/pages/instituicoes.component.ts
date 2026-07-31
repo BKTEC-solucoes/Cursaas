@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -34,196 +34,210 @@ interface PageResponse {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
+    <div class="content-page">
 
-      <div class="page-header">
+      <div class="page-topbar">
         <div>
-          <h2>&#127963;&#65039; Faculdades</h2>
+          <h1>Faculdades</h1>
           <p>Gerencie as solicitações de cadastro de instituições.</p>
         </div>
-        <button class="btn-primary" (click)="carregar()" [disabled]="carregando">
-          {{ carregando ? 'Atualizando...' : '&#8635; Atualizar' }}
+        <button class="btn-outline" (click)="carregar()" [disabled]="carregando">
+          {{ carregando ? 'Atualizando...' : 'Atualizar' }}
         </button>
       </div>
 
-      <div class="feedback success" *ngIf="mensagemSucesso">{{ mensagemSucesso }}</div>
-      <div class="feedback error"   *ngIf="erro">{{ erro }}</div>
+      @if (mensagemSucesso) { <div class="msg msg--success">{{ mensagemSucesso }}</div> }
+      @if (erro)            { <div class="msg msg--error">{{ erro }}</div> }
 
       <div class="filter-bar">
         <div class="filter-group">
-          <label for="filtroStatus">Filtrar por status</label>
+          <label for="filtroStatus">Status</label>
           <select id="filtroStatus" [(ngModel)]="filtroStatus" (change)="onFiltroChange()">
             <option value="">Todos</option>
             <option value="pendente">Pendente</option>
             <option value="aprovado">Aprovado</option>
-            <option value="recusado">Recusado</option>
           </select>
         </div>
-        <div class="total-info" *ngIf="!carregando">
-          {{ total }} faculdade{{ total !== 1 ? 's' : '' }} encontrada{{ total !== 1 ? 's' : '' }}
+        @if (!carregando) {
+          <span class="total-info">{{ total }} faculdade{{ total !== 1 ? 's' : '' }}</span>
+        }
+      </div>
+
+      <div class="table-card">
+        @if (carregando) {
+          <div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>
+        }
+
+        @if (!carregando) {
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Instituição</th>
+                <th>CNPJ</th>
+                <th>Status</th>
+                <th>Acesso</th>
+                <th>Solicitado em</th>
+                <th>Aprovado em</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (inst of instituicoes; track inst.id) {
+                <tr>
+                  <td class="col-id">{{ inst.id }}</td>
+                  <td>
+                    <div class="cell-nome">{{ inst.nome }}</div>
+                    <div class="cell-sub">{{ inst.email_contato }}</div>
+                  </td>
+                  <td class="col-mono">{{ inst.cnpj || '—' }}</td>
+                  <td>
+                    <span class="badge" [class]="inst.aprovada ? 'badge--success' : 'badge--warn'">
+                      {{ inst.aprovada ? 'Aprovado' : 'Pendente' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge" [class]="inst.ativa ? 'badge--success' : 'badge--danger'">
+                      {{ inst.ativa ? 'Permitido' : 'Negado' }}
+                    </span>
+                  </td>
+                  <td class="col-data">
+                    {{ inst.data_criacao | date:'dd/MM/yyyy' }}<br>
+                    <span class="hora">{{ inst.data_criacao | date:'HH:mm' }}</span>
+                  </td>
+                  <td class="col-data">
+                    @if (inst.aprovada) {
+                      {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}<br>
+                      <span class="hora">{{ inst.data_atualizacao | date:'HH:mm' }}</span>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </td>
+                  <td>
+                    <button class="btn-detail" (click)="verDetalhes(inst.id)">Detalhes</button>
+                    @if (ehSuperAdmin && inst.ativa) {
+                      <button
+                        class="btn-manage"
+                        [class.ativa]="inst.id === faculdadeAtivaId"
+                        (click)="gerenciar(inst)"
+                        [title]="inst.id === faculdadeAtivaId ? 'Já é a instituição em gestão' : 'Passar a gerenciar esta instituição'"
+                      >{{ inst.id === faculdadeAtivaId ? 'Gerenciando' : 'Gerenciar' }}</button>
+                    }
+                  </td>
+                </tr>
+              }
+              @if (instituicoes.length === 0) {
+                <tr><td colspan="8" class="empty-row">Nenhuma faculdade encontrada.</td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination">
+          <button class="page-btn" (click)="irParaPagina(paginaAtual - 1)" [disabled]="paginaAtual === 1">Anterior</button>
+          @for (p of paginasVisiveis(); track p) {
+            <button class="page-btn" [class.active]="p === paginaAtual" (click)="irParaPagina(p)">{{ p }}</button>
+          }
+          <button class="page-btn" (click)="irParaPagina(paginaAtual + 1)" [disabled]="paginaAtual === totalPages">Próxima</button>
+          <span class="page-info">Página {{ paginaAtual }} de {{ totalPages }}</span>
         </div>
-      </div>
-
-      <div class="table-wrapper">
-        <div class="loading-overlay" *ngIf="carregando">
-          <div class="spinner"></div>
-          <span>Carregando...</span>
-        </div>
-
-        <table *ngIf="!carregando || instituicoes.length > 0">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Instituição</th>
-              <th>CNPJ</th>
-              <th>Status</th>
-              <th>Acesso</th>
-              <th>Solicitado em</th>
-              <th>Aprovado em</th>
-              <th class="col-acoes">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let inst of instituicoes">
-              <td class="col-id">{{ inst.id }}</td>
-              <td>
-                <div class="cell-nome">{{ inst.nome }}</div>
-                <div class="cell-email">{{ inst.email_contato }}</div>
-              </td>
-              <td class="col-cnpj">{{ inst.cnpj || '—' }}</td>
-              <td>
-                <span class="badge" [ngClass]="'badge-' + (inst.aprovada ? 'aprovado' : 'pendente')">
-                  {{ inst.aprovada ? 'Aprovado' : 'Pendente' }}
-                </span>
-              </td>
-              <td>
-                <span class="badge" [ngClass]="inst.ativa ? 'badge-acesso-permitido' : 'badge-acesso-negado'">
-                  {{ inst.ativa ? 'Permitido' : 'Negado' }}
-                </span>
-              </td>
-              <td class="col-data">
-                {{ inst.data_criacao | date:'dd/MM/yyyy' }}<br>
-                <span class="hora">{{ inst.data_criacao | date:'HH:mm' }}</span>
-              </td>
-              <td class="col-data">
-                <ng-container *ngIf="inst.aprovada; else semAprovacao">
-                  {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}<br>
-                  <span class="hora">{{ inst.data_atualizacao | date:'HH:mm' }}</span>
-                </ng-container>
-                <ng-template #semAprovacao>
-                  <span class="text-muted">&#8212;</span>
-                </ng-template>
-              </td>
-              <td class="col-acoes">
-                <button class="btn-detail" (click)="verDetalhes(inst.id)">
-                  &#128269; Detalhes
-                </button>
-                <button
-                  class="btn-manage"
-                  *ngIf="ehSuperAdmin && inst.ativa"
-                  [class.ativa]="inst.id === faculdadeAtivaId"
-                  (click)="gerenciar(inst)"
-                  [title]="inst.id === faculdadeAtivaId ? 'Já é a instituição em gestão' : 'Passar a gerenciar esta instituição'"
-                >
-                  {{ inst.id === faculdadeAtivaId ? '✓ Gerenciando' : '⚙️ Gerenciar' }}
-                </button>
-              </td>
-            </tr>
-            <tr *ngIf="!carregando && instituicoes.length === 0">
-              <td colspan="8" class="empty-row">
-                Nenhuma faculdade encontrada para o filtro selecionado.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="pagination" *ngIf="totalPages > 1">
-        <button class="page-btn" (click)="irParaPagina(paginaAtual - 1)" [disabled]="paginaAtual === 1">
-          &#8249; Anterior
-        </button>
-        <button
-          *ngFor="let p of paginasVisiveis()"
-          class="page-btn"
-          [class.active]="p === paginaAtual"
-          (click)="irParaPagina(p)"
-        >{{ p }}</button>
-        <button class="page-btn" (click)="irParaPagina(paginaAtual + 1)" [disabled]="paginaAtual === totalPages">
-          Próxima &#8250;
-        </button>
-        <span class="page-info">Página {{ paginaAtual }} de {{ totalPages }}</span>
-      </div>
+      }
 
     </div>
   `,
   styles: [`
-    .page-container { max-width: 1300px; margin: 0 auto; }
+    :host { display: block; }
 
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
-    .page-header h2 { margin: 0 0 4px; color: #22303c; font-size: 22px; }
-    .page-header p  { margin: 0; color: #667085; font-size: 14px; }
+    .page-topbar {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .page-topbar h1 { margin: 0 0 4px; font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
+    .page-topbar p  { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
-    .feedback { padding: 13px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
-    .feedback.success { color: #065f46; background: #ecfdf3; border: 1px solid #a7f3d0; }
-    .feedback.error   { color: #b42318; background: #fef3f2; border: 1px solid #fecaca; }
+    .btn-outline {
+      padding: 9px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius);
+      background: var(--color-surface); color: var(--color-text-muted); font-size: var(--font-size-sm);
+      font-weight: 500; cursor: pointer; transition: border-color 0.2s, color 0.2s; white-space: nowrap;
+    }
+    .btn-outline:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .filter-bar { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-    .filter-group { display: flex; flex-direction: column; gap: 6px; }
-    .filter-group label { font-size: 12px; font-weight: 600; color: #475467; text-transform: uppercase; letter-spacing: 0.04em; }
-    .filter-group select { padding: 9px 32px 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white; cursor: pointer; color: #1f2937; }
-    .filter-group select:focus { outline: 2px solid #2c3e50; outline-offset: 1px; }
-    .total-info { margin-left: auto; font-size: 13px; color: #667085; }
+    .msg { padding: 12px 16px; border-radius: var(--radius); font-size: var(--font-size-sm); margin-bottom: 16px; }
+    .msg--success { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent); }
+    .msg--error   { background: color-mix(in srgb, var(--color-danger) 10%, transparent);  color: var(--color-danger);  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); }
 
-    .table-wrapper { position: relative; background: white; border-radius: 14px; box-shadow: 0 4px 20px rgba(15,23,42,0.08); overflow-x: auto; }
-    .loading-overlay { display: flex; align-items: center; gap: 12px; padding: 40px 24px; color: #667085; font-size: 14px; }
-    .spinner { width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #2c3e50; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .filter-bar {
+      display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-group label { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .filter-group select {
+      padding: 8px 28px 8px 12px; border: 1.5px solid var(--color-border); border-radius: var(--radius);
+      font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text); cursor: pointer; outline: none;
+    }
+    .filter-group select:focus { border-color: var(--primary); }
+    .total-info { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+    .table-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm);
+    }
+
+    .loading-state {
+      display: flex; align-items: center; gap: 12px; padding: 40px 24px;
+      color: var(--color-text-muted); font-size: var(--font-size-sm);
+    }
+
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--color-border);
+      border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    table { width: 100%; border-collapse: collapse; min-width: 780px; }
-    th, td { padding: 13px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: middle; }
-    th { background: #f8fafc; color: #475467; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); vertical-align: middle; }
+    th { background: var(--color-surface-2); color: var(--color-text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; white-space: nowrap; }
     tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #f9fafb; }
+    tbody tr:hover td { background: var(--color-surface-2); }
 
-    .col-id   { color: #9ca3af; font-size: 12px; width: 48px; }
-    .col-cnpj { font-family: monospace; font-size: 13px; white-space: nowrap; }
+    .col-id   { color: var(--color-text-muted); font-size: 0.75rem; width: 48px; }
+    .col-mono { font-family: monospace; font-size: 0.8125rem; white-space: nowrap; }
     .col-data { white-space: nowrap; }
-    .col-acoes { width: 130px; }
-    .cell-nome  { font-weight: 700; color: #1f2937; }
-    .cell-email { font-size: 12px; color: #667085; margin-top: 2px; }
-    .hora       { font-size: 11px; color: #9ca3af; }
-    .text-muted { color: #9ca3af; }
+    .cell-nome  { font-weight: 600; color: var(--color-text); }
+    .cell-sub   { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 2px; }
+    .hora       { font-size: 0.7rem; color: var(--color-text-muted); }
+    .text-muted { color: var(--color-text-muted); }
 
-    .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-    .badge-pendente { background: #fff7cc; color: #92400e; }
-    .badge-aprovado { background: #dcfce7; color: #15803d; }
-    .badge-recusado { background: #fee2e2; color: #b42318; }
-    .badge-acesso-permitido { background: #dcfce7; color: #15803d; }
-    .badge-acesso-negado    { background: #fee2e2; color: #b42318; }
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+    .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger) 15%, transparent);  color: var(--color-danger); }
 
-    .btn-primary { background: #2c3e50; color: white; border: none; border-radius: 8px; padding: 10px 18px; cursor: pointer; font-weight: 600; font-size: 14px; white-space: nowrap; transition: background 0.2s; }
-    .btn-primary:hover    { background: #34495e; }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-detail {
+      border: 1.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-muted); border-radius: var(--radius); padding: 6px 12px;
+      cursor: pointer; font-size: 0.8125rem; font-weight: 600; transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-detail:hover { border-color: var(--primary); color: var(--primary); }
 
-    .btn-detail { border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
-    .btn-detail:hover { background: #f3f4f6; border-color: #9ca3af; }
+    .btn-manage { border: none; background: var(--color-primary); color: #fff; border-radius: var(--radius); padding: 7px 12px; margin-top: 6px; cursor: pointer; font-size: var(--font-size-xs); font-weight: 600; transition: filter 0.15s; white-space: nowrap; width: 100%; }
+    .btn-manage:hover       { filter: brightness(1.1); }
+    .btn-manage.ativa       { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); cursor: default; }
+    .btn-manage.ativa:hover { filter: none; }
 
-    .btn-manage { border: none; background: #2c3e50; color: white; border-radius: 7px; padding: 7px 12px; margin-top: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.15s; white-space: nowrap; width: 100%; }
-    .btn-manage:hover       { background: #34495e; }
-    .btn-manage.ativa       { background: #dcfce7; color: #15803d; cursor: default; }
-    .btn-manage.ativa:hover { background: #dcfce7; }
-
-    .empty-row { text-align: center; color: #9ca3af; padding: 40px; font-size: 14px; }
+    .empty-row { text-align: center; color: var(--color-text-muted); padding: 40px; }
 
     .pagination { display: flex; align-items: center; gap: 6px; margin-top: 20px; flex-wrap: wrap; }
-    .page-btn { border: 1px solid #e5e7eb; background: white; color: #374151; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
-    .page-btn:hover:not(:disabled) { background: #f3f4f6; }
-    .page-btn.active { background: #2c3e50; color: white; border-color: #2c3e50; font-weight: 700; }
+    .page-btn { border: 1.5px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); border-radius: var(--radius); padding: 7px 12px; cursor: pointer; font-size: 0.8125rem; font-weight: 500; transition: border-color 0.15s, color 0.15s; }
+    .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
     .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .page-info { margin-left: auto; font-size: 13px; color: #667085; }
+    .page-info { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
     @media (max-width: 768px) {
-      .page-header { flex-direction: column; }
+      .page-topbar { flex-direction: column; }
       .filter-bar  { flex-direction: column; align-items: flex-start; }
       .total-info  { margin-left: 0; }
     }

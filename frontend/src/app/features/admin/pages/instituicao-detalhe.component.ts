@@ -25,31 +25,30 @@ interface Instituicao {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="page-container">
+    <div class="content-page narrow">
 
-      <div class="page-header">
-        <button class="btn-back" (click)="voltar()">← Voltar</button>
-        <h2>🏛️ Detalhes da Instituição</h2>
-        <button
-          class="btn-gerenciar"
-          *ngIf="podeGerenciar()"
-          (click)="gerenciar()"
-        >⚙️ Gerenciar esta instituição</button>
+      <div class="page-topbar">
+        <button class="btn-back" (click)="voltar()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar
+        </button>
+        <h1>Detalhes da Instituição</h1>
+        @if (podeGerenciar()) {
+          <button class="btn-gerenciar" (click)="gerenciar()">Gerenciar esta instituição</button>
+        }
       </div>
 
-      <div class="feedback error" *ngIf="erro">{{ erro }}</div>
+      @if (erro) { <div class="msg msg--error">{{ erro }}</div> }
 
-      <div class="loading-card" *ngIf="carregando">
-        <div class="spinner"></div> Carregando...
-      </div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>
+      }
 
-      <ng-container *ngIf="!carregando && inst">
-
-        <!-- Card principal -->
+      @if (!carregando && inst) {
         <div class="detail-card">
           <div class="card-header">
-            <div class="card-title">{{ inst.nome }}</div>
-            <span class="badge" [ngClass]="'badge-' + getStatus(inst)">
+            <h2 class="card-title">{{ inst.nome }}</h2>
+            <span class="badge" [class]="inst.aprovada ? 'badge--success' : 'badge--warn'">
               {{ statusLabel(inst) }}
             </span>
           </div>
@@ -61,7 +60,7 @@ interface Instituicao {
             </div>
             <div class="field">
               <div class="field-label">CNPJ</div>
-              <div class="field-value mono">{{ inst.cnpj || '—' }}</div>
+              <div class="field-value field-mono">{{ inst.cnpj || '—' }}</div>
             </div>
             <div class="field">
               <div class="field-label">Solicitado em</div>
@@ -69,246 +68,138 @@ interface Instituicao {
             </div>
             <div class="field">
               <div class="field-label">Aprovado em</div>
-              <div class="field-value">
-                {{ inst.aprovada ? (inst.data_atualizacao | date:'dd/MM/yyyy HH:mm') : '—' }}
-              </div>
+              <div class="field-value">{{ inst.aprovada ? (inst.data_atualizacao | date:'dd/MM/yyyy HH:mm') : '—' }}</div>
             </div>
             <div class="field span2">
-              <div class="field-label">Domínio de e-mail / Informações adicionais</div>
-              <div class="field-value desc">{{ inst.dominio_email || '—' }}</div>
+              <div class="field-label">Domínio de e-mail</div>
+              <div class="field-value">{{ inst.dominio_email || '—' }}</div>
             </div>
           </div>
         </div>
 
-        <!-- Ações -->
-        <div class="actions-card" *ngIf="!inst.aprovada">
-          <p class="actions-hint">Esta solicitação está pendente de análise.</p>
-          <div class="actions-row">
-            <button
-              class="btn-approve"
-              (click)="atualizarStatus('aprovar')"
-              [disabled]="processando"
-            >
-              {{ processando ? 'Processando...' : '✓ Aprovar Instituição' }}
-            </button>
-            <button
-              class="btn-reject"
-              (click)="atualizarStatus('recusar')"
-              [disabled]="processando"
-            >
-              ✕ Recusar
+        @if (!inst.aprovada) {
+          <div class="action-card">
+            <p class="action-hint">Esta solicitação está pendente de análise.</p>
+            <div class="action-row">
+              <button class="btn-primary" (click)="atualizarStatus('aprovar')" [disabled]="processando">
+                {{ processando ? 'Processando...' : 'Aprovar Instituição' }}
+              </button>
+              <button class="btn-danger-outline" (click)="atualizarStatus('recusar')" [disabled]="processando">
+                Recusar
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (inst.aprovada) {
+          <div class="msg msg--success">
+            Instituição aprovada em {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}.
+          </div>
+
+          <div class="action-card">
+            <div class="access-header">
+              <span class="access-title">Controle de Acesso</span>
+              <span class="badge" [class]="inst.ativa ? 'badge--success' : 'badge--danger'">
+                {{ inst.ativa ? 'Acesso Permitido' : 'Acesso Negado' }}
+              </span>
+            </div>
+            <p class="action-hint">
+              {{ inst.ativa ? 'A instituição possui acesso ativo ao sistema.' : 'A instituição está com acesso bloqueado.' }}
+            </p>
+            <button [class]="inst.ativa ? 'btn-danger-outline' : 'btn-primary'" (click)="alternarAcesso()" [disabled]="processando">
+              {{ processando ? 'Processando...' : (inst.ativa ? 'Bloquear Acesso' : 'Permitir Acesso') }}
             </button>
           </div>
-        </div>
-
-        <div class="status-card aprovado" *ngIf="inst.aprovada">
-          ✓ Instituição aprovada em {{ inst.data_atualizacao | date:'dd/MM/yyyy' }}.
-        </div>
-
-        <!-- Controle de Acesso -->
-        <div class="access-card" *ngIf="inst.aprovada">
-          <div class="access-header">
-            <div class="access-title">🔐 Controle de Acesso</div>
-            <span class="badge" [ngClass]="inst.ativa ? 'badge-ativo' : 'badge-inativo'">
-              {{ inst.ativa ? 'Acesso Permitido' : 'Acesso Negado' }}
-            </span>
-          </div>
-          <p class="access-hint">
-            {{ inst.ativa
-              ? 'A instituição possui acesso ativo ao sistema.'
-              : 'A instituição está com acesso bloqueado.' }}
-          </p>
-          <button
-            [ngClass]="inst.ativa ? 'btn-deny' : 'btn-allow'"
-            (click)="alternarAcesso()"
-            [disabled]="processando"
-          >
-            {{ processando ? 'Processando...' : (inst.ativa ? '🔒 Bloquear Acesso' : '🔓 Permitir Acesso') }}
-          </button>
-        </div>
-
-      </ng-container>
+        }
+      }
 
     </div>
   `,
   styles: [`
-    .page-container { max-width: 860px; margin: 0 auto; }
+    :host { display: block; }
+    .narrow { max-width: 860px; }
 
-    .page-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .page-header h2 { margin: 0; color: #22303c; font-size: 20px; }
+    .page-topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .page-topbar h1 { margin: 0; font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
 
     .btn-back {
-      border: 1px solid #d1d5db;
-      background: white;
-      color: #374151;
-      border-radius: 8px;
-      padding: 8px 14px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1.5px solid var(--color-border); background: var(--color-surface);
+      color: var(--color-text-muted); border-radius: var(--radius); padding: 8px 14px;
+      cursor: pointer; font-size: var(--font-size-sm); font-weight: 500; transition: border-color 0.2s, color 0.2s;
     }
-    .btn-back:hover { background: #f3f4f6; }
+    .btn-back:hover { border-color: var(--primary); color: var(--primary); }
 
     .btn-gerenciar {
       margin-left: auto;
       border: none;
-      background: #2c3e50;
-      color: white;
-      border-radius: 8px;
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: var(--radius);
       padding: 9px 16px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: var(--font-size-sm);
       font-weight: 600;
       white-space: nowrap;
-      transition: background 0.15s;
+      transition: filter 0.15s;
     }
-    .btn-gerenciar:hover { background: #34495e; }
+    .btn-gerenciar:hover { filter: brightness(1.1); }
 
-    .feedback.error {
-      padding: 13px 16px;
-      border-radius: 10px;
-      margin-bottom: 16px;
-      font-size: 14px;
-      color: #b42318;
-      background: #fef3f2;
-      border: 1px solid #fecaca;
-    }
+    .msg { padding: 12px 16px; border-radius: var(--radius); font-size: var(--font-size-sm); margin-bottom: 16px; }
+    .msg--success { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent); }
+    .msg--error   { background: color-mix(in srgb, var(--color-danger) 10%, transparent);  color: var(--color-danger);  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); }
 
-    .loading-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: white;
-      border-radius: 14px;
-      padding: 32px 24px;
-      box-shadow: 0 4px 20px rgba(15,23,42,0.08);
-      color: #667085;
-      font-size: 14px;
+    .loading-state {
+      display: flex; align-items: center; gap: 12px; padding: 32px 24px;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); color: var(--color-text-muted); font-size: var(--font-size-sm);
     }
-    .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid #e5e7eb;
-      border-top-color: #2c3e50;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
+    .spinner { width: 20px; height: 20px; border: 2px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Detail card ── */
-    .detail-card {
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(15,23,42,0.08);
-      padding: 28px;
-      margin-bottom: 20px;
+    .detail-card, .action-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: 28px; margin-bottom: 20px;
+      box-shadow: var(--shadow-sm);
     }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .card-title { font-size: 20px; font-weight: 700; color: #1f2937; }
 
-    .badge { display: inline-flex; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
-    .badge-pendente { background: #fff7cc; color: #92400e; }
-    .badge-aprovado { background: #dcfce7; color: #15803d; }
-    .badge-recusado { background: #fee2e2; color: #b42318; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .card-title { font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); margin: 0; }
+
+    .badge { display: inline-flex; padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700; }
+    .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger) 15%, transparent);  color: var(--color-danger); }
 
     .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .field { display: flex; flex-direction: column; gap: 4px; }
     .span2 { grid-column: span 2; }
-    .field-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; }
-    .field-value { font-size: 15px; color: #1f2937; }
-    .field-value.mono { font-family: monospace; }
-    .field-value.desc { white-space: pre-line; color: #4b5563; font-size: 14px; line-height: 1.6; }
+    .field-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+    .field-value { font-size: var(--font-size-base); color: var(--color-text); }
+    .field-mono { font-family: monospace; }
 
-    /* ── Actions ── */
-    .actions-card {
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(15,23,42,0.08);
-      padding: 24px 28px;
-      margin-bottom: 20px;
-    }
-    .actions-hint { margin: 0 0 16px; font-size: 14px; color: #667085; }
-    .actions-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .action-hint { margin: 0 0 16px; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+    .action-row { display: flex; gap: 12px; flex-wrap: wrap; }
 
-    .btn-approve {
-      background: #15803d; color: white; border: none;
-      border-radius: 8px; padding: 11px 22px;
-      cursor: pointer; font-weight: 700; font-size: 14px;
-      transition: background 0.2s;
-    }
-    .btn-approve:hover    { background: #166534; }
-    .btn-approve:disabled { opacity: 0.6; cursor: not-allowed; }
+    .access-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .access-title { font-size: var(--font-size-base); font-weight: 700; color: var(--color-text); }
 
-    .btn-reject {
-      background: white; color: #b42318;
-      border: 1px solid #fecaca;
-      border-radius: 8px; padding: 11px 22px;
-      cursor: pointer; font-weight: 700; font-size: 14px;
-      transition: all 0.2s;
+    .btn-primary {
+      background: var(--primary); color: #fff; border: none; border-radius: var(--radius);
+      padding: 10px 22px; cursor: pointer; font-weight: 700; font-size: var(--font-size-sm);
+      transition: opacity 0.15s;
     }
-    .btn-reject:hover    { background: #fef3f2; border-color: #b42318; }
-    .btn-reject:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .status-card {
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 14px;
-      font-weight: 600;
+    .btn-danger-outline {
+      background: var(--color-surface); color: var(--color-danger);
+      border: 1.5px solid color-mix(in srgb, var(--color-danger) 40%, transparent);
+      border-radius: var(--radius); padding: 10px 22px;
+      cursor: pointer; font-weight: 700; font-size: var(--font-size-sm); transition: background 0.15s;
     }
-    .status-card.aprovado { background: #ecfdf3; color: #065f46; border: 1px solid #a7f3d0; }
-    .status-card.recusado { background: #fef3f2; color: #b42318; border: 1px solid #fecaca; }
-
-    /* ── Access card ── */
-    .access-card {
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 4px 20px rgba(15,23,42,0.08);
-      padding: 24px 28px;
-      margin-bottom: 20px;
-    }
-    .access-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
-    .access-title { font-size: 16px; font-weight: 700; color: #1f2937; }
-    .access-hint { margin: 0 0 16px; font-size: 14px; color: #667085; }
-    .badge-ativo  { background: #dcfce7; color: #15803d; }
-    .badge-inativo { background: #fee2e2; color: #b42318; }
-
-    .btn-allow {
-      background: #1d4ed8; color: white; border: none;
-      border-radius: 8px; padding: 11px 22px;
-      cursor: pointer; font-weight: 700; font-size: 14px;
-      transition: background 0.2s;
-    }
-    .btn-allow:hover    { background: #1e40af; }
-    .btn-allow:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .btn-deny {
-      background: white; color: #b42318;
-      border: 1px solid #fecaca;
-      border-radius: 8px; padding: 11px 22px;
-      cursor: pointer; font-weight: 700; font-size: 14px;
-      transition: all 0.2s;
-    }
-    .btn-deny:hover    { background: #fef3f2; border-color: #b42318; }
-    .btn-deny:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-danger-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+    .btn-danger-outline:disabled { opacity: 0.6; cursor: not-allowed; }
 
     @media (max-width: 600px) {
       .fields-grid { grid-template-columns: 1fr; }
@@ -364,7 +255,7 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
           this.carregando = false;
         },
         error: (err) => {
-          this.erro = err?.error?.detail || 'Instituição não encontrada.';
+          this.erro = err?.error?.detail || 'Institui├º├úo n├úo encontrada.';
           this.carregando = false;
         },
       });

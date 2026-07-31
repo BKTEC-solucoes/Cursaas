@@ -37,494 +37,206 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, BlocoTextoComponent, BlocoVideoModernoComponent, RichTextEditorComponent],
   template: `
-    <div class="form-page">
+    <div class="aula-form-page">
 
-      <!-- Cabeçalho -->
-      <div class="form-topbar">
-        <button class="btn-voltar" (click)="voltar()">← Voltar</button>
-        <h2>{{ aulaId ? '✏️ Editar Aula' : '📚 Nova Aula' }}</h2>
-        <div class="topbar-actions">
-          <button class="btn-secondary" (click)="voltar()" [disabled]="salvando">Cancelar</button>
-          <button class="btn-primary" (click)="salvar()" [disabled]="salvando">
-            <span *ngIf="salvando" class="spinner"></span>
-            {{ salvando ? 'Salvando...' : '💾 Salvar Aula' }}
+      <!-- Topbar sticky -->
+      <div class="aula-topbar">
+        <button class="btn btn-ghost" (click)="voltar()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar
+        </button>
+        <h1 class="aula-topbar-title">{{ aulaId ? 'Editar Aula' : 'Nova Aula' }}</h1>
+        <div class="aula-topbar-actions">
+          <button class="btn btn-outline" (click)="voltar()" [disabled]="salvando">Cancelar</button>
+          <button class="btn btn-primary" (click)="salvar()" [disabled]="salvando">
+            @if (salvando) { <span class="spinner-sm"></span> Salvando... }
+            @else { Salvar Aula }
           </button>
         </div>
       </div>
 
-      <div class="form-body" *ngIf="!carregando; else loadingTpl">
-
-        <!-- Coluna principal: editor de blocos -->
-        <div class="editor-col">
-          <div class="editor-toolbar">
-            <span class="toolbar-label">Conteúdo</span>
-            <button type="button" (click)="adicionar('titulo')">+ Título</button>
-            <button type="button" (click)="adicionar('texto')">+ Texto</button>
-            <button type="button" (click)="adicionar('video')">+ Vídeo</button>
-          </div>
-
-          <div class="blocos-list">
-
-            <!-- Separador inicial (antes do primeiro bloco) -->
-            <div class="bloco-sep" (mouseleave)="sepAtivo = -1">
-              <div class="sep-linha" (mouseenter)="sepAtivo = -1">
-                <button
-                  class="sep-btn"
-                  type="button"
-                  (click)="toggleMenu(0)"
-                  title="Inserir bloco aqui"
-                >+</button>
-              </div>
-              <div class="sep-menu" *ngIf="menuAberto === 0">
-                <button type="button" (click)="adicionarEm(0, 'titulo')">Título</button>
-                <button type="button" (click)="adicionarEm(0, 'texto')">Texto</button>
-                <button type="button" (click)="adicionarEm(0, 'video')">Vídeo</button>
-              </div>
-            </div>
-
-            <ng-container *ngFor="let b of blocos; let i = index; trackBy: trackById">
-              <div class="bloco-row">
-                <div class="bloco-handle" title="Tipo: {{ b.tipo }}">
-                  <span class="tipo-tag">{{ b.tipo }}</span>
-                </div>
-
-                <app-bloco-texto
-                  *ngIf="b.tipo === 'titulo'"
-                  [conteudo]="b.conteudo"
-                  [tipo]="b.tipo"
-                  (conteudoChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <!-- Bloco de texto com rich text (TipTap) -->
-                <app-rich-text-editor
-                  *ngIf="b.tipo === 'texto'"
-                  [content]="b.conteudo"
-                  placeholder="Digite um parágrafo..."
-                  (contentChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <app-bloco-video-moderno
-                  *ngIf="b.tipo === 'video'"
-                  [conteudo]="b.conteudo"
-                  [aulaId]="aulaId"
-                  (conteudoChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <button
-                  class="btn-remover"
-                  title="Remover bloco"
-                  (click)="remover(b.id)"
-                  [disabled]="isTituloUnico(b)"
-                >×</button>
-              </div>
-
-              <!-- Separador após cada bloco -->
-              <div class="bloco-sep">
-                <div class="sep-linha">
-                  <button
-                    class="sep-btn"
-                    type="button"
-                    (click)="toggleMenu(i + 1)"
-                    title="Inserir bloco aqui"
-                  >+</button>
-                </div>
-                <div class="sep-menu" *ngIf="menuAberto === i + 1">
-                  <button type="button" (click)="adicionarEm(i + 1, 'titulo')">Título</button>
-                  <button type="button" (click)="adicionarEm(i + 1, 'texto')">Texto</button>
-                  <button type="button" (click)="adicionarEm(i + 1, 'video')">Vídeo</button>
-                </div>
-              </div>
-            </ng-container>
-
-            <div *ngIf="blocos.length === 0" class="blocos-vazio">
-              Use a barra acima para adicionar blocos de conteúdo.
-            </div>
-          </div>
+      @if (carregando) {
+        <div class="loading-state" style="padding: var(--space-12)">
+          <div class="spinner"></div>
+          <p>Carregando aula...</p>
         </div>
+      }
 
-        <!-- Sidebar: metadados -->
-        <aside class="meta-sidebar">
-          <section class="meta-section">
-            <h4>Informações</h4>
+      @if (!carregando) {
+        <div class="aula-body">
 
-            <div class="meta-field">
-              <label>Curso *</label>
-              <select [(ngModel)]="meta.curso_id" name="curso_id">
-                <option [ngValue]="null" disabled>Selecione...</option>
-                <option *ngFor="let c of cursos" [ngValue]="c.id">{{ c.nome }}</option>
-              </select>
+          <!-- Editor de blocos -->
+          <div class="editor-col">
+            <div class="editor-toolbar">
+              <span class="toolbar-label">Conteúdo</span>
+              <button class="toolbar-btn" type="button" (click)="adicionar('titulo')">+ Título</button>
+              <button class="toolbar-btn" type="button" (click)="adicionar('texto')">+ Texto</button>
+              <button class="toolbar-btn" type="button" (click)="adicionar('video')">+ Vídeo</button>
             </div>
 
-            <div class="meta-field">
-              <label>Data e hora *</label>
-              <input
-                type="datetime-local"
-                [(ngModel)]="meta.data_aula"
-                name="data_aula"
-              />
+            <div class="blocos-list">
+
+              <!-- Separador inicial -->
+              <div class="bloco-sep" (mouseleave)="sepAtivo = -1">
+                <div class="sep-linha" (mouseenter)="sepAtivo = -1">
+                  <button class="sep-btn" type="button" (click)="toggleMenu(0)" title="Inserir bloco aqui">+</button>
+                </div>
+                @if (menuAberto === 0) {
+                  <div class="sep-menu">
+                    <button type="button" (click)="adicionarEm(0, 'titulo')">Título</button>
+                    <button type="button" (click)="adicionarEm(0, 'texto')">Texto</button>
+                    <button type="button" (click)="adicionarEm(0, 'video')">Vídeo</button>
+                  </div>
+                }
+              </div>
+
+              @for (b of blocos; track b.id; let i = $index) {
+                <div class="bloco-row">
+                  <div class="bloco-handle">
+                    <span class="tipo-tag">{{ b.tipo }}</span>
+                  </div>
+
+                  @if (b.tipo === 'titulo') {
+                    <app-bloco-texto [conteudo]="b.conteudo" [tipo]="b.tipo" (conteudoChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+                  @if (b.tipo === 'texto') {
+                    <app-rich-text-editor [content]="b.conteudo" placeholder="Digite um parágrafo..." (contentChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+                  @if (b.tipo === 'video') {
+                    <app-bloco-video-moderno [conteudo]="b.conteudo" [aulaId]="aulaId" (conteudoChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+
+                  <button class="btn-remover" title="Remover bloco" (click)="remover(b.id)" [disabled]="isTituloUnico(b)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+
+                <!-- Separador após cada bloco -->
+                <div class="bloco-sep">
+                  <div class="sep-linha">
+                    <button class="sep-btn" type="button" (click)="toggleMenu(i + 1)" title="Inserir bloco aqui">+</button>
+                  </div>
+                  @if (menuAberto === i + 1) {
+                    <div class="sep-menu">
+                      <button type="button" (click)="adicionarEm(i + 1, 'titulo')">Título</button>
+                      <button type="button" (click)="adicionarEm(i + 1, 'texto')">Texto</button>
+                      <button type="button" (click)="adicionarEm(i + 1, 'video')">Vídeo</button>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (blocos.length === 0) {
+                <div class="blocos-vazio">Use a barra acima para adicionar blocos de conteúdo.</div>
+              }
+            </div>
+          </div>
+
+          <!-- Sidebar de metadados -->
+          <aside class="meta-sidebar">
+            <div class="card">
+              <h3 class="meta-title">Informações</h3>
+
+              <div class="meta-field">
+                <label class="field-label">Curso *</label>
+                <select class="field-input" [(ngModel)]="meta.curso_id" name="curso_id">
+                  <option [ngValue]="null" disabled>Selecione...</option>
+                  @for (c of cursos; track c.id) {
+                    <option [ngValue]="c.id">{{ c.nome }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="meta-field">
+                <label class="field-label">Data e hora *</label>
+                <input class="field-input" type="datetime-local" [(ngModel)]="meta.data_aula" name="data_aula" />
+              </div>
+
+              <div class="meta-field">
+                <label class="field-label">Duração (minutos)</label>
+                <input class="field-input" type="number" [(ngModel)]="meta.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+              </div>
+
+              @if (aulaId) {
+                <div class="meta-field">
+                  <label class="field-label">Status</label>
+                  <select class="field-input" [(ngModel)]="meta.ativo" name="ativo">
+                    <option [ngValue]="true">Ativa</option>
+                    <option [ngValue]="false">Inativa</option>
+                  </select>
+                </div>
+              }
             </div>
 
-            <div class="meta-field">
-              <label>Duração (minutos)</label>
-              <input
-                type="number"
-                [(ngModel)]="meta.duracao_minutos"
-                name="duracao_minutos"
-                min="1"
-                placeholder="Ex: 60"
-              />
-            </div>
+            @if (erro)    { <div class="msg msg-error">{{ erro }}</div> }
+            @if (sucesso) { <div class="msg msg-success">{{ sucesso }}</div> }
+          </aside>
 
-            <div class="meta-field" *ngIf="aulaId">
-              <label>Status</label>
-              <select [(ngModel)]="meta.ativo" name="ativo">
-                <option [ngValue]="true">Ativa</option>
-                <option [ngValue]="false">Inativa</option>
-              </select>
-            </div>
-          </section>
+        </div>
+      }
 
-          <div class="form-error meta-erro" *ngIf="erro">{{ erro }}</div>
-          <div class="form-success meta-ok" *ngIf="sucesso">{{ sucesso }}</div>
-        </aside>
-      </div>
-
-      <ng-template #loadingTpl>
-        <div class="loading-full">Carregando aula...</div>
-      </ng-template>
     </div>
   `,
   styles: [`
-    .form-page {
-      display: flex;
-      flex-direction: column;
-      min-height: 100%;
-      background: #f8fafc;
-    }
+    .aula-form-page { display: flex; flex-direction: column; min-height: 100%; background: var(--color-background); }
 
-    /* ── Topbar ── */
-    .form-topbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 24px;
-      background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .form-topbar h2 {
-      flex: 1;
-      margin: 0;
-      font-size: 1.1rem;
-      color: #1e293b;
-    }
-    .btn-voltar {
-      background: none;
-      border: none;
-      color: #3b82f6;
-      cursor: pointer;
-      font-size: .9rem;
-      padding: 6px 0;
-    }
-    .btn-voltar:hover { text-decoration: underline; }
-    .topbar-actions { display: flex; gap: 8px; }
-    .btn-primary {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 18px;
-      background: #3b82f6;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-      font-weight: 600;
-    }
-    .btn-primary:hover:not(:disabled) { background: #2563eb; }
-    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-    .btn-secondary {
-      padding: 8px 16px;
-      background: #fff;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-    }
-    .btn-secondary:hover:not(:disabled) { background: #f1f5f9; }
-    .btn-secondary:disabled { opacity: .6; cursor: not-allowed; }
+    /* Topbar */
+    .aula-topbar { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-6); background: var(--color-surface); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 10; }
+    .aula-topbar-title { flex: 1; margin: 0; font-size: var(--font-size-md); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
+    .aula-topbar-actions { display: flex; gap: var(--space-2); }
 
-    /* ── Body ── */
-    .form-body {
-      display: grid;
-      grid-template-columns: 1fr 280px;
-      gap: 24px;
-      padding: 24px;
-      align-items: start;
-      max-width: 1100px;
-      width: 100%;
-      margin: 0 auto;
-    }
-    @media (max-width: 768px) {
-      .form-body { grid-template-columns: 1fr; }
-    }
+    /* Body layout */
+    .aula-body { display: grid; grid-template-columns: 1fr 280px; gap: var(--space-6); padding: var(--space-6); align-items: start; max-width: 1100px; width: 100%; margin: 0 auto; box-sizing: border-box; }
 
-    /* ── Editor col ── */
-    .editor-col {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .editor-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .toolbar-label {
-      font-size: .75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #94a3b8;
-      letter-spacing: .05em;
-      margin-right: 4px;
-    }
-    .editor-toolbar button {
-      padding: 4px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      font-size: .8rem;
-      transition: background .15s;
-    }
-    .editor-toolbar button:hover { background: #e2e8f0; }
+    /* Editor */
+    .editor-col { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .editor-toolbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); }
+    .toolbar-label { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-right: var(--space-1); }
+    .toolbar-btn { padding: var(--space-1) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-xs); font-weight: 600; transition: all var(--transition-fast); }
+    .toolbar-btn:hover { background: var(--color-border); color: var(--color-text); }
 
-    .blocos-list {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-height: 200px;
-    }
-    .bloco-row {
-      display: grid;
-      grid-template-columns: 56px 1fr 28px;
-      align-items: flex-start;
-      gap: 6px;
-    }
-    .bloco-handle {
-      display: flex;
-      justify-content: flex-end;
-      padding-top: 10px;
-    }
-    .tipo-tag {
-      font-size: .62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #94a3b8;
-      letter-spacing: .04em;
-    }
+    .blocos-list { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-height: 200px; }
+    .bloco-row { display: grid; grid-template-columns: 48px 1fr 28px; align-items: flex-start; gap: var(--space-2); }
+    .bloco-handle { display: flex; justify-content: flex-end; padding-top: var(--space-2); }
+    .tipo-tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); }
     .bloco-content { min-width: 0; }
-    .btn-remover {
-      width: 24px;
-      height: 24px;
-      border: none;
-      border-radius: 50%;
-      background: transparent;
-      color: #94a3b8;
-      font-size: 1rem;
-      cursor: pointer;
-      opacity: 0;
-      margin-top: 6px;
-      transition: opacity .15s, color .15s;
-    }
+    .btn-remover { width: 26px; height: 26px; border: 1px solid transparent; border-radius: var(--radius); background: transparent; color: var(--color-text-muted); cursor: pointer; opacity: 0; margin-top: var(--space-1); transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast); display: flex; align-items: center; justify-content: center; }
     .bloco-row:hover .btn-remover { opacity: 1; }
-    .btn-remover:hover:not(:disabled) { color: #ef4444; }
-    .btn-remover:disabled { cursor: default; }
+    .btn-remover:hover:not(:disabled) { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 10%, transparent); border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+    .btn-remover:disabled { cursor: default; opacity: 0.3; }
+    .blocos-vazio { color: var(--color-text-muted); font-size: var(--font-size-sm); text-align: center; padding: var(--space-8); border: 2px dashed var(--color-border); border-radius: var(--radius-lg); }
 
-    /* ── Separador entre blocos ── */
-    .bloco-sep {
-      position: relative;
-      height: 16px;
-      display: flex;
-      align-items: center;
-    }
-    .sep-linha {
-      position: relative;
-      width: 100%;
-      height: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .sep-linha::before {
-      content: '';
-      position: absolute;
-      inset: 0 0 0 0;
-      background: transparent;
-      transition: background .15s;
-      border-radius: 2px;
-    }
-    .bloco-sep:hover .sep-linha::before {
-      background: #bfdbfe;
-    }
-    .sep-btn {
-      position: relative;
-      z-index: 1;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 2px solid #bfdbfe;
-      background: #fff;
-      color: #3b82f6;
-      font-size: 1rem;
-      line-height: 1;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity .15s, background .15s, border-color .15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
-    .bloco-sep:hover .sep-btn,
-    .sep-menu ~ * .sep-btn {
-      opacity: 1;
-    }
-    .sep-btn:hover {
-      background: #3b82f6;
-      color: #fff;
-      border-color: #3b82f6;
-    }
-    .sep-menu {
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
-      display: flex;
-      gap: 4px;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    }
-    .sep-menu button {
-      padding: 5px 12px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      font-size: .8rem;
-      white-space: nowrap;
-      transition: background .12s;
-    }
-    .sep-menu button:hover { background: #f0f7ff; color: #2563eb; border-color: #bfdbfe; }
+    /* Separadores */
+    .bloco-sep { position: relative; height: 16px; display: flex; align-items: center; }
+    .sep-linha { position: relative; width: 100%; height: 2px; display: flex; align-items: center; justify-content: center; }
+    .sep-linha::before { content: ''; position: absolute; inset: 0; background: transparent; border-radius: 2px; transition: background var(--transition-fast); }
+    .bloco-sep:hover .sep-linha::before { background: color-mix(in srgb, var(--primary) 25%, transparent); }
+    .sep-btn { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary) 40%, transparent); background: var(--color-surface); color: var(--primary); font-size: var(--font-size-md); line-height: 1; cursor: pointer; opacity: 0; transition: opacity var(--transition-fast), background var(--transition-fast); display: flex; align-items: center; justify-content: center; padding: 0; }
+    .bloco-sep:hover .sep-btn { opacity: 1; }
+    .sep-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .sep-menu { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: var(--space-1); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-2); box-shadow: var(--shadow-lg); }
+    .sep-menu button { padding: var(--space-1) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-xs); font-weight: 600; white-space: nowrap; transition: all var(--transition-fast); }
+    .sep-menu button:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); color: var(--primary); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
 
-    .blocos-vazio {
-      color: #94a3b8;
-      font-size: .9rem;
-      text-align: center;
-      padding: 32px;
-      border: 2px dashed #e2e8f0;
-      border-radius: 8px;
-    }
-
-    /* ── Sidebar ── */
-    .meta-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: sticky;
-      top: 72px;
-    }
-    .meta-section {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 16px;
-    }
-    .meta-section h4 {
-      margin: 0 0 14px;
-      font-size: .85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: #64748b;
-    }
-    .meta-field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-bottom: 12px;
-    }
+    /* Sidebar */
+    .meta-sidebar { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: calc(56px + var(--space-6)); }
+    .meta-title { font-size: var(--font-size-sm); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin: 0 0 var(--space-4); }
+    .meta-field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
     .meta-field:last-child { margin-bottom: 0; }
-    .meta-field label {
-      font-size: .8rem;
-      font-weight: 600;
-      color: #475569;
-    }
-    .meta-field input,
-    .meta-field select {
-      padding: 7px 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: .875rem;
-      outline: none;
-      transition: box-shadow .15s;
-    }
-    .meta-field input:focus,
-    .meta-field select:focus {
-      box-shadow: 0 0 0 2px #3b82f6;
-      border-color: #3b82f6;
-    }
-    .form-error.meta-erro {
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #b91c1c;
-      font-size: .85rem;
-    }
-    .form-success.meta-ok {
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #166534;
-      font-size: .85rem;
-    }
+    .field-label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text); }
+    .field-input { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text); outline: none; transition: border-color var(--transition-fast); font-family: inherit; width: 100%; box-sizing: border-box; }
+    .field-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
 
-    .loading-full {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 80px;
-      color: #94a3b8;
-      font-size: 1rem;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255,255,255,.4);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
+    .loading-state { text-align: center; color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    .spinner-sm { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .aula-body { grid-template-columns: 1fr; padding: var(--space-4); }
+      .meta-sidebar { position: static; }
+      .aula-topbar { padding: var(--space-3) var(--space-4); }
+    }
   `],
 })
 export class AdminAulaFormComponent implements OnInit {
@@ -574,7 +286,7 @@ export class AdminAulaFormComponent implements OnInit {
     }
   }
 
-  // ── Blocos ────────────────────────────────────────────────────────────────
+  // -------- Blocos --------
 
   trackById(_: number, b: BlocoEditavel): number { return b.id; }
 
@@ -616,13 +328,13 @@ export class AdminAulaFormComponent implements OnInit {
     this.menuAberto = null;
   }
 
-  // ── Serialização ──────────────────────────────────────────────────────────
+  // -------- Serialização --------
 
   private get tituloAtual(): string {
     return this.blocos.find(b => b.tipo === 'titulo')?.conteudo.trim() ?? '';
   }
 
-  /** Blocos exceto o primeiro título → armazenados como JSON em descricao. */
+  /** Blocos exceto o primeiro título -> armazenados como JSON em descricao. */
   private serializarDescricao(): string {
     const conteudo = this.blocos.filter(
       (b, i) => !(b.tipo === 'titulo' && i === 0),
@@ -630,7 +342,7 @@ export class AdminAulaFormComponent implements OnInit {
     return conteudo.length ? JSON.stringify(conteudo) : '';
   }
 
-  // ── API ───────────────────────────────────────────────────────────────────
+  // -------- API --------
 
   private headers(): HttpHeaders {
     // Fallback lê 'access_token' — a chave que o AuthService realmente usa.

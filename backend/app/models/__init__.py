@@ -105,7 +105,7 @@ class FaculdadeTema(Base):
     secondary_color  = Column(String(20),  nullable=False, default="#0f4b2a")
     background_color = Column(String(20),  nullable=False, default="#f0fdf4")
     font_family      = Column(String(150), nullable=False, default="Inter, system-ui, sans-serif")
-    logo_url_override = Column(String(500), nullable=True,
+    logo_url_override = Column(Text, nullable=True,
                                comment="Override de logo; se NULL usa faculdades.logo_url")
 
     # ── Dark mode ─────────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ class FaculdadeTema(Base):
     dark_background_color = Column(String(20), nullable=False, default="#0f172a")
 
     # ── Favicon ───────────────────────────────────────────────────────────────
-    favicon_url      = Column(String(500), nullable=True)
+    favicon_url      = Column(Text, nullable=True)
 
     # ── Identidade visual avançada ────────────────────────────────────────────
     border_radius    = Column(String(10),  nullable=False, default="8px",

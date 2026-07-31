@@ -1,118 +1,94 @@
-<div class="register-container">
-  <div class="register-box">
-    <h1>Cadastro de Aluno</h1>
-    <p class="subtitle">Preencha seus dados para solicitar acesso à plataforma</p>
-    
-    <form (ngSubmit)="register()" *ngIf="!success">
-      <div class="form-group">
-        <label for="faculdade">Faculdade</label>
-        <select
-          id="faculdade"
-          [(ngModel)]="faculdadeId"
-          name="faculdadeId"
-          [disabled]="carregandoFaculdades"
-          required
-        >
-          <option [ngValue]="null" disabled>
-            {{ carregandoFaculdades ? 'Carregando...' : 'Selecione sua faculdade' }}
-          </option>
-          <option *ngFor="let f of faculdades" [ngValue]="f.id">{{ f.nome }}</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="nome">Nome Completo</label>
-        <input
-          type="text"
-          id="nome"
-          [(ngModel)]="nome"
-          name="nome"
-          placeholder="Seu nome completo"
-          required
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="email">
-          Email
-          <span *ngIf="validandoEmail" class="validating">Verificando...</span>
-          <span *ngIf="!validandoEmail && emailEmUso" class="email-em-uso">✗ Email em uso</span>
-          <span *ngIf="!validandoEmail && !emailEmUso && email" class="email-disponivel">✓ Email disponível</span>
-        </label>
-        <input
-          type="email"
-          id="email"
-          [(ngModel)]="email"
-          name="email"
-          (blur)="verificarEmailDisponivel()"
-          placeholder="seu@email.com"
-          [class.email-error]="emailEmUso"
-          required
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="senha">Senha</label>
-        <div class="password-field">
-          <input
-            [type]="showSenha ? 'text' : 'password'"
-            id="senha"
-            [(ngModel)]="senha"
-            name="senha"
-            placeholder="Mínimo 6 caracteres"
-            required
-          />
-          <button 
-            type="button" 
-            class="toggle-password" 
-            (click)="showSenha = !showSenha"
-          >
-            {{ showSenha ? 'Ocultar' : 'Mostrar' }}
-          </button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="confirmarSenha">Confirmar Senha</label>
-        <div class="password-field">
-          <input
-            [type]="showConfirmarSenha ? 'text' : 'password'"
-            id="confirmarSenha"
-            [(ngModel)]="confirmarSenha"
-            name="confirmarSenha"
-            placeholder="Digite a senha novamente"
-            required
-          />
-          <button 
-            type="button" 
-            class="toggle-password" 
-            (click)="showConfirmarSenha = !showConfirmarSenha"
-          >
-            {{ showConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
-          </button>
-        </div>
-      </div>
-
-      <div *ngIf="error" class="error-message">{{ error }}</div>
-
-      <button 
-        type="submit" 
-        class="submit-button" 
-        [disabled]="loading || emailEmUso || validandoEmail || !faculdadeId"
-      >
-        {{ loading ? 'Enviando solicitação...' : 'Criar Conta' }}
-      </button>
-    </form>
-
-    <div *ngIf="success" class="success-message">
-      <div class="success-icon">⏳</div>
-      <h2>Solicitação enviada!</h2>
-      <p>Sua conta foi criada. Aguarde a aprovação do administrador para acessar os cursos.</p>
-      <p class="redirect-info">Você será redirecionado ao catálogo em instantes...</p>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <h1 class="auth-heading">Cadastro de Aluno</h1>
+      <p class="auth-sub">Preencha seus dados para solicitar acesso à plataforma</p>
     </div>
 
-    <div class="back-link">
+    @if (!success) {
+      <form (ngSubmit)="register()">
+
+        <div class="field">
+          <label class="field-label" for="faculdade">Faculdade</label>
+          <select class="field-input" id="faculdade" [(ngModel)]="faculdadeId" name="faculdadeId"
+            [disabled]="carregandoFaculdades" required>
+            <option [ngValue]="null" disabled>
+              {{ carregandoFaculdades ? 'Carregando...' : 'Selecione sua faculdade' }}
+            </option>
+            @for (f of faculdades; track f.id) {
+              <option [ngValue]="f.id">{{ f.nome }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="nome">Nome Completo</label>
+          <input class="field-input" type="text" id="nome" [(ngModel)]="nome" name="nome"
+            placeholder="Seu nome completo" required />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="email">
+            Email
+            @if (validandoEmail) { <span class="badge badge-neutral" style="font-weight:400">Verificando...</span> }
+            @else if (emailEmUso) { <span class="badge badge-danger" style="font-weight:400">Email em uso</span> }
+            @else if (!emailEmUso && email) { <span class="badge badge-success" style="font-weight:400">Disponível</span> }
+          </label>
+          <input class="field-input" [class.field-input--error]="emailEmUso"
+            type="email" id="email" [(ngModel)]="email" name="email"
+            (blur)="verificarEmailDisponivel()" placeholder="seu@email.com" required />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="senha">Senha</label>
+          <div class="password-wrap">
+            <input class="field-input" [type]="showSenha ? 'text' : 'password'"
+              id="senha" [(ngModel)]="senha" name="senha"
+              placeholder="Mínimo 6 caracteres" required />
+            <button type="button" class="btn btn-ghost btn-sm" (click)="showSenha = !showSenha">
+              {{ showSenha ? 'Ocultar' : 'Mostrar' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="confirmarSenha">Confirmar Senha</label>
+          <div class="password-wrap">
+            <input class="field-input" [type]="showConfirmarSenha ? 'text' : 'password'"
+              id="confirmarSenha" [(ngModel)]="confirmarSenha" name="confirmarSenha"
+              placeholder="Digite a senha novamente" required />
+            <button type="button" class="btn btn-ghost btn-sm" (click)="showConfirmarSenha = !showConfirmarSenha">
+              {{ showConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
+            </button>
+          </div>
+        </div>
+
+        @if (error) {
+          <div class="msg msg-error" style="margin-bottom:var(--space-4)">{{ error }}</div>
+        }
+
+        <button type="submit" class="btn btn-primary btn-full"
+          [disabled]="loading || emailEmUso || validandoEmail || !faculdadeId">
+          {{ loading ? 'Enviando solicitação...' : 'Criar Conta' }}
+        </button>
+      </form>
+    }
+
+    @if (success) {
+      <div class="success-state">
+        <div class="success-icon-wrap">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/>
+          </svg>
+        </div>
+        <h2 class="success-title">Solicitação enviada!</h2>
+        <p class="success-body">Sua conta foi criada. Aguarde a aprovação do administrador para acessar os cursos.</p>
+        <p class="auth-sub">Você será redirecionado em instantes...</p>
+      </div>
+    }
+
+    <p class="auth-footer-link">
       <a (click)="goBack()" href="javascript:void(0)">Voltar</a>
-    </div>
+    </p>
   </div>
 </div>

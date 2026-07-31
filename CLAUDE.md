@@ -77,6 +77,8 @@ O terceiro estado é real: admin criado por convite, aluno não aprovado, conta 
 
 `ConviteAdmin` ganhou `faculdade_id` (`database/migration_convite_faculdade.sql`, **precisa ser aplicada à mão em bancos existentes**): o admin convidado nasce vinculado à instituição que estava em gestão quando o convite foi enviado. Sem isso ele caía no estado "sem tenant" — logava e não via nada.
 
+`faculdade_temas.logo_url_override` e `.favicon_url` passaram de `VARCHAR(500)` para `TEXT` (`database/migration_tema_urls_text.sql`, **também manual**): as colunas agora recebem data URIs base64 do upload de logo/favicon, e qualquer PNG estoura 500 caracteres.
+
 For entities without a direct `faculdade_id` (e.g. `Aula`, `CourseRequest`), join through `Curso` and filter on `Curso.faculdade_id`. The middleware logs a `TENANT_AUDIT` warning when a 2xx response came from a non-super-admin with no tenant — that's the signal an endpoint forgot `TenantContext`.
 
 `get_current_user` mora em `app/security/deps.py` (não em `routes/auth.py`, que apenas reexporta) para quebrar o ciclo de import com `security/tenant.py`.

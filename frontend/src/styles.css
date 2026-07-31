@@ -5,6 +5,9 @@
    Para ajustes de layout use as classes utilitárias abaixo.
    ============================================================ */
 
+/* ── Google Fonts: Poppins para títulos ──────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 /* ── 1. Tokens base (light mode) ─────────────────────────────
    Sobrescritos pelo ThemeService via element.style.setProperty()
    ──────────────────────────────────────────────────────────── */
@@ -237,6 +240,38 @@
   --card-elevated-shadow:       var(--shadow-md);
   --card-elevated-shadow-hover: var(--shadow-lg);
   --card-elevated-hover-lift:   calc(var(--motion-hover-lift) * 2);
+
+  /* ── Tipografia display ─────────────────────────────────────────────────── */
+  --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
+
+  /* ── Layout — sidebar / topbar ───────────────────────────────────────────── */
+  --sidebar-w:            260px;
+  --sidebar-w-collapsed:   68px;
+  --topbar-h:              64px;
+  --sidebar-topbar-h:      56px;
+  --content-max-w:       1400px;
+
+  /* ── Sidebar — cores derivadas do primary ────────────────────────────────
+     color-mix gera versões escuras do primary sem depender do ThemeService.
+     Funciona para verde, azul ou qualquer cor customizada pela instituição.
+     ─────────────────────────────────────────────────────────────────────── */
+  --sidebar-bg:             color-mix(in srgb, var(--primary) 18%, #000000);
+  --sidebar-bg-hover:       color-mix(in srgb, var(--primary) 30%, #000000);
+  --sidebar-active-bg:      color-mix(in srgb, var(--primary) 45%, #000000);
+  --sidebar-text:           rgba(255, 255, 255, 0.82);
+  --sidebar-text-active:    #ffffff;
+  --sidebar-text-hover:     #ffffff;
+  --sidebar-border:         rgba(255, 255, 255, 0.10);
+  --sidebar-indicator:      var(--primary);
+  --sidebar-icon-opacity:   0.75;
+
+  /* ── Topbar embutida (quando sidebar está ativa) ─────────────────────── */
+  --inner-topbar-bg:   var(--color-surface);
+  --inner-topbar-border: var(--color-border);
+
+  /* ── Stat cards ─────────────────────────────────────────────────────────── */
+  --stat-card-icon-size: 48px;
+  --stat-card-value-size: var(--font-size-3xl);
 }
 
 /* ── 2. Dark mode swap ────────────────────────────────────────
@@ -405,6 +440,76 @@ body[data-transition="spring"] {
   --motion-easing:        cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-easing-enter:  cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-easing-exit:   cubic-bezier(0.55, 0.0,  0.45, 1.0);
+}
+
+/* ── 2e. Tema EduVerde — branco + verde ─────────────────────────
+   Ativado por: document.documentElement.setAttribute('data-app-theme','verde')
+   Paleta: sidebar escura verde-profundo, botões e links em Green-600.
+   ─────────────────────────────────────────────────────────────── */
+:root[data-app-theme="verde"] {
+  --primary:          #16a34a;   /* Green 600  */
+  --primary-color:    #16a34a;
+  --secondary:        #15803d;   /* Green 700  */
+  --secondary-color:  #15803d;
+  --background:       #ffffff;
+  --background-color: #ffffff;
+
+  --dark-primary-color:    #4ade80;   /* Green 400 dark */
+  --dark-secondary-color:  #22c55e;   /* Green 500 dark */
+  --dark-background-color: #0a1a0f;   /* Verde-noturno profundo */
+
+  --color-surface:    #ffffff;
+  --color-surface-2:  #f0fdf4;   /* Green 50  */
+  --color-border:     #bbf7d0;   /* Green 200 */
+  --color-text:       #14532d;   /* Green 950 */
+  --color-text-muted: #4b7a5c;
+
+  /* Sidebar escura Verde-Floresta */
+  --sidebar-bg:            #14532d;   /* Green 950  */
+  --sidebar-bg-hover:      #166534;   /* Green 800  */
+  --sidebar-active-bg:     #15803d;   /* Green 700  */
+  --sidebar-indicator:     #4ade80;   /* Green 400 — brilha no escuro */
+
+  --inner-topbar-bg:     #ffffff;
+  --inner-topbar-border: #bbf7d0;
+
+  /* Botão arredondado */
+  --radius:    8px;
+}
+
+/* ── 2f. Tema EduBlue — branco + azul ─────────────────────────
+   Ativado por: document.documentElement.setAttribute('data-app-theme','azul')
+   Paleta: sidebar escura azul-navy, botões e links em Blue-600.
+   ─────────────────────────────────────────────────────────────── */
+:root[data-app-theme="azul"] {
+  --primary:          #2563eb;   /* Blue 600  */
+  --primary-color:    #2563eb;
+  --secondary:        #1d4ed8;   /* Blue 700  */
+  --secondary-color:  #1d4ed8;
+  --background:       #ffffff;
+  --background-color: #ffffff;
+
+  --dark-primary-color:    #60a5fa;   /* Blue 400 dark */
+  --dark-secondary-color:  #3b82f6;   /* Blue 500 dark */
+  --dark-background-color: #070d1a;   /* Azul-noturno profundo */
+
+  --color-surface:    #ffffff;
+  --color-surface-2:  #eff6ff;   /* Blue 50  */
+  --color-border:     #bfdbfe;   /* Blue 200 */
+  --color-text:       #1e3a8a;   /* Blue 950 */
+  --color-text-muted: #4a6da0;
+
+  /* Sidebar escura Azul-Navy */
+  --sidebar-bg:            #1e3a8a;   /* Blue 900  */
+  --sidebar-bg-hover:      #1e40af;   /* Blue 800  */
+  --sidebar-active-bg:     #1d4ed8;   /* Blue 700  */
+  --sidebar-indicator:     #93c5fd;   /* Blue 300 — brilha no escuro */
+
+  --inner-topbar-bg:     #ffffff;
+  --inner-topbar-border: #bfdbfe;
+
+  /* Botão levemente mais quadrado → sensação corporativa */
+  --radius:    6px;
 }
 
 /* ── 3. Reset & base ──────────────────────────────────────────  */
@@ -968,4 +1073,430 @@ app-root {
     transition-duration:       0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── 14. Skeleton loading ─────────────────────────────────────
+   Uso: <div class="skeleton skeleton-text"></div>
+         <div class="skeleton skeleton-avatar"></div>
+         <div class="skeleton skeleton-card"></div>
+   ─────────────────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 25%,
+    color-mix(in srgb, var(--primary) 8%, var(--color-surface-2)) 50%,
+    var(--color-surface-2) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius);
+}
+
+.skeleton-text    { height: 1em;  border-radius: var(--radius-sm); margin-bottom: var(--space-2); }
+.skeleton-title   { height: 1.5em; width: 60%; border-radius: var(--radius-sm); margin-bottom: var(--space-3); }
+.skeleton-avatar  { width: 40px; height: 40px; border-radius: var(--radius-full); flex-shrink: 0; }
+.skeleton-avatar-lg { width: 64px; height: 64px; border-radius: var(--radius-full); flex-shrink: 0; }
+.skeleton-card    { height: 120px; border-radius: var(--radius-lg); }
+.skeleton-btn     { height: var(--density-input-h); width: 120px; border-radius: var(--radius); }
+.skeleton-thumb   { width: 100%; aspect-ratio: 16/9; border-radius: var(--radius-lg); }
+
+/* Linhas de texto skeleton */
+.skeleton-lines { display: flex; flex-direction: column; gap: var(--space-2); }
+.skeleton-lines .skeleton-text:last-child { width: 75%; }
+
+/* ── 15. Stat Cards ──────────────────────────────────────────
+   Uso:
+   <div class="stat-card">
+     <div class="stat-icon stat-icon--primary">SVG</div>
+     <div class="stat-body">
+       <span class="stat-value">1.240</span>
+       <span class="stat-label">Alunos Ativos</span>
+       <span class="stat-delta stat-delta--up">+12%</span>
+     </div>
+   </div>
+   ─────────────────────────────────────────────────────────── */
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+.stat-card:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(calc(-1 * var(--card-hover-lift)));
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--stat-card-icon-size);
+  height: var(--stat-card-icon-size);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+  font-size: 22px;
+}
+.stat-icon--primary { background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
+.stat-icon--success { background: var(--color-success-bg); color: var(--color-success); }
+.stat-icon--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.stat-icon--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+.stat-icon--info    { background: var(--color-info-bg);    color: var(--color-info);    }
+
+.stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--stat-card-value-size);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.stat-delta {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-top: var(--space-1);
+}
+.stat-delta--up   { color: var(--color-success); }
+.stat-delta--down { color: var(--color-danger); }
+.stat-delta--neutral { color: var(--color-text-muted); }
+
+/* Grid de stat-cards responsivo */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ── 16. Page header ─────────────────────────────────────────
+   Uso:
+   <div class="page-header">
+     <div class="page-header-left">
+       <h1 class="page-title">Dashboard</h1>
+       <p class="page-subtitle">Visão geral do sistema</p>
+     </div>
+     <div class="page-header-actions">…buttons…</div>
+   </div>
+   ─────────────────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--density-section-gap);
+  flex-wrap: wrap;
+}
+
+.page-header-left  { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.page-header-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; flex-shrink: 0; }
+
+.page-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ── 17. Empty state ─────────────────────────────────────────
+   Uso:
+   <div class="empty-state">
+     <div class="empty-icon">📭</div>
+     <h3 class="empty-title">Nenhum resultado</h3>
+     <p class="empty-body">Tente ajustar os filtros.</p>
+     <button class="btn btn-primary">Criar agora</button>
+   </div>
+   ─────────────────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10) var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+  animation: enter-up var(--motion-transition-enter) both;
+}
+
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.empty-body {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  max-width: 36ch;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── 18. Progress bar ────────────────────────────────────────
+   Uso:
+   <div class="progress">
+     <div class="progress-bar" style="--prog:65%"></div>
+   </div>
+   ─────────────────────────────────────────────────────────── */
+.progress {
+  width: 100%;
+  height: 6px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: var(--prog, 0%);
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.progress-bar--success { background: var(--color-success); }
+.progress-bar--warning { background: var(--color-warning); }
+.progress-bar--danger  { background: var(--color-danger);  }
+
+/* Circular progress — via SVG stroke-dashoffset em templates */
+.progress-ring {
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* ── 19. Tabela zebra (tema azul usa por padrão) ─────────────
+   Aplique .table-zebra na tabela ou no wrapper
+   ─────────────────────────────────────────────────────────── */
+.table-zebra tbody tr:nth-child(even) {
+  background-color: var(--color-surface-2);
+}
+
+/* ── 20. Tipografia display ──────────────────────────────────  */
+h1, h2, h3 { font-family: var(--font-display); }
+
+.display-1 { font-family: var(--font-display); font-size: var(--font-size-3xl); font-weight: 700; line-height: 1.15; }
+.display-2 { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; line-height: 1.2;  }
+.display-3 { font-family: var(--font-display); font-size: var(--font-size-xl);  font-weight: 600; line-height: 1.25; }
+
+/* ── 21. Breadcrumb ──────────────────────────────────────────
+   Uso:
+   <nav class="breadcrumb" aria-label="Navegação">
+     <a href="/admin">Admin</a>
+     <span class="breadcrumb-sep">›</span>
+     <span>Cursos</span>
+   </nav>
+   ─────────────────────────────────────────────────────────── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 500; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb-sep { opacity: 0.5; user-select: none; }
+.breadcrumb > span:last-child { color: var(--color-text); font-weight: 500; }
+
+/* ── 22. Sidebar nav group (usado pelo admin layout) ─────────
+   ─────────────────────────────────────────────────────────── */
+.nav-group {
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.nav-group-label {
+  padding: 0 var(--space-4) var(--space-1);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-text);
+  opacity: 0.45;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-group + .nav-group {
+  border-top: 1px solid var(--sidebar-border);
+}
+
+/* ── 23. Avatar ──────────────────────────────────────────────
+   ─────────────────────────────────────────────────────────── */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar--sm { width: 28px; height: 28px; font-size: var(--font-size-xs); }
+.avatar--lg { width: 48px; height: 48px; font-size: var(--font-size-lg); }
+.avatar--xl { width: 64px; height: 64px; font-size: var(--font-size-xl); font-weight: 800; }
+
+/* ── 24. Notification dot ────────────────────────────────────
+   Uso: <span class="notif-dot">3</span> ao lado de ícone de nav
+   ─────────────────────────────────────────────────────────── */
+.notif-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── 25. Search input ────────────────────────────────────────  */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.search-input {
+  width: 100%;
+  min-height: var(--density-input-h);
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 24px);
+  font-family: inherit;
+  font-size: var(--density-font-ui);
+  color: var(--input-color);
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-full);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.search-input:focus {
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--input-focus-ring-color);
+}
+
+/* ── 26. Flex / Grid helpers ─────────────────────────────────  */
+.flex         { display: flex; }
+.flex-col     { display: flex; flex-direction: column; }
+.flex-wrap    { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start  { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-end     { justify-content: flex-end; }
+.justify-center  { justify-content: center; }
+.flex-1       { flex: 1 1 0; min-width: 0; }
+.flex-shrink-0 { flex-shrink: 0; }
+.w-full       { width: 100%; }
+.h-full       { height: 100%; }
+.min-h-screen { min-height: 100vh; }
+.overflow-hidden { overflow: hidden; }
+.overflow-auto   { overflow: auto; }
+.overflow-x-auto { overflow-x: auto; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 27. Font weight helpers ─────────────────────────────────  */
+.font-normal  { font-weight: 400; }
+.font-medium  { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold    { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+
+/* ── 28. Text size helpers ───────────────────────────────────  */
+.text-xs  { font-size: var(--font-size-xs); }
+.text-sm  { font-size: var(--font-size-sm); }
+.text-md  { font-size: var(--font-size-md); }
+.text-lg  { font-size: var(--font-size-lg); }
+.text-xl  { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-3xl { font-size: var(--font-size-3xl); }
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+
+/* ── 29. Content section ─────────────────────────────────────  */
+.section {
+  margin-bottom: var(--density-section-gap);
+}
+
+.content-page {
+  padding: var(--density-section-gap) var(--space-5);
+  max-width: var(--content-max-w);
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .content-page { padding: var(--space-4) var(--space-3); }
+  .stat-grid    { grid-template-columns: 1fr 1fr; }
+  .page-header  { flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr; }
 }

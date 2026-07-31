@@ -189,7 +189,11 @@ export class InstituicaoTemaComponent implements OnInit, OnDestroy {
       debounceTime(30),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
       takeUntil(this.destroy$),
-    ).subscribe(values => this.themeService.applyTheme(values));
+    ).subscribe(values => this.themeService.applyTheme({
+      ...values,
+      logo_url:    this.previewLogo    ?? undefined,
+      favicon_url: this.previewFavicon ?? undefined,
+    }));
 
     // Atualiza pageOverrides em tempo real ao editar o form por página
     this.pageForm.valueChanges.pipe(

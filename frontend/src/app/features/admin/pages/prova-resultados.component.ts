@@ -22,363 +22,155 @@ interface ResultadoProva {
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="page-container">
+    <div class="content-page">
+
       <div class="page-header">
-        <h2>📊 Resultados da Prova: {{ prova?.titulo }}</h2>
-        <button class="btn-secondary" [routerLink]="['/admin/provas']">← Voltar</button>
-      </div>
-
-      <!-- Resumo da Prova -->
-      <div class="prova-info" *ngIf="prova">
-        <h3>📝 Informações da Prova</h3>
-        <div class="info-grid">
-          <div class="info-item">
-            <strong>Título:</strong> {{ prova.titulo }}
-          </div>
-          <div class="info-item">
-            <strong>Curso:</strong> {{ prova.curso_nome }}
-          </div>
-          <div class="info-item">
-            <strong>Período:</strong> 
-            {{ formatData(prova.data_inicio) }} - {{ formatData(prova.data_fim) }}
-          </div>
-          <div class="info-item">
-            <strong>Questões:</strong> {{ prova.total_questoes }}
-          </div>
+        <div>
+          <h1 class="page-title">Resultados da Prova</h1>
+          @if (prova) {
+            <p class="page-subtitle">{{ prova.titulo }}</p>
+          }
         </div>
+        <a class="btn btn-outline" [routerLink]="['/admin/provas']">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar
+        </a>
       </div>
 
-      <!-- Estatísticas -->
-      <div class="estatisticas" *ngIf="resultados.length > 0">
-        <h3>📈 Estatísticas</h3>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-number">{{ resultados.length }}</div>
-            <div class="stat-label">Submissões</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ mediaGeral.toFixed(1) }}</div>
-            <div class="stat-label">Média Geral</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ aprovados }}</div>
-            <div class="stat-label">Aprovados (≥7)</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number">{{ reprovados }}</div>
-            <div class="stat-label">Reprovados (<7)</div>
-          </div>
+      @if (carregando) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Carregando resultados...</p>
         </div>
-      </div>
+      }
 
-      <!-- Lista de Resultados -->
-      <div class="resultados-container" *ngIf="resultados.length > 0">
-        <h3>👥 Resultados por Aluno</h3>
-        <div class="resultados-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Aluno</th>
-                <th>Nota Final</th>
-                <th>Acertos</th>
-                <th>% Acerto</th>
-                <th>Status</th>
-                <th>Data Submissão</th>
-                <th>Tentativa</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let resultado of resultados" 
-                  [class.aprovado]="resultado.nota_final >= 7"
-                  [class.reprovado]="resultado.nota_final < 7">
-                <td class="aluno-nome">{{ resultado.usuario_nome }}</td>
-                <td class="nota-final">{{ resultado.nota_final.toFixed(1) }}</td>
-                <td class="acertos">{{ resultado.total_acertos }}/{{ resultado.total_questoes }}</td>
-                <td class="percentual">{{ resultado.percentual_acerto.toFixed(1) }}%</td>
-                <td class="status">
-                  <span class="badge" [ngClass]="resultado.nota_final >= 7 ? 'aprovado' : 'reprovado'">
-                    {{ resultado.nota_final >= 7 ? '✓ Aprovado' : '✗ Reprovado' }}
-                  </span>
-                </td>
-                <td class="data">{{ formatDataHora(resultado.data_submissao) }}</td>
-                <td class="tentativa">{{ resultado.tentativa }}ª</td>
-              </tr>
-            </tbody>
-          </table>
+      @if (erro) {
+        <div class="msg msg-error">
+          {{ erro }}
+          <button class="btn btn-sm btn-outline" style="margin-left: var(--space-4)" (click)="carregarResultados()">Tentar novamente</button>
         </div>
-      </div>
+      }
 
-      <!-- Estado Vazio -->
-      <div class="empty-state" *ngIf="resultados.length === 0 && !carregando">
-        <div class="empty-icon">📊</div>
-        <h3>Nenhum resultado ainda</h3>
-        <p>Esta prova ainda não foi respondida por nenhum aluno.</p>
-      </div>
+      @if (!carregando && !erro) {
+        @if (prova) {
+          <div class="card" style="margin-bottom: var(--space-5)">
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Curso</span>
+                <span class="info-value">{{ prova.curso_nome }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Início</span>
+                <span class="info-value">{{ formatData(prova.data_inicio) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Encerramento</span>
+                <span class="info-value">{{ formatData(prova.data_fim) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Questões</span>
+                <span class="info-value">{{ prova.total_questoes }}</span>
+              </div>
+            </div>
+          </div>
+        }
 
-      <!-- Loading -->
-      <div class="loading" *ngIf="carregando">
-        <p>Carregando resultados...</p>
-      </div>
+        @if (resultados.length > 0) {
+          <div class="stat-grid" style="margin-bottom: var(--space-5)">
+            <div class="stat-card">
+              <div class="stat-value">{{ resultados.length }}</div>
+              <div class="stat-label">Submissões</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">{{ mediaGeral.toFixed(1) }}</div>
+              <div class="stat-label">Média Geral</div>
+            </div>
+            <div class="stat-card stat-card--success">
+              <div class="stat-value">{{ aprovados }}</div>
+              <div class="stat-label">Aprovados (≥7)</div>
+            </div>
+            <div class="stat-card stat-card--danger">
+              <div class="stat-value">{{ reprovados }}</div>
+              <div class="stat-label">Reprovados (&lt;7)</div>
+            </div>
+          </div>
 
-      <!-- Error -->
-      <div class="error-message" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button class="btn-primary" (click)="carregarResultados()">Tentar Novamente</button>
-      </div>
+          <div class="card">
+            <h2 class="section-title">Resultados por Aluno</h2>
+            <div class="table-wrap">
+              <table class="table table-zebra">
+                <thead>
+                  <tr>
+                    <th>Aluno</th>
+                    <th>Nota</th>
+                    <th>Acertos</th>
+                    <th>% Acerto</th>
+                    <th>Status</th>
+                    <th>Submissão</th>
+                    <th>Tentativa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of resultados; track r.id) {
+                    <tr>
+                      <td class="col-nome">{{ r.usuario_nome }}</td>
+                      <td class="col-nota" [class.nota-ok]="r.nota_final >= 7" [class.nota-fail]="r.nota_final < 7">
+                        {{ r.nota_final.toFixed(1) }}
+                      </td>
+                      <td>{{ r.total_acertos }}/{{ r.total_questoes }}</td>
+                      <td>{{ r.percentual_acerto.toFixed(1) }}%</td>
+                      <td>
+                        @if (r.nota_final >= 7) {
+                          <span class="badge badge-success">Aprovado</span>
+                        } @else {
+                          <span class="badge badge-danger">Reprovado</span>
+                        }
+                      </td>
+                      <td>{{ formatDataHora(r.data_submissao) }}</td>
+                      <td>{{ r.tentativa }}ª</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        @if (resultados.length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <h3 class="empty-title">Nenhum resultado ainda</h3>
+            <p class="empty-body">Esta prova ainda não foi respondida por nenhum aluno.</p>
+          </div>
+        }
+      }
+
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-    }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+    .info-item { display: flex; flex-direction: column; gap: var(--space-1); }
+    .info-label { font-size: var(--font-size-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); }
+    .info-value { font-size: var(--font-size-sm); color: var(--color-text); font-weight: 500; }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-    }
+    .section-title { font-size: var(--font-size-md); font-weight: 700; color: var(--color-text); margin: 0 0 var(--space-4); }
 
-    .page-header h2 {
-      margin: 0;
-      color: #2c3e50;
-      font-size: 24px;
-    }
+    .stat-card--success .stat-value { color: var(--color-success); }
+    .stat-card--danger  .stat-value { color: var(--color-danger); }
 
-    .btn-secondary {
-      background: #95a5a6;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      text-decoration: none;
-      font-weight: 600;
-    }
+    .col-nome { font-weight: 600; color: var(--color-text); }
+    .col-nota { font-weight: 700; font-size: var(--font-size-md); }
+    .nota-ok   { color: var(--color-success); }
+    .nota-fail { color: var(--color-danger); }
 
-    .btn-secondary:hover {
-      background: #7f8c8d;
-    }
+    .loading-state { text-align: center; padding: var(--space-10); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .btn-primary {
-      background: #f39c12;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    /* Info da Prova */
-    .prova-info {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 25px;
-    }
-
-    .prova-info h3 {
-      margin: 0 0 20px 0;
-      color: #333;
-    }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
-    }
-
-    .info-item {
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .info-item strong {
-      color: #333;
-    }
-
-    /* Estatísticas */
-    .estatisticas {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 25px;
-    }
-
-    .estatisticas h3 {
-      margin: 0 0 20px 0;
-      color: #333;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 20px;
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 20px;
-      background: #f8f9fa;
-      border-radius: 8px;
-    }
-
-    .stat-number {
-      font-size: 32px;
-      font-weight: 700;
-      color: #2c3e50;
-      margin-bottom: 5px;
-    }
-
-    .stat-label {
-      font-size: 14px;
-      color: #666;
-      font-weight: 600;
-    }
-
-    /* Tabela de Resultados */
-    .resultados-container {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .resultados-container h3 {
-      margin: 0 0 20px 0;
-      color: #333;
-    }
-
-    .resultados-table {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead {
-      background: #f8f9fa;
-    }
-
-    th, td {
-      padding: 12px 15px;
-      text-align: left;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    th {
-      font-weight: 600;
-      color: #495057;
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    tbody tr:hover {
-      background: #f8f9fa;
-    }
-
-    .aluno-nome {
-      font-weight: 600;
-      color: #333;
-    }
-
-    .nota-final {
-      font-weight: 700;
-      font-size: 16px;
-    }
-
-    tr.aprovado .nota-final {
-      color: #28a745;
-    }
-
-    tr.reprovado .nota-final {
-      color: #dc3545;
-    }
-
-    .badge {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .badge.aprovado {
-      background: #d4edda;
-      color: #155724;
-    }
-
-    .badge.reprovado {
-      background: #f8d7da;
-      color: #721c24;
-    }
-
-    /* Estados */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .empty-icon {
-      font-size: 64px;
-      margin-bottom: 20px;
-    }
-
-    .empty-state h3 {
-      color: #2c3e50;
-      margin-bottom: 10px;
-    }
-
-    .empty-state p {
-      color: #666;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
-
-    .error-message {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 20px;
-      border-radius: 8px;
-      text-align: center;
-      border: 1px solid #f5c6cb;
-    }
-
-    @media (max-width: 768px) {
-      .page-header {
-        flex-direction: column;
-        gap: 15px;
-      }
-
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-
-      table {
-        font-size: 12px;
-      }
-
-      th, td {
-        padding: 8px 10px;
-      }
+    @media (max-width: 700px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
     }
   `]
 })
@@ -386,11 +178,10 @@ export class AdminProvaResultadosComponent implements OnInit {
   provaId: number | null = null;
   prova: any = null;
   resultados: ResultadoProva[] = [];
-  
+
   carregando = false;
   erro = '';
 
-  // Estatísticas calculadas
   mediaGeral = 0;
   aprovados = 0;
   reprovados = 0;
@@ -423,7 +214,6 @@ export class AdminProvaResultadosComponent implements OnInit {
 
   carregarResultados(): void {
     if (!this.provaId) return;
-
     this.carregando = true;
     this.erro = '';
 
@@ -433,28 +223,17 @@ export class AdminProvaResultadosComponent implements OnInit {
         this.calcularEstatisticas();
         this.carregando = false;
       },
-      error: (error) => {
-        console.error('Erro ao carregar resultados:', error);
-        this.erro = 'Erro ao carregar resultados da prova';
+      error: () => {
+        this.erro = 'Erro ao carregar resultados da prova.';
         this.carregando = false;
       }
     });
   }
 
   calcularEstatisticas(): void {
-    if (this.resultados.length === 0) {
-      this.mediaGeral = 0;
-      this.aprovados = 0;
-      this.reprovados = 0;
-      return;
-    }
-
-    // Média geral
-    const somaNotas = this.resultados.reduce((soma, resultado) => soma + resultado.nota_final, 0);
-    this.mediaGeral = somaNotas / this.resultados.length;
-
-    // Aprovados e reprovados
-    this.aprovados = this.resultados.filter(r => r.nota_final >= 7).length;
+    if (this.resultados.length === 0) { this.mediaGeral = 0; this.aprovados = 0; this.reprovados = 0; return; }
+    this.mediaGeral = this.resultados.reduce((s, r) => s + r.nota_final, 0) / this.resultados.length;
+    this.aprovados  = this.resultados.filter(r => r.nota_final >= 7).length;
     this.reprovados = this.resultados.filter(r => r.nota_final < 7).length;
   }
 
@@ -463,8 +242,7 @@ export class AdminProvaResultadosComponent implements OnInit {
   }
 
   formatDataHora(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR') + ' ' + 
-           date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(dateString);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 }

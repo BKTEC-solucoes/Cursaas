@@ -1,9 +1,11 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
+import { ThemeService } from '../../../core/services/theme.service';
 
 interface InstituicaoInfo {
   id: number;
@@ -23,72 +25,63 @@ interface InstituicaoInfo {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="perfil-page">
+    <div class="content-page">
       <div class="page-header">
-        <h1>🏛️ Perfil da Instituição</h1>
+        <h1 class="page-title">Perfil da Instituição</h1>
+        <p class="page-subtitle">Visualize e edite os dados da sua instituição.</p>
       </div>
 
-      <div class="loading" *ngIf="carregando">Carregando informações...</div>
-      <div class="erro" *ngIf="erro && !carregando">{{ erro }}</div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando informações...</p></div>
+      }
+      @if (erro && !carregando) {
+        <div class="error-card"><p>{{ erro }}</p></div>
+      }
 
-      <ng-container *ngIf="instituicao && !carregando">
-
-        <!-- Card de identidade -->
+      @if (instituicao && !carregando) {
         <div class="card">
           <div class="card-header">
-            <div class="inst-avatar">{{ instInicial }}</div>
+            <div class="inst-avatar">
+              @if (logoUrl()) {
+                <img [src]="logoUrl()!" alt="Logo" class="inst-logo-img" />
+              } @else {
+                {{ instInicial }}
+              }
+            </div>
             <div class="inst-title">
               <h2>{{ instituicao.nome }}</h2>
               <div class="badges">
-                <span class="badge" [class.badge-ok]="instituicao.aprovada" [class.badge-pending]="!instituicao.aprovada">
-                  {{ instituicao.aprovada ? '✅ Aprovada' : '⏳ Aguardando aprovação' }}
+                <span class="badge" [class.badge--success]="instituicao.aprovada" [class.badge--warn]="!instituicao.aprovada">
+                  {{ instituicao.aprovada ? 'Aprovada' : 'Aguardando aprovação' }}
                 </span>
-                <span class="badge" [class.badge-ok]="instituicao.ativa" [class.badge-inactive]="!instituicao.ativa">
-                  {{ instituicao.ativa ? '🟢 Ativa' : '🔴 Inativa' }}
+                <span class="badge" [class.badge--success]="instituicao.ativa" [class.badge--danger]="!instituicao.ativa">
+                  {{ instituicao.ativa ? 'Ativa' : 'Inativa' }}
                 </span>
-                <span class="badge badge-plano" *ngIf="instituicao.plano">
-                  📦 {{ instituicao.plano | titlecase }}
-                </span>
+                @if (instituicao.plano) {
+                  <span class="badge badge--info">{{ instituicao.plano | titlecase }}</span>
+                }
               </div>
             </div>
           </div>
 
-          <!-- VisualizaÃ§Ã£o -->
-          <ng-container *ngIf="!editando">
+          @if (!editando) {
             <div class="section-title">Dados Cadastrais</div>
             <div class="info-grid">
-              <div class="info-row">
-                <span class="label">Nome</span>
-                <span class="value">{{ instituicao.nome }}</span>
-              </div>
-              <div class="info-row" *ngIf="instituicao.cnpj">
-                <span class="label">CNPJ</span>
-                <span class="value mono">{{ instituicao.cnpj }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">E-mail de contato</span>
-                <span class="value">{{ instituicao.email_contato || '—' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">Telefone</span>
-                <span class="value">{{ instituicao.telefone || '—' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">Domínio de e-mail</span>
-                <span class="value">{{ instituicao.dominio_email || '—' }}</span>
-              </div>
-              <div class="info-row">
-                <span class="label">Cadastro em</span>
-                <span class="value">{{ instituicao.data_criacao | date:'dd/MM/yyyy' }}</span>
-              </div>
+              <div class="info-row"><span class="label">Nome</span><span class="value">{{ instituicao.nome }}</span></div>
+              @if (instituicao.cnpj) {
+                <div class="info-row"><span class="label">CNPJ</span><span class="value mono">{{ instituicao.cnpj }}</span></div>
+              }
+              <div class="info-row"><span class="label">E-mail de contato</span><span class="value">{{ instituicao.email_contato || '—' }}</span></div>
+              <div class="info-row"><span class="label">Telefone</span><span class="value">{{ instituicao.telefone || '—' }}</span></div>
+              <div class="info-row"><span class="label">Domínio de e-mail</span><span class="value">{{ instituicao.dominio_email || '—' }}</span></div>
+              <div class="info-row"><span class="label">Cadastro em</span><span class="value">{{ instituicao.data_criacao | date:'dd/MM/yyyy' }}</span></div>
             </div>
             <div class="card-footer">
-              <button class="btn-edit" (click)="iniciarEdicao()">✏️ Editar informações</button>
+              <button class="btn-primary" (click)="iniciarEdicao()">Editar informações</button>
             </div>
-          </ng-container>
+          }
 
-          <!-- EdiÃ§Ã£o -->
-          <ng-container *ngIf="editando">
+          @if (editando) {
             <div class="section-title">Editar Dados</div>
             <div class="form-grid">
               <div class="form-group">
@@ -108,86 +101,73 @@ interface InstituicaoInfo {
                 <input type="text" [(ngModel)]="form.dominio_email" placeholder="@minhainstituicao.edu.br" />
               </div>
             </div>
-            <div class="feedback success" *ngIf="mensagemSucesso">{{ mensagemSucesso }}</div>
-            <div class="feedback erro-form" *ngIf="erroForm">{{ erroForm }}</div>
+            @if (mensagemSucesso) { <div class="feedback feedback--success">{{ mensagemSucesso }}</div> }
+            @if (erroForm) { <div class="feedback feedback--error">{{ erroForm }}</div> }
             <div class="card-footer">
-              <button class="btn-save" (click)="salvar()" [disabled]="salvando">
-                {{ salvando ? 'Salvando...' : '💾 Salvar' }}
-              </button>
-              <button class="btn-cancel" (click)="cancelarEdicao()">Cancelar</button>
+              <button class="btn-primary" (click)="salvar()" [disabled]="salvando">{{ salvando ? 'Salvando...' : 'Salvar' }}</button>
+              <button class="btn-outline" (click)="cancelarEdicao()">Cancelar</button>
             </div>
-          </ng-container>
+          }
         </div>
-
-      </ng-container>
+      }
     </div>
   `,
   styles: [`
-    .perfil-page { max-width: 800px; margin: 0 auto; }
-    .page-header { margin-bottom: 24px; }
-    .page-header h1 { font-size: 24px; font-weight: 700; color: #1f2937; margin: 0; }
+    :host { display: block; }
 
-    .loading { padding: 24px; text-align: center; border-radius: 8px; background: #f0f9ff; color: #0369a1; }
-    .erro    { padding: 24px; text-align: center; border-radius: 8px; background: #fef2f2; color: #dc2626; }
+    .loading-state { text-align: center; padding: 40px; color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-card { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); padding: var(--space-5); border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); }
 
-    .card { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-7); box-shadow: var(--shadow-sm); }
 
-    .card-header {
-      display: flex; align-items: center; gap: 20px;
-      margin-bottom: 28px; padding-bottom: 20px;
-      border-bottom: 1px solid #f3f4f6;
-    }
-    .inst-avatar {
-      width: 64px; height: 64px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      color: white; display: flex; align-items: center; justify-content: center;
-      font-size: 28px; font-weight: 700; flex-shrink: 0;
-    }
-    .inst-title h2 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #1f2937; }
-    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .badge-ok       { background: #dcfce7; color: #166534; }
-    .badge-pending  { background: #fffbeb; color: #92400e; }
-    .badge-inactive { background: #fef2f2; color: #991b1b; }
-    .badge-plano    { background: #eff6ff; color: #1e40af; }
+    .card-header { display: flex; align-items: center; gap: var(--space-5); margin-bottom: var(--space-7); padding-bottom: var(--space-5); border-bottom: 1px solid var(--color-border); }
+    .inst-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--font-size-2xl); font-weight: 700; flex-shrink: 0; overflow: hidden; }
+    .inst-logo-img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+    .inst-title h2 { margin: 0 0 var(--space-2); font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
+    .badges { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
-    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 12px; }
+    .badge { padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; }
+    .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+    .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--danger  { background: color-mix(in srgb, var(--color-danger)  15%, transparent); color: var(--color-danger); }
+    .badge--info    { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
+
+    .section-title { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-bottom: var(--space-3); }
 
     .info-grid { display: flex; flex-direction: column; }
-    .info-row { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+    .info-row { display: flex; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); }
     .info-row:last-child { border-bottom: none; }
-    .label { font-weight: 600; color: #374151; min-width: 180px; }
-    .value { color: #6b7280; }
+    .label { font-weight: 600; color: var(--color-text); min-width: 180px; }
+    .value { color: var(--color-text-muted); }
     .value.mono { font-family: monospace; }
 
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 13px; font-weight: 600; color: #374151; }
-    .form-group input {
-      padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
-      font-size: 14px; color: #1f2937; outline: none; transition: border 0.2s;
-    }
-    .form-group input:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--secondary) 15%, transparent); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4); }
+    .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
+    .form-group label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+    .form-group input { padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text); outline: none; transition: border-color var(--transition-fast); font-family: inherit; }
+    .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
 
-    .feedback { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
-    .feedback.success  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-    .feedback.erro-form { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .feedback { padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-size: var(--font-size-sm); margin-bottom: var(--space-3); }
+    .feedback--success { background: color-mix(in srgb, var(--color-success) 10%, transparent); color: var(--color-success); border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent); }
+    .feedback--error   { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent); }
 
-    .card-footer { display: flex; gap: 12px; padding-top: 20px; margin-top: 8px; border-top: 1px solid #f3f4f6; }
-    .btn-edit { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-edit:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
-    .btn-save { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-save:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
-    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-cancel { background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-cancel:hover { background: #f3f4f6; }
+    .card-footer { display: flex; gap: var(--space-3); padding-top: var(--space-5); margin-top: var(--space-3); border-top: 1px solid var(--color-border); }
 
-    @media (max-width: 600px) {
-      .form-grid { grid-template-columns: 1fr; }
-    }
+    .btn-primary { background: var(--primary); color: #fff; border: none; border-radius: var(--radius); padding: var(--space-3) var(--space-5); cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; transition: background var(--transition-fast); }
+    .btn-primary:hover:not(:disabled) { background: var(--secondary); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-outline { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-border); background: var(--color-surface-2); color: var(--color-text-muted); border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); }
+    .btn-outline:hover { background: var(--color-border); color: var(--color-text); }
+
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
   `]
 })
 export class InstituicaoPerfilComponent implements OnInit {
+  private readonly _themeService = inject(ThemeService);
+  readonly logoUrl = toSignal(this._themeService.logoUrl$, { initialValue: null as string | null });
+
   instituicao: InstituicaoInfo | null = null;
   carregando = true;
   erro = '';

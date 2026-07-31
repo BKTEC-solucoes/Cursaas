@@ -33,20 +33,14 @@ interface QuestaoResposta {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
+    <div class="content-page">
       <div class="page-header">
-        <h2>📊 Notas</h2>
+        <h1 class="page-title">Notas</h1>
+        <p class="page-subtitle">Visualize e corrija as provas enviadas pelos alunos.</p>
       </div>
 
-      <!-- Filtros -->
       <div class="filtros">
-        <input
-          class="filtro-input"
-          type="text"
-          placeholder="🔍 Buscar por aluno ou prova..."
-          [(ngModel)]="busca"
-          (ngModelChange)="aplicarFiltro()"
-        />
+        <input class="filtro-input" type="text" placeholder="Buscar por aluno ou prova..." [(ngModel)]="busca" (ngModelChange)="aplicarFiltro()" />
         <select class="filtro-select" [(ngModel)]="filtroPendente" (ngModelChange)="aplicarFiltro()">
           <option value="todos">Todas as notas</option>
           <option value="pendentes">Aguardando correção</option>
@@ -54,315 +48,262 @@ interface QuestaoResposta {
         </select>
       </div>
 
-      <!-- Tabela -->
-      <div class="notas-table" *ngIf="notasFiltradas.length > 0">
-        <table>
-          <thead>
-            <tr>
-              <th>Aluno</th>
-              <th>Prova</th>
-              <th>Nota Final</th>
-              <th>Tentativa</th>
-              <th>Enviado em</th>
-              <th>Corrigido em</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let nota of notasFiltradas" [class.pendente-row]="nota.nota_final == null">
-              <td class="aluno-nome">{{ nota.usuario_nome }}</td>
-              <td>{{ nota.prova_titulo }}</td>
-              <td class="nota-valor">
-                <span *ngIf="nota.nota_final != null" [ngClass]="'nivel-' + getNivelNota(+nota.nota_final)">
-                  {{ (+nota.nota_final).toFixed(1) }}
-                </span>
-                <span *ngIf="nota.nota_final == null" class="pendente-badge">⏳ Pendente</span>
-              </td>
-              <td class="tentativa-val">{{ nota.tentativa }}ª</td>
-              <td class="data-col">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td class="data-col">
-                <span *ngIf="nota.data_correcao">{{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }}</span>
-                <span *ngIf="!nota.data_correcao" class="sem-correcao">—</span>
-              </td>
-              <td class="actions">
-                <button class="btn-view" (click)="verRespostas(nota)" title="Ver respostas do aluno">👁️ Ver</button>
-                <button class="btn-edit" (click)="abrirEdicao(nota)" title="Editar nota">✏️ Editar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      @if (carregando) {
+        <div class="loading-state"><div class="spinner"></div><p>Carregando notas...</p></div>
+      }
+      @if (erro) {
+        <div class="error-card"><p>{{ erro }}</p><button (click)="carregarNotas()">Tentar novamente</button></div>
+      }
 
-      <div class="no-data" *ngIf="notasFiltradas.length === 0 && !carregando">
-        <p>{{ notas.length === 0 ? 'Nenhuma nota registrada ainda.' : 'Nenhuma nota corresponde ao filtro.' }}</p>
-      </div>
+      @if (notasFiltradas.length > 0) {
+        <div class="notas-table">
+          <table class="table-zebra">
+            <thead>
+              <tr>
+                <th>Aluno</th><th>Prova</th><th>Nota Final</th><th>Tentativa</th><th>Enviado em</th><th>Corrigido em</th><th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (nota of notasFiltradas; track nota.id) {
+                <tr [class.pendente-row]="nota.nota_final == null">
+                  <td class="col-nome">{{ nota.usuario_nome }}</td>
+                  <td>{{ nota.prova_titulo }}</td>
+                  <td class="col-nota">
+                    @if (nota.nota_final != null) {
+                      <span [class]="'badge badge--nivel-' + getNivelNota(+nota.nota_final)">{{ (+nota.nota_final).toFixed(1) }}</span>
+                    }
+                    @if (nota.nota_final == null) {
+                      <span class="badge badge--warn">Pendente</span>
+                    }
+                  </td>
+                  <td class="col-tentativa">{{ nota.tentativa }}ª</td>
+                  <td class="col-data">{{ nota.data_submissao | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td class="col-data">
+                    @if (nota.data_correcao) { {{ nota.data_correcao | date:'dd/MM/yyyy HH:mm' }} }
+                    @if (!nota.data_correcao) { <span class="text-muted">—</span> }
+                  </td>
+                  <td class="col-actions">
+                    <button class="btn-view" (click)="verRespostas(nota)" title="Ver respostas">Ver</button>
+                    <button class="btn-edit-nota" (click)="abrirEdicao(nota)" title="Editar nota">Editar</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
-      <div class="loading" *ngIf="carregando">
-        <div class="spinner"></div>
-        <p>Carregando notas...</p>
-      </div>
-
-      <div class="error-msg" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarNotas()">Tentar novamente</button>
-      </div>
+      @if (notasFiltradas.length === 0 && !carregando) {
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h3 class="empty-title">Nenhuma nota encontrada</h3>
+          <p>{{ notas.length === 0 ? 'Nenhuma nota registrada ainda.' : 'Nenhuma nota corresponde ao filtro.' }}</p>
+        </div>
+      }
     </div>
 
-    <!-- Modal de Edição -->
-    <div class="modal-overlay" *ngIf="notaEmEdicao" (click)="fecharEdicao()">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>✏️ Editar Nota</h3>
-          <button class="modal-close" (click)="fecharEdicao()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="info-aluno">
-            <p><strong>Aluno:</strong> {{ notaEmEdicao.usuario_nome }}</p>
-            <p><strong>Prova:</strong> {{ notaEmEdicao.prova_titulo }}</p>
-            <p><strong>Tentativa:</strong> {{ notaEmEdicao.tentativa }}ª</p>
-            <p><strong>Enviado em:</strong> {{ notaEmEdicao.data_submissao | date:'dd/MM/yyyy HH:mm' }}</p>
+    @if (notaEmEdicao) {
+      <div class="modal-overlay" (click)="fecharEdicao()">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h3 class="modal-title">Editar Nota</h3>
+            <button class="modal-close" (click)="fecharEdicao()">✕</button>
           </div>
-
-          <div class="form-group">
-            <label>Nota Final <span class="label-hint">(0 a 10)</span></label>
-            <input
-              type="number"
-              class="nota-input"
-              [(ngModel)]="notaEditada"
-              min="0"
-              max="10"
-              step="0.1"
-              placeholder="Ex: 7.5"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Observações</label>
-            <textarea
-              class="obs-input"
-              [(ngModel)]="obsEditada"
-              placeholder="Comentário sobre a correção (opcional)..."
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div class="modal-error" *ngIf="erroEdicao">{{ erroEdicao }}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancelar" (click)="fecharEdicao()" [disabled]="salvando">Cancelar</button>
-          <button class="btn-salvar" (click)="salvarNota()" [disabled]="salvando || notaEditada === null || notaEditada === undefined">
-            {{ salvando ? 'Salvando...' : 'Salvar Nota' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Respostas -->
-    <div class="modal-overlay" *ngIf="notaRespostas" (click)="fecharRespostas()">
-      <div class="modal modal-lg" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <h3>📄 Respostas do Aluno</h3>
-            <p class="modal-subtitle">{{ notaRespostas.usuario_nome }} — {{ notaRespostas.prova_titulo }}</p>
-          </div>
-          <button class="modal-close" (click)="fecharRespostas()">✕</button>
-        </div>
-        <div class="modal-body modal-body-scroll">
-          <div class="loading-respostas" *ngIf="carregandoRespostas">
-            <div class="spinner"></div>
-            <p>Carregando respostas...</p>
-          </div>
-
-          <div class="erro-respostas" *ngIf="erroRespostas">{{ erroRespostas }}</div>
-
-          <div *ngIf="!carregandoRespostas && questoesRespostas.length > 0">
-            <div class="questao-resposta" *ngFor="let q of questoesRespostas; let i = index">
-              <div class="questao-resp-header">
-                <span class="questao-num">Q{{ i + 1 }}</span>
-                <span class="questao-tipo-badge" [class.mc]="q.tipo === 'multipla_escolha'" [class.diss]="q.tipo === 'dissertativa'">
-                  {{ q.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
-                </span>
-                <span class="questao-pts-label">{{ q.pontos }}pts</span>
-                <span class="questao-status" *ngIf="q.tipo === 'multipla_escolha'">
-                  <span class="correta" *ngIf="q.correta === true">✅ Correta</span>
-                  <span class="incorreta" *ngIf="q.correta === false">❌ Errada</span>
-                  <span class="sem-resp" *ngIf="q.correta === null">— Não respondida</span>
-                </span>
-                <span class="questao-status" *ngIf="q.tipo === 'dissertativa'">
-                  <span class="pendente-text">⏳ Aguarda correção</span>
-                </span>
-              </div>
-
-              <p class="enunciado">{{ q.enunciado }}</p>
-
-              <!-- Múltipla escolha -->
-              <div class="opcoes-lista" *ngIf="q.tipo === 'multipla_escolha' && q.opcoes">
-                <div
-                  class="opcao-linha"
-                  *ngFor="let op of q.opcoes"
-                  [class.selecionada]="op.id === q.opcao_selecionada"
-                  [class.gabarito]="op.correta"
-                >
-                  <span class="opcao-marcador">
-                    <span *ngIf="op.id === q.opcao_selecionada && op.correta">✅</span>
-                    <span *ngIf="op.id === q.opcao_selecionada && !op.correta">❌</span>
-                    <span *ngIf="op.id !== q.opcao_selecionada && op.correta">✓</span>
-                    <span *ngIf="op.id !== q.opcao_selecionada && !op.correta">&nbsp;</span>
-                  </span>
-                  <span class="opcao-texto">{{ op.texto }}</span>
-                  <span class="gabarito-label" *ngIf="op.correta">(gabarito)</span>
-                </div>
-              </div>
-
-              <!-- Dissertativa -->
-              <div class="resposta-dissertativa" *ngIf="q.tipo === 'dissertativa'">
-                <label>Resposta do aluno:</label>
-                <div class="texto-resposta" *ngIf="q.texto_resposta">{{ q.texto_resposta }}</div>
-                <div class="sem-resposta" *ngIf="!q.texto_resposta">Sem resposta</div>
-              </div>
+          <div class="modal-body">
+            <div class="info-aluno">
+              <p><strong>Aluno:</strong> {{ notaEmEdicao.usuario_nome }}</p>
+              <p><strong>Prova:</strong> {{ notaEmEdicao.prova_titulo }}</p>
+              <p><strong>Tentativa:</strong> {{ notaEmEdicao.tentativa }}ª</p>
+              <p><strong>Enviado em:</strong> {{ notaEmEdicao.data_submissao | date:'dd/MM/yyyy HH:mm' }}</p>
             </div>
+            <div class="form-group">
+              <label>Nota Final <span class="label-hint">(0 a 10)</span></label>
+              <input type="number" class="nota-input" [(ngModel)]="notaEditada" min="0" max="10" step="0.1" placeholder="Ex: 7.5" />
+            </div>
+            <div class="form-group">
+              <label>Observações</label>
+              <textarea class="obs-input" [(ngModel)]="obsEditada" placeholder="Comentário sobre a correção (opcional)..." rows="3"></textarea>
+            </div>
+            @if (erroEdicao) { <div class="modal-error">{{ erroEdicao }}</div> }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharEdicao()" [disabled]="salvando">Cancelar</button>
+            <button class="btn-primary" (click)="salvarNota()" [disabled]="salvando || notaEditada === null || notaEditada === undefined">{{ salvando ? 'Salvando...' : 'Salvar Nota' }}</button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn-cancelar" (click)="fecharRespostas()">Fechar</button>
-          <button class="btn-salvar" (click)="abrirEdicaoDeRespostas()">✏️ Editar Nota</button>
+      </div>
+    }
+
+    @if (notaRespostas) {
+      <div class="modal-overlay" (click)="fecharRespostas()">
+        <div class="modal modal-lg" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div>
+              <h3 class="modal-title">Respostas do Aluno</h3>
+              <p class="modal-subtitle">{{ notaRespostas.usuario_nome }} — {{ notaRespostas.prova_titulo }}</p>
+            </div>
+            <button class="modal-close" (click)="fecharRespostas()">✕</button>
+          </div>
+          <div class="modal-body modal-body-scroll">
+            @if (carregandoRespostas) {
+              <div class="loading-state"><div class="spinner"></div><p>Carregando respostas...</p></div>
+            }
+            @if (erroRespostas) { <div class="error-card">{{ erroRespostas }}</div> }
+            @if (!carregandoRespostas && questoesRespostas.length > 0) {
+              @for (q of questoesRespostas; track q.id; let i = $index) {
+                <div class="questao-resposta">
+                  <div class="questao-resp-header">
+                    <span class="questao-num">Q{{ i + 1 }}</span>
+                    <span class="questao-tipo-badge" [class.mc]="q.tipo === 'multipla_escolha'" [class.diss]="q.tipo === 'dissertativa'">
+                      {{ q.tipo === 'multipla_escolha' ? 'Múltipla Escolha' : 'Dissertativa' }}
+                    </span>
+                    <span class="questao-pts">{{ q.pontos }}pts</span>
+                    @if (q.tipo === 'multipla_escolha') {
+                      @if (q.correta === true)  { <span class="status-ok">Correta</span> }
+                      @if (q.correta === false) { <span class="status-err">Errada</span> }
+                      @if (q.correta === null)  { <span class="status-na">Não respondida</span> }
+                    }
+                    @if (q.tipo === 'dissertativa') {
+                      <span class="status-pend">Aguarda correção</span>
+                    }
+                  </div>
+                  <p class="enunciado">{{ q.enunciado }}</p>
+                  @if (q.tipo === 'multipla_escolha' && q.opcoes) {
+                    <div class="opcoes-lista">
+                      @for (op of q.opcoes; track op.id) {
+                        <div class="opcao-linha" [class.selecionada]="op.id === q.opcao_selecionada" [class.gabarito]="op.correta">
+                          <span class="opcao-marcador">
+                            @if (op.id === q.opcao_selecionada && op.correta)  { ✅ }
+                            @if (op.id === q.opcao_selecionada && !op.correta) { ❌ }
+                            @if (op.id !== q.opcao_selecionada && op.correta)  { ✓ }
+                            @if (op.id !== q.opcao_selecionada && !op.correta) { &nbsp; }
+                          </span>
+                          <span>{{ op.texto }}</span>
+                          @if (op.correta) { <span class="gabarito-label">(gabarito)</span> }
+                        </div>
+                      }
+                    </div>
+                  }
+                  @if (q.tipo === 'dissertativa') {
+                    <div class="resposta-dissertativa">
+                      <label>Resposta do aluno:</label>
+                      @if (q.texto_resposta) { <div class="texto-resposta">{{ q.texto_resposta }}</div> }
+                      @if (!q.texto_resposta) { <div class="sem-resposta">Sem resposta</div> }
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-outline" (click)="fecharRespostas()">Fechar</button>
+            <button class="btn-primary" (click)="abrirEdicaoDeRespostas()">Editar Nota</button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
-    .page-container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-header h2 { margin: 0; color: #2c3e50; font-size: 1.6rem; }
+    :host { display: block; }
 
-    .filtros { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .filtro-input {
-      flex: 1; min-width: 220px; padding: 10px 14px;
-      border: 1px solid #ddd; border-radius: 6px; font-size: 14px;
-    }
-    .filtro-input:focus { outline: none; border-color: var(--primary); }
-    .filtro-select {
-      padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px;
-      font-size: 14px; background: white; cursor: pointer;
-    }
+    .filtros { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+    .filtro-input { flex: 1; min-width: 200px; padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font-size: var(--font-size-sm); outline: none; }
+    .filtro-input:focus { border-color: var(--primary); }
+    .filtro-select { padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font-size: var(--font-size-sm); cursor: pointer; outline: none; }
 
-    .notas-table {
-      background: white; border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto;
-    }
+    .loading-state { text-align: center; padding: var(--space-12) var(--space-5); color: var(--color-text-muted); }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-card { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); padding: var(--space-5); border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); margin-bottom: var(--space-5); }
+    .error-card button { margin-top: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--color-danger); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); }
+    .text-muted { color: var(--color-text-muted); }
+
+    .notas-table { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow-x: auto; box-shadow: var(--shadow-sm); }
     table { width: 100%; border-collapse: collapse; }
-    thead { background: #f8f9fa; border-bottom: 2px solid #e9ecef; }
-    th { padding: 13px 14px; text-align: left; font-weight: 600; color: #555; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-    td { padding: 13px 14px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; }
-    tbody tr:hover td { background: #f9f9f9; }
-    tbody tr.pendente-row td { background: #fffbf0; }
+    thead { background: var(--color-surface-2); border-bottom: 2px solid var(--color-border); }
+    th { padding: var(--space-3) var(--space-4); text-align: left; font-weight: 600; color: var(--color-text-muted); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+    td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); color: var(--color-text); }
+    tbody tr:hover td { background: var(--color-surface-2); }
+    tbody tr.pendente-row td { background: color-mix(in srgb, var(--color-warning) 5%, transparent); }
     tbody tr:last-child td { border-bottom: none; }
 
-    .aluno-nome { font-weight: 600; }
-    .nota-valor { font-weight: 700; font-size: 15px; }
-    .nivel-excelente { color: var(--primary); }
-    .nivel-bom      { color: #2980b9; }
-    .nivel-regular  { color: #d68910; }
-    .nivel-insuficiente { color: #e74c3c; }
+    .col-nome { font-weight: 600; }
+    .col-nota { font-weight: 700; font-size: var(--font-size-base); }
+    .col-tentativa { text-align: center; }
+    .col-data { color: var(--color-text-muted); font-size: var(--font-size-xs); }
+    .col-actions { white-space: nowrap; display: flex; gap: var(--space-2); align-items: center; }
 
-    .pendente-badge { background: #fff3cd; color: #856404; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-    .tentativa-val { text-align: center; color: #666; }
-    .data-col { color: #666; font-size: 13px; }
-    .sem-correcao { color: #bbb; }
-    .actions { white-space: nowrap; display: flex; gap: 6px; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; }
+    .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--nivel-excelente { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+    .badge--nivel-bom       { background: color-mix(in srgb, var(--color-info) 12%, transparent); color: var(--color-info); }
+    .badge--nivel-regular   { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
+    .badge--nivel-insuficiente { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
 
-    .btn-view {
-      background: var(--primary); color: white; border: none;
-      padding: 6px 14px; border-radius: 5px; cursor: pointer;
-      font-size: 13px; font-weight: 600; transition: background 0.2s;
-    }
-    .btn-view:hover { background: color-mix(in srgb, var(--primary) 80%, black); }
-
-    .btn-edit {
-      background: #2980b9; color: white; border: none;
-      padding: 6px 14px; border-radius: 5px; cursor: pointer;
-      font-size: 13px; font-weight: 600; transition: background 0.2s;
-    }
-    .btn-edit:hover { background: #216a9e; }
-
-    .no-data { background: white; padding: 60px 20px; text-align: center; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); color: #999; }
-    .loading { text-align: center; padding: 60px 20px; color: #999; }
-    .error-msg { background: #fdf2f2; color: #c0392b; padding: 15px; border-radius: 6px; text-align: center; }
-    .error-msg button { margin-top: 10px; padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; }
-
-    .spinner { display: inline-block; width: 36px; height: 36px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .btn-view { background: var(--primary); color: #fff; border: none; padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-xs); font-weight: 600; transition: background var(--transition-fast); }
+    .btn-view:hover { background: var(--secondary); }
+    .btn-edit-nota { background: var(--color-info); color: #fff; border: none; padding: 5px 12px; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-xs); font-weight: 600; }
+    .btn-edit-nota:hover { background: color-mix(in srgb, var(--color-info) 80%, black); }
 
     /* Modal */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-    .modal { background: white; border-radius: 10px; width: 100%; max-width: 480px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: var(--color-surface); border-radius: var(--radius-lg); width: 100%; max-width: 480px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
     .modal-lg { max-width: 720px; }
-    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px; border-bottom: 1px solid #eee; }
-    .modal-header h3 { margin: 0; font-size: 18px; color: #2c3e50; }
-    .modal-subtitle { margin: 4px 0 0 0; font-size: 13px; color: #666; }
-    .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #999; padding: 4px 8px; }
-    .modal-close:hover { color: #333; }
-    .modal-body { padding: 24px; }
-    .modal-body-scroll { max-height: 60vh; overflow-y: auto; padding: 24px; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; border-top: 1px solid #eee; }
+    .modal-header { display: flex; justify-content: space-between; align-items: flex-start; padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--color-border); }
+    .modal-title { margin: 0; font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); }
+    .modal-subtitle { margin: 4px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+    .modal-close { background: none; border: none; font-size: var(--font-size-lg); cursor: pointer; color: var(--color-text-muted); padding: 4px 8px; border-radius: var(--radius); }
+    .modal-close:hover { color: var(--color-text); background: var(--color-surface-2); }
+    .modal-body { padding: var(--space-6); }
+    .modal-body-scroll { max-height: 60vh; overflow-y: auto; padding: var(--space-6); }
+    .modal-footer { display: flex; justify-content: flex-end; gap: var(--space-3); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--color-border); }
 
-    .info-aluno { background: #f8f9fa; border-radius: 6px; padding: 14px; margin-bottom: 20px; }
-    .info-aluno p { margin: 4px 0; font-size: 13px; color: #555; }
+    .info-aluno { background: var(--color-surface-2); border-radius: var(--radius); padding: var(--space-4); margin-bottom: var(--space-5); }
+    .info-aluno p { margin: 3px 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-weight: 600; color: #444; margin-bottom: 6px; font-size: 14px; }
-    .label-hint { font-weight: 400; color: #888; font-size: 12px; }
+    .form-group { margin-bottom: var(--space-4); }
+    .form-group label { display: block; font-weight: 600; color: var(--color-text); margin-bottom: var(--space-2); font-size: var(--font-size-sm); }
+    .label-hint { font-weight: 400; color: var(--color-text-muted); font-size: var(--font-size-xs); }
 
-    .nota-input {
-      width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px;
-      font-size: 20px; font-weight: 700; text-align: center; box-sizing: border-box; transition: border-color 0.2s;
-    }
+    .nota-input { width: 100%; padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-2xl); font-weight: 700; text-align: center; box-sizing: border-box; background: var(--color-surface); color: var(--color-text); transition: border-color var(--transition-fast); }
     .nota-input:focus { outline: none; border-color: var(--primary); }
-
-    .obs-input {
-      width: 100%; padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px;
-      font-size: 14px; resize: vertical; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s;
-    }
+    .obs-input { width: 100%; padding: var(--space-3) var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); resize: vertical; box-sizing: border-box; font-family: inherit; background: var(--color-surface); color: var(--color-text); transition: border-color var(--transition-fast); }
     .obs-input:focus { outline: none; border-color: var(--primary); }
+    .modal-error { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-size: var(--font-size-sm); margin-top: var(--space-3); }
 
-    .modal-error { background: #fdf2f2; color: #c0392b; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-top: 10px; }
+    .btn-primary { padding: var(--space-3) var(--space-5); border: none; border-radius: var(--radius); background: var(--primary); color: #fff; cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; transition: background var(--transition-fast); }
+    .btn-primary:hover:not(:disabled) { background: var(--secondary); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-outline { padding: var(--space-3) var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface-2); color: var(--color-text-muted); cursor: pointer; font-size: var(--font-size-sm); }
+    .btn-outline:hover { background: var(--color-border); color: var(--color-text); }
+    .btn-outline:disabled { opacity: .6; cursor: not-allowed; }
 
-    .btn-cancelar { padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: white; color: #555; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .btn-cancelar:hover { background: #f5f5f5; }
-    .btn-salvar { padding: 10px 24px; border: none; border-radius: 6px; background: var(--primary); color: white; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-salvar:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
-    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    /* Questões no modal de respostas */
-    .questao-resposta { border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .questao-resp-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-    .questao-num { background: var(--primary); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-    .questao-tipo-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-    .questao-tipo-badge.mc { background: #e3f2fd; color: #1976d2; }
-    .questao-tipo-badge.diss { background: #f3e5f5; color: #7b1fa2; }
-    .questao-pts-label { background: #fff3cd; color: #856404; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-    .questao-status { margin-left: auto; font-size: 13px; }
-    .correta { color: var(--primary); font-weight: 600; }
-    .incorreta { color: #e74c3c; font-weight: 600; }
-    .sem-resp { color: #999; }
-    .pendente-text { color: #856404; }
-
-    .enunciado { margin: 0 0 12px 0; font-size: 14px; color: #333; }
-    .opcoes-lista { display: flex; flex-direction: column; gap: 6px; }
-    .opcao-linha { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; border: 1px solid #eee; font-size: 13px; }
-    .opcao-linha.selecionada { border-color: #2980b9; background: #ebf5fb; }
-    .opcao-linha.gabarito:not(.selecionada) { border-color: var(--primary); background: #eafaf1; }
-    .opcao-linha.selecionada.gabarito { border-color: var(--primary); background: #eafaf1; }
-    .gabarito-label { margin-left: auto; font-size: 11px; color: var(--primary); font-weight: 600; }
+    /* Questões */
+    .questao-resposta { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-4); margin-bottom: var(--space-4); }
+    .questao-resp-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
+    .questao-num { background: var(--primary); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--font-size-xs); font-weight: 700; flex-shrink: 0; }
+    .questao-tipo-badge { padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; }
+    .questao-tipo-badge.mc   { background: color-mix(in srgb, var(--color-info) 10%, transparent); color: var(--color-info); }
+    .questao-tipo-badge.diss { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
+    .questao-pts { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); padding: 2px 8px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; }
+    .status-ok   { font-size: var(--font-size-xs); color: var(--color-success); font-weight: 600; margin-left: auto; }
+    .status-err  { font-size: var(--font-size-xs); color: var(--color-danger); font-weight: 600; margin-left: auto; }
+    .status-na   { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-left: auto; }
+    .status-pend { font-size: var(--font-size-xs); color: var(--color-warning); margin-left: auto; }
+    .enunciado { margin: 0 0 var(--space-3); font-size: var(--font-size-sm); color: var(--color-text); }
+    .opcoes-lista { display: flex; flex-direction: column; gap: var(--space-2); }
+    .opcao-linha { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid var(--color-border); font-size: var(--font-size-xs); }
+    .opcao-linha.selecionada { border-color: var(--color-info); background: color-mix(in srgb, var(--color-info) 8%, transparent); }
+    .opcao-linha.gabarito:not(.selecionada) { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+    .opcao-linha.selecionada.gabarito { border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+    .gabarito-label { margin-left: auto; font-size: 11px; color: var(--color-success); font-weight: 600; }
     .opcao-marcador { width: 20px; text-align: center; flex-shrink: 0; }
-
-    .resposta-dissertativa { margin-top: 8px; }
-    .resposta-dissertativa label { font-size: 12px; font-weight: 600; color: #666; }
-    .texto-resposta { background: #f8f9fa; border-radius: 6px; padding: 10px 14px; font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
-    .sem-resposta { color: #999; font-size: 13px; font-style: italic; margin-top: 6px; }
-
-    .loading-respostas { text-align: center; padding: 30px; }
-    .erro-respostas { background: #fdf2f2; color: #c0392b; padding: 12px; border-radius: 6px; }
+    .resposta-dissertativa { margin-top: var(--space-2); }
+    .resposta-dissertativa label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); }
+    .texto-resposta { background: var(--color-surface-2); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: var(--font-size-sm); margin-top: var(--space-2); white-space: pre-wrap; color: var(--color-text); }
+    .sem-resposta { color: var(--color-text-muted); font-size: var(--font-size-sm); font-style: italic; margin-top: var(--space-2); }
   `]
 })
 export class InstituicaoNotasComponent implements OnInit {

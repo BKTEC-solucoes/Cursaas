@@ -22,301 +22,176 @@ interface BlocoRender {
   template: `
     <div class="aula-page">
 
-      <!-- Topbar -->
+      <!-- Topbar sticky -->
       <div class="aula-topbar">
-        <button class="btn-voltar" (click)="voltar()">← Voltar</button>
-        <div class="topbar-meta" *ngIf="aula">
-          <span class="topbar-curso" *ngIf="curso?.nome">📚 {{ curso.nome }}</span>
-          <span class="topbar-data" *ngIf="aula.data_aula">{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</span>
-          <span class="topbar-dur" *ngIf="aula.duracao_minutos">⏱ {{ aula.duracao_minutos }}min</span>
-        </div>
-      </div>
-
-      <!-- Loading -->
-      <div class="aula-loading" *ngIf="!aula && !erro">
-        <div class="spinner"></div>
-        <p>Carregando aula...</p>
-      </div>
-
-      <!-- Erro -->
-      <div class="aula-erro" *ngIf="erro">
-        <p>{{ erro }}</p>
-        <button (click)="carregarAula()">Tentar novamente</button>
-      </div>
-
-      <!-- Conteúdo principal -->
-      <div class="aula-body" *ngIf="aula">
-
-        <!-- Banner de curso pago bloqueado -->
-        <div class="access-panel" *ngIf="!carregandoAcesso && curso?.pago && !acessoLiberado">
-          <div class="access-panel-inner">
-            <span class="access-icon">🔒</span>
-            <div>
-              <strong>Curso pago</strong>
-              <p>{{ mensagemAcesso }}</p>
-            </div>
-            <button
-              class="btn-request"
-              *ngIf="podeSolicitarAcesso()"
-              (click)="solicitarAcesso()"
-              [disabled]="processandoSolicitacao"
-            >{{ processandoSolicitacao ? 'Enviando...' : getTextoBotaoSolicitacao() }}</button>
+        <button class="btn-voltar" (click)="voltar()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Voltar
+        </button>
+        @if (aula) {
+          <div class="topbar-meta">
+            @if (curso?.nome) { <span class="topbar-curso">{{ curso.nome }}</span> }
+            @if (aula.data_aula) { <span class="topbar-info">{{ aula.data_aula | date:'dd/MM/yyyy HH:mm' }}</span> }
+            @if (aula.duracao_minutos) { <span class="topbar-info">{{ aula.duracao_minutos }}min</span> }
           </div>
+        }
+      </div>
+
+      @if (!aula && !erro) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Carregando aula...</p>
         </div>
+      }
 
-        <!-- Título da aula -->
-        <h1 class="aula-titulo">{{ aula.titulo }}</h1>
+      @if (erro) {
+        <div class="error-card">
+          <p>{{ erro }}</p>
+          <button class="btn-retry" (click)="carregarAula()">Tentar novamente</button>
+        </div>
+      }
 
-        <!-- Blocos de conteúdo -->
-        <div class="blocos">
+      @if (aula) {
+        <div class="aula-body">
 
-          <ng-container *ngFor="let bloco of blocos">
-
-            <!-- Vídeo de upload -->
-            <div *ngIf="bloco.tipo === 'video-upload'" class="bloco-video-upload">
-              <video
-                [src]="bloco.videoUrl"
-                controls
-                preload="metadata"
-                class="player"
-              >Seu navegador não suporta reprodução de vídeo.</video>
-            </div>
-
-            <!-- Bloco de texto rico -->
-            <div *ngIf="bloco.tipo === 'texto' && bloco.html"
-              class="bloco-texto"
-              [innerHTML]="bloco.html"
-            ></div>
-
-            <!-- Bloco YouTube -->
-            <div *ngIf="bloco.tipo === 'video' && bloco.safeUrl" class="bloco-youtube">
-              <div class="yt-wrapper">
-                <iframe
-                  [src]="bloco.safeUrl"
-                  frameborder="0"
-                  allowfullscreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerpolicy="strict-origin-when-cross-origin"
-                ></iframe>
+          <!-- Banner curso pago bloqueado -->
+          @if (!carregandoAcesso && curso?.pago && !acessoLiberado) {
+            <div class="access-panel">
+              <div class="access-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <div>
+                  <strong>Curso pago</strong>
+                  <p>{{ mensagemAcesso }}</p>
+                </div>
+                @if (podeSolicitarAcesso()) {
+                  <button
+                    class="btn-request"
+                    (click)="solicitarAcesso()"
+                    [disabled]="processandoSolicitacao"
+                  >{{ processandoSolicitacao ? 'Enviando...' : getTextoBotaoSolicitacao() }}</button>
+                }
               </div>
             </div>
+          }
 
-          </ng-container>
+          <h1 class="aula-titulo">{{ aula.titulo }}</h1>
 
-          <!-- Sem conteúdo -->
-          <div class="sem-conteudo" *ngIf="blocos.length === 0">
-            <span>🔄</span>
-            <p>Nenhum conteúdo disponível para esta aula ainda.</p>
+          <div class="blocos">
+            @for (bloco of blocos; track $index) {
+              @if (bloco.tipo === 'video-upload') {
+                <div class="bloco-video-upload">
+                  <video [src]="bloco.videoUrl" controls preload="metadata" class="player">Seu navegador não suporta vídeo.</video>
+                </div>
+              }
+              @if (bloco.tipo === 'texto' && bloco.html) {
+                <div class="bloco-texto" [innerHTML]="bloco.html"></div>
+              }
+              @if (bloco.tipo === 'video' && bloco.safeUrl) {
+                <div class="bloco-youtube">
+                  <div class="yt-wrapper">
+                    <iframe [src]="bloco.safeUrl" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                  </div>
+                </div>
+              }
+            }
+            @if (blocos.length === 0) {
+              <div class="empty-state">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <h3 class="empty-title">Sem conteúdo</h3>
+                <p>Nenhum conteúdo disponível para esta aula ainda.</p>
+              </div>
+            }
           </div>
-
         </div>
-
-      </div>
+      }
     </div>
   `,
   styles: [`
     :host { display: block; }
 
-    /* ── Topbar ── */
+    .aula-page { display: flex; flex-direction: column; min-height: 100%; }
+
+    /* Topbar */
     .aula-topbar {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 12px 24px;
-      background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      position: sticky;
-      top: 0;
-      z-index: 10;
+      display: flex; align-items: center; gap: var(--space-5);
+      padding: var(--space-3) var(--space-6);
+      background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+      position: sticky; top: 0; z-index: 10;
     }
     .btn-voltar {
-      background: none;
-      border: none;
-      color: #3b82f6;
-      cursor: pointer;
-      font-size: .9rem;
-      padding: 0;
-      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: var(--space-1);
+      background: none; border: none; color: var(--primary);
+      cursor: pointer; font-size: var(--font-size-sm); padding: 0;
+      white-space: nowrap; font-weight: 600;
     }
     .btn-voltar:hover { text-decoration: underline; }
-    .topbar-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: .82rem;
-      color: #64748b;
-    }
-    .topbar-curso { font-weight: 600; color: #475569; }
+    .topbar-meta { display: flex; flex-wrap: wrap; gap: var(--space-3); font-size: var(--font-size-xs); color: var(--color-text-muted); }
+    .topbar-curso { font-weight: 600; color: var(--color-text); }
+    .topbar-info  { color: var(--color-text-muted); }
 
-    /* ── Loading / Erro ── */
-    .aula-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 80px 20px;
-      color: #94a3b8;
-    }
-    .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid #e2e8f0;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin-bottom: 14px;
-    }
+    /* Loading / Erro */
+    .loading-state { display: flex; flex-direction: column; align-items: center; padding: 80px var(--space-5); color: var(--color-text-muted); }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--color-border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: var(--space-3); }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .aula-erro {
-      max-width: 600px; margin: 60px auto;
-      background: #fef2f2; border: 1px solid #fca5a5;
-      border-radius: 8px; padding: 20px;
-      color: #b91c1c; text-align: center;
-    }
-    .aula-erro button {
-      margin-top: 10px; padding: 8px 16px;
-      background: #b91c1c; color: white;
-      border: none; border-radius: 6px; cursor: pointer;
-    }
+    .error-card { max-width: 600px; margin: 60px auto; background: color-mix(in srgb, var(--color-danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); border-radius: var(--radius-lg); padding: var(--space-5); color: var(--color-danger); text-align: center; }
+    .btn-retry { margin-top: var(--space-3); padding: var(--space-2) var(--space-4); background: var(--color-danger); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; }
 
-    /* ── Body ── */
-    .aula-body {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 32px 24px 60px;
-    }
+    /* Body */
+    .aula-body { max-width: 860px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-14, 56px); width: 100%; }
 
-    /* ── Access panel ── */
+    /* Access panel */
     .access-panel {
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      border-radius: 10px;
-      padding: 16px 20px;
-      margin-bottom: 28px;
+      background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+      border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-7);
     }
-    .access-panel-inner {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-    .access-icon { font-size: 1.6rem; }
-    .access-panel-inner strong { display: block; color: #92400e; }
-    .access-panel-inner p { margin: 2px 0 0; color: #78350f; font-size: .9rem; }
+    .access-inner { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+    .access-inner strong { display: block; color: var(--color-text); font-size: var(--font-size-sm); font-weight: 700; }
+    .access-inner p { margin: 2px 0 0; color: var(--color-text-muted); font-size: var(--font-size-xs); }
     .btn-request {
-      margin-left: auto;
-      background: #d97706; color: white;
-      border: none; padding: 9px 18px;
-      border-radius: 6px; cursor: pointer;
-      font-weight: 600; white-space: nowrap;
+      margin-left: auto; background: var(--color-warning); color: #fff;
+      border: none; padding: var(--space-2) var(--space-4); border-radius: var(--radius);
+      cursor: pointer; font-weight: 600; font-size: var(--font-size-sm); white-space: nowrap;
     }
     .btn-request:disabled { opacity: .6; cursor: not-allowed; }
 
-    /* ── Título ── */
-    .aula-titulo {
-      font-size: 1.75rem;
-      font-weight: 800;
-      color: #0f172a;
-      margin: 0 0 28px;
-      line-height: 1.25;
-    }
+    /* Título */
+    .aula-titulo { font-size: var(--font-size-3xl); font-weight: 800; color: var(--color-text); margin: 0 0 var(--space-7); line-height: 1.25; font-family: var(--font-display); }
 
-    /* ── Blocos ── */
-    .blocos {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
+    /* Blocos */
+    .blocos { display: flex; flex-direction: column; gap: var(--space-6); }
 
-    /* Vídeo de upload */
-    .bloco-video-upload {
-      border-radius: 10px;
-      overflow: hidden;
-      background: #0f172a;
-      box-shadow: 0 4px 20px rgba(0,0,0,.2);
-    }
-    .player {
-      display: block;
-      width: 100%;
-      max-height: 500px;
-    }
+    .bloco-video-upload { border-radius: var(--radius-lg); overflow: hidden; background: #000; box-shadow: var(--shadow-lg); }
+    .player { display: block; width: 100%; max-height: 500px; }
 
-    /* Texto rico */
     .bloco-texto {
-      background: #fff;
-      border-radius: 10px;
-      padding: 24px 28px;
-      box-shadow: 0 1px 6px rgba(0,0,0,.07);
-      color: #374151;
-      font-size: 1rem;
-      line-height: 1.75;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); padding: var(--space-6) var(--space-7);
+      box-shadow: var(--shadow-sm); color: var(--color-text);
+      font-size: var(--font-size-base); line-height: 1.75;
     }
-    .bloco-texto ::ng-deep h2 {
-      font-size: 1.25rem; font-weight: 700;
-      color: #1e293b; margin: 0 0 .6em;
-    }
-    .bloco-texto ::ng-deep h3 {
-      font-size: 1.05rem; font-weight: 600;
-      color: #334155; margin: 0 0 .5em;
-    }
+    .bloco-texto ::ng-deep h2 { font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); margin: 0 0 .6em; }
+    .bloco-texto ::ng-deep h3 { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text); margin: 0 0 .5em; }
     .bloco-texto ::ng-deep p  { margin: 0 0 .7em; }
     .bloco-texto ::ng-deep p:last-child { margin-bottom: 0; }
-    .bloco-texto ::ng-deep ul,
-    .bloco-texto ::ng-deep ol { padding-left: 1.5em; margin: 0 0 .7em; }
+    .bloco-texto ::ng-deep ul, .bloco-texto ::ng-deep ol { padding-left: 1.5em; margin: 0 0 .7em; }
     .bloco-texto ::ng-deep li > p { margin: 0; }
-    .bloco-texto ::ng-deep blockquote {
-      border-left: 3px solid #cbd5e1;
-      padding-left: 1em;
-      color: #64748b;
-      margin: 0 0 .7em;
-    }
-    .bloco-texto ::ng-deep code {
-      background: #f1f5f9; border-radius: 3px;
-      padding: 1px 5px;
-      font-family: ui-monospace, monospace;
-      font-size: .88em; color: #e11d48;
-    }
-    .bloco-texto ::ng-deep pre {
-      background: #1e293b; color: #e2e8f0;
-      border-radius: 8px; padding: 14px 18px;
-      overflow-x: auto; font-size: .85rem;
-    }
+    .bloco-texto ::ng-deep blockquote { border-left: 3px solid var(--color-border); padding-left: 1em; color: var(--color-text-muted); margin: 0 0 .7em; }
+    .bloco-texto ::ng-deep code { background: var(--color-surface-2); border-radius: 3px; padding: 1px 5px; font-family: ui-monospace, monospace; font-size: .88em; color: var(--color-danger); }
+    .bloco-texto ::ng-deep pre { background: var(--sidebar-bg); color: #e2e8f0; border-radius: var(--radius); padding: var(--space-4) var(--space-5); overflow-x: auto; font-size: .85rem; }
     .bloco-texto ::ng-deep strong { font-weight: 700; }
-    .bloco-texto ::ng-deep em     { font-style: italic; }
-    .bloco-texto ::ng-deep s      { text-decoration: line-through; }
+    .bloco-texto ::ng-deep em { font-style: italic; }
+    .bloco-texto ::ng-deep s { text-decoration: line-through; }
 
-    /* YouTube */
-    .bloco-youtube {
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    }
-    .yt-wrapper {
-      position: relative;
-      padding-bottom: 56.25%;
-      height: 0;
-      background: #000;
-    }
-    .yt-wrapper iframe {
-      position: absolute;
-      inset: 0; width: 100%; height: 100%;
-    }
-
-    /* Sem conteúdo */
-    .sem-conteudo {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      padding: 56px 20px;
-      border: 2px dashed #e2e8f0;
-      border-radius: 10px;
-      color: #94a3b8;
-      font-size: .95rem;
-    }
-    .sem-conteudo span { font-size: 2.5rem; }
+    .bloco-youtube { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+    .yt-wrapper { position: relative; padding-bottom: 56.25%; height: 0; background: #000; }
+    .yt-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
 
     @media (max-width: 640px) {
-      .aula-body { padding: 20px 14px 40px; }
-      .aula-titulo { font-size: 1.35rem; }
+      .aula-body { padding: var(--space-5) var(--space-4) var(--space-10); }
+      .aula-titulo { font-size: var(--font-size-2xl); }
     }
   `]
 })

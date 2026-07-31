@@ -91,175 +91,164 @@ interface ConviteItem {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
+    <div class="content-page">
+
+      <!-- â•â• Cabeçalho â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div class="page-header">
-        <h2>🔐 Gerenciar Administradores</h2>
+        <div>
+          <h1 class="page-title">Administradores</h1>
+          <p class="page-subtitle">Gerencie os administradores do sistema</p>
+        </div>
       </div>
 
-      <div class="form-card">
-        <h3 *ngIf="!editandoAdminId">➕ Novo Administrador</h3>
-        <h3 *ngIf="editandoAdminId">✏️ Editar Administrador</h3>
+      <!-- â•â• Painel 1: Formulário de criação / edição â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <div class="card card-elevated admin-form-card">
+        <div class="card-section-title">
+          @if (!editandoAdminId) { Novo Administrador }
+          @else { Editar Administrador }
+        </div>
         <form (ngSubmit)="salvarAdmin()" #fa="ngForm">
-          <div class="form-grid">
-            <div class="form-row span2">
-              <label>Nome *</label>
-              <input
-                type="text"
-                [(ngModel)]="adminForm.nome"
-                name="admin_nome"
-                required
-                placeholder="Nome do administrador"
-                (blur)="marcarTocado('nome')"
-                [class.campo-invalido]="tocados.has('nome') && !adminForm.nome.trim()"
-              />
-              <span class="campo-erro" *ngIf="tocados.has('nome') && !adminForm.nome.trim()">Campo obrigatório</span>
+          <div class="form-grid-2">
+
+            <!-- Nome -->
+            <div class="field span2">
+              <label class="field-label">Nome *</label>
+              <input class="field-input" [class.field-input--error]="tocados.has('nome') && !adminForm.nome.trim()"
+                type="text" [(ngModel)]="adminForm.nome" name="admin_nome" required
+                placeholder="Nome do administrador" (blur)="marcarTocado('nome')" />
+              @if (tocados.has('nome') && !adminForm.nome.trim()) {
+                <span class="field-error">Campo obrigatório</span>
+              }
             </div>
-            <div class="form-row span2">
-              <label>Foto de Perfil</label>
-              <div class="photo-upload-container">
-                <div class="photo-preview">
-                  <img
-                    *ngIf="adminForm.foto_perfil"
-                    [src]="adminForm.foto_perfil"
-                    alt="Preview"
-                    class="preview-image"
-                  />
-                  <div *ngIf="!adminForm.foto_perfil" class="preview-placeholder">
-                    📷 Sem foto
-                  </div>
+
+            <!-- Foto de perfil -->
+            <div class="field span2">
+              <label class="field-label">Foto de Perfil</label>
+              <div class="photo-row">
+                <div class="photo-circle">
+                  @if (adminForm.foto_perfil) {
+                    <img [src]="adminForm.foto_perfil" alt="Preview" class="photo-circle__img" />
+                  } @else {
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                    </svg>
+                  }
                 </div>
-                <div class="upload-buttons">
-                  <input
-                    #fileInput
-                    type="file"
-                    accept="image/jpeg,image/png"
-                    (change)="onFotoSelecionada($event)"
-                    style="display: none"
-                  />
-                  <button type="button" class="btn-upload" (click)="fileInput.click()">
-                    Upload
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-avatar"
-                    [disabled]="!adminForm.nome.trim()"
-                    (click)="gerarAvatar()"
-                  >
-                    Gerar Avatar
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-clear"
-                    *ngIf="adminForm.foto_perfil"
-                    (click)="limparFoto()"
-                  >
-                    Limpar
-                  </button>
+                <div class="photo-actions">
+                  <input #fileInput type="file" accept="image/jpeg,image/png" (change)="onFotoSelecionada($event)" style="display:none" />
+                  <button type="button" class="btn btn-outline btn-sm" (click)="fileInput.click()">Upload</button>
+                  <button type="button" class="btn btn-outline btn-sm" [disabled]="!adminForm.nome.trim()" (click)="gerarAvatar()">Gerar Avatar</button>
+                  @if (adminForm.foto_perfil) {
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="limparFoto()">Remover</button>
+                  }
                 </div>
               </div>
             </div>
-            <div class="form-row span2">
-              <label>Tipo de Administrador *</label>
-              <select [(ngModel)]="adminForm.admin_role" name="admin_role" required class="role-select">
-                <option *ngFor="let opt of roleOptions" [value]="opt.value">{{ opt.label }}</option>
+
+            <!-- Tipo de admin -->
+            <div class="field span2">
+              <label class="field-label">Tipo de Administrador *</label>
+              <select class="field-input" [(ngModel)]="adminForm.admin_role" name="admin_role" required>
+                @for (opt of roleOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
               </select>
-              <span class="role-hint" *ngIf="adminForm.admin_role">{{ getRoleDescription(adminForm.admin_role) }}</span>
+              @if (adminForm.admin_role) {
+                <span class="field-hint">{{ getRoleDescription(adminForm.admin_role) }}</span>
+              }
             </div>
-            <div class="form-row">
-              <label>E-mail *</label>
-              <div class="email-check-wrapper">
-                <input
-                  type="email"
-                  [(ngModel)]="adminForm.email"
-                  (ngModelChange)="onEmailChange($event)"
-                  name="admin_email"
-                  required
-                  placeholder="admin@exemplo.com"
-                  [class.input-email-available]="emailStatus === 'available'"
-                  [class.input-email-taken]="emailStatus === 'taken'"
-                />
-                <span *ngIf="emailStatus === 'checking'" class="email-status email-checking">⏳ Verificando...</span>
-                <span *ngIf="emailStatus === 'available'" class="email-status email-available">✔ E-mail disponível</span>
-                <span *ngIf="emailStatus === 'taken'" class="email-status email-taken">✖ E-mail já cadastrado</span>
+
+            <!-- Email -->
+            <div class="field">
+              <label class="field-label">E-mail *</label>
+              <div class="email-wrap">
+                <input class="field-input"
+                  [class.field-input--ok]="emailStatus === 'available'"
+                  [class.field-input--error]="emailStatus === 'taken'"
+                  type="email" [(ngModel)]="adminForm.email" (ngModelChange)="onEmailChange($event)"
+                  name="admin_email" required placeholder="admin@exemplo.com" />
+                @if (emailStatus === 'checking') { <span class="email-status badge badge-neutral">Verificando...</span> }
+                @if (emailStatus === 'available') { <span class="email-status badge badge-success">Disponível</span> }
+                @if (emailStatus === 'taken') { <span class="email-status badge badge-danger">Já cadastrado</span> }
               </div>
             </div>
-            <div class="form-row">
-              <label>Confirmar E-mail *</label>
-              <input
-                type="email"
-                [(ngModel)]="adminForm.confirmarEmail"
-                name="admin_confirmar_email"
-                required
-                placeholder="Confirme o e-mail"
-                (blur)="marcarTocado('confirmarEmail')"
-                [class.campo-invalido]="tocados.has('confirmarEmail') && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()"
-              />
-              <span class="campo-erro" *ngIf="tocados.has('confirmarEmail') && !adminForm.confirmarEmail.trim()">Campo obrigatório</span>
-              <span class="campo-erro" *ngIf="tocados.has('confirmarEmail') && adminForm.confirmarEmail.trim() && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()">Os e-mails não conferem</span>
+
+            <!-- Confirmar email -->
+            <div class="field">
+              <label class="field-label">Confirmar E-mail *</label>
+              <input class="field-input"
+                [class.field-input--error]="tocados.has('confirmarEmail') && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()"
+                type="email" [(ngModel)]="adminForm.confirmarEmail" name="admin_confirmar_email" required
+                placeholder="Confirme o e-mail" (blur)="marcarTocado('confirmarEmail')" />
+              @if (tocados.has('confirmarEmail') && !adminForm.confirmarEmail.trim()) {
+                <span class="field-error">Campo obrigatório</span>
+              }
+              @if (tocados.has('confirmarEmail') && adminForm.confirmarEmail.trim() && adminForm.confirmarEmail.toLowerCase() !== adminForm.email.toLowerCase()) {
+                <span class="field-error">Os e-mails não conferem</span>
+              }
             </div>
-            <div class="form-row">
-              <label>Senha *</label>
-              <div class="password-field">
-                <input
+
+            <!-- Senha -->
+            <div class="field">
+              <label class="field-label">Senha *</label>
+              <div class="password-wrap">
+                <input class="field-input"
+                  [class.field-input--error]="tocados.has('senha') && !editandoAdminId && !adminForm.senha"
                   [type]="mostrarSenha ? 'text' : 'password'"
-                  [(ngModel)]="adminForm.senha"
-                  name="admin_senha"
-                  required
-                  minlength="6"
-                  placeholder="Mínimo 6 caracteres"
-                  (blur)="marcarTocado('senha')"
-                  [class.campo-invalido]="tocados.has('senha') && !editandoAdminId && !adminForm.senha"
-                />
-                <button type="button" class="toggle-password" (click)="mostrarSenha = !mostrarSenha">
+                  [(ngModel)]="adminForm.senha" name="admin_senha" required minlength="6"
+                  placeholder="Mínimo 6 caracteres" (blur)="marcarTocado('senha')" />
+                <button type="button" class="password-toggle btn btn-ghost btn-sm" (click)="mostrarSenha = !mostrarSenha">
                   {{ mostrarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
-              <div class="forca-senha" *ngIf="adminForm.senha">
-                <div class="forca-barras">
-                  <div class="forca-barra" [style.background]="forcaSenha.score >= 1 ? forcaSenha.cor : '#e0e0e0'"></div>
-                  <div class="forca-barra" [style.background]="forcaSenha.score >= 2 ? forcaSenha.cor : '#e0e0e0'"></div>
-                  <div class="forca-barra" [style.background]="forcaSenha.score >= 3 ? forcaSenha.cor : '#e0e0e0'"></div>
-                  <div class="forca-barra" [style.background]="forcaSenha.score >= 4 ? forcaSenha.cor : '#e0e0e0'"></div>
+              @if (adminForm.senha) {
+                <div class="password-strength">
+                  <div class="strength-bars">
+                    @for (i of [1,2,3,4]; track i) {
+                      <div class="strength-bar" [class.strength-bar--filled]="forcaSenha.score >= i" [style.background]="forcaSenha.score >= i ? forcaSenha.cor : ''"></div>
+                    }
+                  </div>
+                  <span class="strength-label" [style.color]="forcaSenha.cor">{{ forcaSenha.texto }}</span>
                 </div>
-                <span class="forca-texto" [style.color]="forcaSenha.cor">{{ forcaSenha.texto }}</span>
-              </div>
-              <span class="campo-erro" *ngIf="tocados.has('senha') && !editandoAdminId && !adminForm.senha">Senha obrigatória</span>
-              <span class="campo-erro" *ngIf="tocados.has('senha') && adminForm.senha && adminForm.senha.length < 6">Mínimo 6 caracteres</span>
+              }
+              @if (tocados.has('senha') && !editandoAdminId && !adminForm.senha) {
+                <span class="field-error">Senha obrigatória</span>
+              }
+              @if (tocados.has('senha') && adminForm.senha && adminForm.senha.length < 6) {
+                <span class="field-error">Mínimo 6 caracteres</span>
+              }
             </div>
-            <div class="form-row">
-              <label>Confirmar Senha *</label>
-              <div class="password-field">
-                <input
+
+            <!-- Confirmar senha -->
+            <div class="field">
+              <label class="field-label">Confirmar Senha *</label>
+              <div class="password-wrap">
+                <input class="field-input"
+                  [class.field-input--error]="tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha !== adminForm.senha"
                   [type]="mostrarConfirmarSenha ? 'text' : 'password'"
-                  [(ngModel)]="adminForm.confirmarSenha"
-                  name="admin_confirmar_senha"
-                  required
-                  minlength="6"
-                  placeholder="Confirme a senha"
-                  (blur)="marcarTocado('confirmarSenha')"
-                  [class.campo-invalido]="tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha !== adminForm.senha"
-                />
-                <button type="button" class="toggle-password" (click)="mostrarConfirmarSenha = !mostrarConfirmarSenha">
+                  [(ngModel)]="adminForm.confirmarSenha" name="admin_confirmar_senha" required minlength="6"
+                  placeholder="Confirme a senha" (blur)="marcarTocado('confirmarSenha')" />
+                <button type="button" class="password-toggle btn btn-ghost btn-sm" (click)="mostrarConfirmarSenha = !mostrarConfirmarSenha">
                   {{ mostrarConfirmarSenha ? 'Ocultar' : 'Mostrar' }}
                 </button>
               </div>
-              <span class="campo-erro" *ngIf="tocados.has('confirmarSenha') && !editandoAdminId && !adminForm.confirmarSenha">Campo obrigatório</span>
-              <span class="campo-erro" *ngIf="tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha && adminForm.confirmarSenha !== adminForm.senha">As senhas não conferem</span>
+              @if (tocados.has('confirmarSenha') && !editandoAdminId && !adminForm.confirmarSenha) {
+                <span class="field-error">Campo obrigatório</span>
+              }
+              @if (tocados.has('confirmarSenha') && !editandoAdminId && adminForm.confirmarSenha && adminForm.confirmarSenha !== adminForm.senha) {
+                <span class="field-error">As senhas não conferem</span>
+              }
             </div>
-            <div class="form-row">
-              <label>Celular</label>
-              <input
-                type="text"
-                [(ngModel)]="adminForm.telefone"
-                name="admin_telefone"
-                placeholder="+55 (21) 91234-5678"
-                maxlength="19"
-                (input)="formatarAdminCelular()"
-              />
+
+            <!-- Dados pessoais -->
+            <div class="field">
+              <label class="field-label">Celular</label>
+              <input class="field-input" type="text" [(ngModel)]="adminForm.telefone" name="admin_telefone"
+                placeholder="+55 (21) 91234-5678" maxlength="19" (input)="formatarAdminCelular()" />
             </div>
-            <div class="form-row">
-              <label>Gênero</label>
-              <select [(ngModel)]="adminForm.sexo" name="admin_sexo" class="role-select">
+            <div class="field">
+              <label class="field-label">Gênero</label>
+              <select class="field-input" [(ngModel)]="adminForm.sexo" name="admin_sexo">
                 <option value="">Selecione...</option>
                 <option value="masculino">Masculino</option>
                 <option value="feminino">Feminino</option>
@@ -267,1050 +256,314 @@ interface ConviteItem {
                 <option value="nao_informado">Prefiro não informar</option>
               </select>
             </div>
-            <div class="form-row">
-              <label>CPF/RG</label>
-              <input
-                type="text"
-                [(ngModel)]="adminForm.cpf_rg"
-                name="admin_cpf_rg"
-                placeholder="000.000.000-00"
-                maxlength="14"
-                (input)="formatarAdminCpf()"
-              />
+            <div class="field">
+              <label class="field-label">CPF/RG</label>
+              <input class="field-input" type="text" [(ngModel)]="adminForm.cpf_rg" name="admin_cpf_rg"
+                placeholder="000.000.000-00" maxlength="14" (input)="formatarAdminCpf()" />
             </div>
-            <div class="form-row">
-              <label>Data de Nascimento</label>
-              <input
-                type="date"
-                [(ngModel)]="adminForm.data_nascimento"
-                name="admin_data_nascimento"
-              />
+            <div class="field">
+              <label class="field-label">Data de Nascimento</label>
+              <input class="field-input" type="date" [(ngModel)]="adminForm.data_nascimento" name="admin_data_nascimento" />
             </div>
-            <div class="form-row">
-              <label>CEP</label>
-              <input
-                type="text"
-                [(ngModel)]="adminForm.cep"
-                name="admin_cep"
-                placeholder="00000-000"
-                maxlength="9"
-                (input)="formatarAdminCep()"
-              />
+            <div class="field">
+              <label class="field-label">CEP</label>
+              <input class="field-input" type="text" [(ngModel)]="adminForm.cep" name="admin_cep"
+                placeholder="00000-000" maxlength="9" (input)="formatarAdminCep()" />
             </div>
-            <div class="form-row span2">
-              <label>Endereço</label>
-              <input
-                type="text"
-                [(ngModel)]="adminForm.endereco"
-                name="admin_endereco"
-                placeholder="Rua, número, bairro, cidade"
-              />
+            <div class="field span2">
+              <label class="field-label">Endereço</label>
+              <input class="field-input" type="text" [(ngModel)]="adminForm.endereco" name="admin_endereco"
+                placeholder="Rua, número, bairro, cidade" />
             </div>
           </div>
 
-          <div class="form-actions">
-            <button type="submit" class="btn-primary btn-submit" [disabled]="salvandoAdmin">
-              <span *ngIf="salvandoAdmin" class="spinner"></span>
+          <div class="form-footer">
+            <button type="submit" class="btn btn-primary" [disabled]="salvandoAdmin">
+              @if (salvandoAdmin) { <span class="spinner-sm"></span> }
               {{ salvandoAdmin ? 'Salvando...' : (editandoAdminId ? 'Atualizar' : 'Criar Administrador') }}
             </button>
-            <button type="button" class="btn-sm" (click)="limparFormulario()">{{ editandoAdminId ? 'Cancelar' : 'Limpar' }}</button>
+            <button type="button" class="btn btn-ghost" (click)="limparFormulario()">
+              {{ editandoAdminId ? 'Cancelar' : 'Limpar' }}
+            </button>
           </div>
 
-          <div class="form-error" *ngIf="adminFormErro">{{ adminFormErro }}</div>
-          <div class="form-success" *ngIf="adminFormSucesso">{{ adminFormSucesso }}</div>
+          @if (adminFormErro) { <div class="msg msg-error" style="margin-top:var(--space-3)">{{ adminFormErro }}</div> }
+          @if (adminFormSucesso) { <div class="msg msg-success" style="margin-top:var(--space-3)">{{ adminFormSucesso }}</div> }
         </form>
       </div>
 
-      <!-- ══ Painel de Convites ══════════════════════════════════════════════ -->
-      <div class="form-card convite-card" *ngIf="p.can('administradores:write')">
-        <h3>✉️ Convidar Administrador por E-mail</h3>
-        <form (ngSubmit)="enviarConvite()" class="convite-form">
-          <div class="convite-grid">
-            <div class="form-row">
-              <label>E-mail do convidado *</label>
-              <input
-                type="email"
-                [(ngModel)]="conviteEmail"
-                name="convite_email"
-                required
-                placeholder="novo@exemplo.com"
-              />
+      <!-- â•â• Painel 2: Convites â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      @if (p.can('administradores:write')) {
+        <div class="card card-elevated">
+          <div class="card-section-title">Convidar por E-mail</div>
+          <form (ngSubmit)="enviarConvite()" class="convite-form">
+            <div class="form-grid-2">
+              <div class="field">
+                <label class="field-label">E-mail do convidado *</label>
+                <input class="field-input" type="email" [(ngModel)]="conviteEmail" name="convite_email" required placeholder="novo@exemplo.com" />
+              </div>
+              <div class="field">
+                <label class="field-label">Perfil *</label>
+                <select class="field-input" [(ngModel)]="conviteRole" name="convite_role">
+                  @for (opt of roleOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
             </div>
-            <div class="form-row">
-              <label>Perfil *</label>
-              <select [(ngModel)]="conviteRole" name="convite_role" class="role-select">
-                <option *ngFor="let opt of roleOptions" [value]="opt.value">{{ opt.label }}</option>
-              </select>
+            <div class="form-footer">
+              <button type="submit" class="btn btn-primary" [disabled]="enviandoConvite">
+                @if (enviandoConvite) { <span class="spinner-sm"></span> }
+                {{ enviandoConvite ? 'Enviando...' : 'Enviar Convite' }}
+              </button>
             </div>
-          </div>
-          <div class="form-actions" style="margin-top: 14px;">
-            <button type="submit" class="btn-primary btn-submit" [disabled]="enviandoConvite">
-              <span *ngIf="enviandoConvite" class="spinner"></span>
-              {{ enviandoConvite ? 'Enviando...' : '📨 Enviar Convite' }}
-            </button>
-          </div>
-          <div class="form-error" *ngIf="conviteErro">{{ conviteErro }}</div>
-          <div class="form-success" *ngIf="conviteSucesso">{{ conviteSucesso }}</div>
-        </form>
+            @if (conviteErro) { <div class="msg msg-error" style="margin-top:var(--space-3)">{{ conviteErro }}</div> }
+            @if (conviteSucesso) { <div class="msg msg-success" style="margin-top:var(--space-3)">{{ conviteSucesso }}</div> }
+          </form>
 
-        <!-- Lista de convites enviados -->
-        <div class="convites-lista" *ngIf="convites.length > 0 || carregandoConvites">
-          <h4 style="margin: 20px 0 10px; color: #2c3e50; font-size: .95rem;">Convites Enviados</h4>
-          <div class="loading" *ngIf="carregandoConvites">Carregando convites...</div>
-          <div class="convites-table" *ngIf="!carregandoConvites">
-            <table>
+          @if (convites.length > 0 || carregandoConvites) {
+            <div class="convites-section">
+              <p class="section-sub">Convites Enviados</p>
+              @if (carregandoConvites) {
+                <div class="loading-state"><div class="spinner"></div><p>Carregando convites...</p></div>
+              } @else {
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead><tr><th>E-mail</th><th>Perfil</th><th>Status</th><th>Expira em</th><th>Ação</th></tr></thead>
+                    <tbody>
+                      @for (c of convites; track c.id) {
+                        <tr>
+                          <td>{{ c.email }}</td>
+                          <td><span class="badge badge-primary">{{ getRoleLabel(c.admin_role) }}</span></td>
+                          <td>
+                            @if (c.usado) { <span class="badge badge-success">Aceito</span> }
+                            @else if (conviteExpirado(c)) { <span class="badge badge-danger">Expirado</span> }
+                            @else { <span class="badge badge-warning">Pendente</span> }
+                          </td>
+                          <td>{{ formatarData(c.data_expiracao) }}</td>
+                          <td>
+                            @if (!c.usado && !conviteExpirado(c)) {
+                              <button type="button" class="btn btn-danger btn-sm" (click)="revogarConvite(c)">Revogar</button>
+                            } @else {
+                              <span style="color:var(--color-text-muted)">—</span>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- â•â• Painel 3: Lista de admins â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <div class="card card-elevated">
+        <div class="card-section-title">Administradores Cadastrados</div>
+
+        <!-- Filtros -->
+        <div class="filter-bar">
+          <input class="field-input filter-search" type="text" [(ngModel)]="filtroBusca" (ngModelChange)="onFiltroChange()"
+            name="filtro_busca" placeholder="Buscar por nome ou e-mail..." />
+          <select class="field-input filter-select" [(ngModel)]="filtroAdminRole" (ngModelChange)="onFiltroSelectChange()" name="filtro_role">
+            <option value="">Todos os tipos</option>
+            <option value="super_admin">Super Admin</option>
+            <option value="instrutor">Instrutor</option>
+            <option value="legacy">Legado</option>
+          </select>
+          <select class="field-input filter-select" [(ngModel)]="filtroAtivo" (ngModelChange)="onFiltroSelectChange()" name="filtro_ativo">
+            <option value="">Todos os status</option>
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+          </select>
+          @if (!carregandoLista) { <span class="filter-total">{{ total }} resultado(s)</span> }
+        </div>
+
+        @if (carregandoLista) {
+          <div class="loading-state"><div class="spinner"></div><p>Carregando...</p></div>
+        }
+        @if (!carregandoLista && erroLista) {
+          <div class="msg msg-error">{{ erroLista }}</div>
+        }
+
+        @if (!carregandoLista && !erroLista && admins.length > 0) {
+          <div class="table-wrap">
+            <table class="table table-zebra">
               <thead>
                 <tr>
+                  <th style="width:48px"></th>
+                  <th>Nome</th>
                   <th>E-mail</th>
-                  <th>Perfil</th>
+                  <th>Tipo</th>
                   <th>Status</th>
-                  <th>Expira em</th>
-                  <th>Ação</th>
+                  <th>Cursos</th>
+                  @if (p.can('administradores:write')) { <th>Ações</th> }
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let c of convites">
-                  <td>{{ c.email }}</td>
-                  <td><span class="role-badge" [class]="'role-' + c.admin_role">{{ getRoleLabel(c.admin_role) }}</span></td>
-                  <td>
-                    <span class="status-badge"
-                      [class.status-ativo]="!c.usado && !conviteExpirado(c)"
-                      [class.status-inativo]="c.usado || conviteExpirado(c)">
-                      {{ c.usado ? 'Aceito' : conviteExpirado(c) ? 'Expirado' : 'Pendente' }}
-                    </span>
-                  </td>
-                  <td class="expira-cell">{{ formatarData(c.data_expiracao) }}</td>
-                  <td>
-                    <button
-                      *ngIf="!c.usado && !conviteExpirado(c)"
-                      type="button"
-                      class="btn-revogar"
-                      (click)="revogarConvite(c)"
-                      title="Revogar convite"
-                    >Revogar</button>
-                    <span *ngIf="c.usado || conviteExpirado(c)" class="sem-acao">—</span>
-                  </td>
-                </tr>
+                @for (admin of admins; track admin.id) {
+                  <tr>
+                    <td>
+                      @if (admin.foto_perfil) {
+                        <img [src]="admin.foto_perfil" alt="Foto" class="list-avatar-img" />
+                      } @else {
+                        <div class="list-avatar-initials">{{ getInitials(admin.nome) }}</div>
+                      }
+                    </td>
+                    <td class="admin-nome-cell">{{ admin.nome }}</td>
+                    <td>{{ admin.email }}</td>
+                    <td><span class="badge badge-primary">{{ getRoleLabel(admin.admin_role) }}</span></td>
+                    <td>
+                      @if (admin.ativo) { <span class="badge badge-success">Ativo</span> }
+                      @else { <span class="badge badge-danger">Inativo</span> }
+                    </td>
+                    <td>{{ formatCursosAdmin(admin.curso_ids) }}</td>
+                    @if (p.can('administradores:write')) {
+                      <td class="actions-cell">
+                        <button type="button" class="btn btn-outline btn-sm" (click)="editarAdmin(admin)">Editar</button>
+                        <button type="button" class="btn btn-outline btn-sm"
+                          [class.btn-primary]="gerenciandoCursosAdminId === admin.id"
+                          (click)="toggleGerenciarCursos(admin)">Cursos</button>
+                        <button type="button" class="btn btn-danger btn-sm" (click)="excluirAdmin(admin)">Excluir</button>
+                      </td>
+                    }
+                  </tr>
+                  <!-- Painel inline de cursos -->
+                  @if (gerenciandoCursosAdminId === admin.id) {
+                    <tr class="cursos-panel-row">
+                      <td [attr.colspan]="p.can('administradores:write') ? 7 : 6" style="padding:0">
+                        <div class="cursos-panel card-flat">
+                          <p class="cursos-panel-title">Cursos de {{ admin.nome }}</p>
+                          <p class="cursos-panel-hint">Marque os cursos que este administrador pode gerenciar.</p>
+                          <div class="cursos-checkboxes">
+                            <label class="curso-check-item" [class.curso-check-item--on]="todasSelecionadas()">
+                              <input type="checkbox" [checked]="todasSelecionadas()" (change)="selecionarTodos()" />
+                              Todos os cursos (acesso irrestrito)
+                            </label>
+                            <label class="curso-check-item" [class.curso-check-item--on]="cursosTemp.length === 0">
+                              <input type="checkbox" [checked]="cursosTemp.length === 0" (change)="cursosTemp = []" />
+                              Nenhum curso (sem acesso)
+                            </label>
+                            @for (curso of cursosDisponiveis; track curso.id) {
+                              <label class="curso-check-item" [class.curso-check-item--on]="cursosTemp.includes(curso.id)">
+                                <input type="checkbox" [checked]="cursosTemp.includes(curso.id)" (change)="toggleCursoTemp(curso.id)" />
+                                {{ curso.nome }}
+                              </label>
+                            }
+                            @if (cursosDisponiveis.length === 0) {
+                              <p style="color:var(--color-text-muted);font-size:var(--font-size-sm)">Nenhum curso disponível.</p>
+                            }
+                          </div>
+                          <div class="cursos-panel-footer">
+                            <button type="button" class="btn btn-primary btn-sm" [disabled]="salvandoCursos" (click)="salvarCursosAdmin(admin.id)">
+                              {{ salvandoCursos ? 'Salvando...' : 'Salvar' }}
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-sm" (click)="fecharGerenciarCursos()">Cancelar</button>
+                            @if (cursosTemp.length === 0) {
+                              <span class="badge badge-warning">Sem acesso a cursos</span>
+                            }
+                            @if (todasSelecionadas()) {
+                              <span class="badge badge-success">Acesso irrestrito</span>
+                            }
+                          </div>
+                          @if (erroCursos) { <div class="msg msg-error" style="margin-top:var(--space-2)">{{ erroCursos }}</div> }
+                          @if (sucessoCursos) { <div class="msg msg-success" style="margin-top:var(--space-2)">{{ sucessoCursos }}</div> }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+        }
 
-      <div class="list-card">
-        <h3>📋 Administradores Cadastrados</h3>
-
-        <!-- Barra de filtros -->
-        <div class="filtros-bar">
-          <div class="filtro-busca">
-            <input
-              type="text"
-              [(ngModel)]="filtroBusca"
-              (ngModelChange)="onFiltroChange()"
-              name="filtro_busca"
-              placeholder="🔍 Buscar por nome ou e-mail..."
-              class="input-busca"
-            />
+        @if (!carregandoLista && !erroLista && admins.length === 0) {
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+              </svg>
+            </div>
+            <p class="empty-title">Nenhum administrador encontrado</p>
           </div>
-          <div class="filtros-selects">
-            <select [(ngModel)]="filtroAdminRole" (ngModelChange)="onFiltroSelectChange()" name="filtro_role" class="filtro-select">
-              <option value="">Todos os tipos</option>
-              <option value="super_admin">Super Admin</option>
-              <option value="instrutor">Instrutor</option>
-              <option value="legacy">Legado</option>
-            </select>
-            <select [(ngModel)]="filtroAtivo" (ngModelChange)="onFiltroSelectChange()" name="filtro_ativo" class="filtro-select">
-              <option value="">Todos os status</option>
-              <option value="true">Ativos</option>
-              <option value="false">Inativos</option>
-            </select>
-            <span class="filtro-total" *ngIf="!carregandoLista">{{ total }} resultado(s)</span>
-          </div>
-        </div>
-
-        <div class="loading" *ngIf="carregandoLista">Carregando administradores...</div>
-        <div class="form-error" *ngIf="!carregandoLista && erroLista">{{ erroLista }}</div>
-
-        <div class="admins-table" *ngIf="!carregandoLista && !erroLista && admins.length > 0">
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Nome</th>
-                <th>E-mail</th>
-                <th>Tipo</th>
-                <th>Status</th>
-                <th>Cursos</th>
-                <th *ngIf="p.can('administradores:write')">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              <ng-container *ngFor="let admin of admins">
-                <tr>
-                  <td class="photo-cell">
-                    <img
-                      *ngIf="admin.foto_perfil"
-                      [src]="admin.foto_perfil"
-                      alt="Foto"
-                      class="list-photo"
-                    />
-                    <div *ngIf="!admin.foto_perfil" class="list-avatar">{{ getInitials(admin.nome) }}</div>
-                  </td>
-                  <td class="admin-nome">{{ admin.nome }}</td>
-                  <td>{{ admin.email }}</td>
-                  <td><span class="role-badge" [class]="'role-' + (admin.admin_role ?? 'legacy')">{{ getRoleLabel(admin.admin_role) }}</span></td>
-                  <td>
-                    <span class="status-badge" [class.status-ativo]="admin.ativo" [class.status-inativo]="!admin.ativo">
-                      {{ admin.ativo ? 'Ativo' : 'Inativo' }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="cursos-resumo">{{ formatCursosAdmin(admin.curso_ids) }}</span>
-                  </td>
-                  <td *ngIf="p.can('administradores:write')" class="actions-cell">
-                    <button type="button" class="btn-edit" (click)="editarAdmin(admin)" title="Editar dados">
-                      ✏️ Editar
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-cursos"
-                      [class.active]="gerenciandoCursosAdminId === admin.id"
-                      (click)="toggleGerenciarCursos(admin)"
-                      title="Gerenciar cursos"
-                    >
-                      📚 Cursos
-                    </button>
-                    <button type="button" class="btn-delete" (click)="excluirAdmin(admin)" title="Excluir administrador">
-                      🗑️ Excluir
-                    </button>
-                  </td>
-                </tr>
-                <!-- Painel inline de gerenciamento de cursos -->
-                <tr *ngIf="gerenciandoCursosAdminId === admin.id" class="cursos-panel-row">
-                  <td [attr.colspan]="p.can('administradores:write') ? 7 : 6" class="cursos-panel-cell">
-                    <div class="cursos-panel">
-                      <div class="cursos-panel-header">
-                        <strong>📚 Cursos gerenciados por {{ admin.nome }}</strong>
-                        <span class="cursos-panel-hint">Marque os cursos que este administrador pode gerenciar. Use os atalhos abaixo para conceder ou remover todo o acesso.</span>
-                      </div>
-                      <div class="cursos-checkboxes">
-                        <label
-                          class="curso-checkbox-item curso-todos"
-                          [class.checked]="todasSelecionadas()"
-                          (click)="selecionarTodos()"
-                        >
-                          <input type="checkbox" [checked]="todasSelecionadas()" (change)="selecionarTodos()" />
-                          🌐 Todos os cursos (acesso irrestrito)
-                        </label>
-                        <label
-                          class="curso-checkbox-item curso-nenhum"
-                          [class.checked]="cursosTemp.length === 0"
-                          (click)="cursosTemp = []"
-                        >
-                          <input type="checkbox" [checked]="cursosTemp.length === 0" (change)="cursosTemp = []" />
-                          🚫 Nenhum curso (sem acesso)
-                        </label>
-                        <label
-                          *ngFor="let curso of cursosDisponiveis"
-                          class="curso-checkbox-item"
-                          [class.checked]="cursosTemp.includes(curso.id)"
-                        >
-                          <input
-                            type="checkbox"
-                            [checked]="cursosTemp.includes(curso.id)"
-                            (change)="toggleCursoTemp(curso.id)"
-                          />
-                          {{ curso.nome }}
-                        </label>
-                        <div *ngIf="cursosDisponiveis.length === 0" class="cursos-empty">
-                          Nenhum curso disponível.
-                        </div>
-                      </div>
-                      <div class="cursos-panel-actions">
-                        <button type="button" class="btn-primary btn-sm-action" [disabled]="salvandoCursos" (click)="salvarCursosAdmin(admin.id)">
-                          {{ salvandoCursos ? 'Salvando...' : '💾 Salvar' }}
-                        </button>
-                        <button type="button" class="btn-sm" (click)="fecharGerenciarCursos()">
-                          Cancelar
-                        </button>
-                        <span *ngIf="cursosTemp.length === 0" class="cursos-aviso cursos-aviso-restrito">🚫 Salvar assim bloqueará o acesso a todos os cursos</span>
-                        <span *ngIf="todasSelecionadas()" class="cursos-aviso cursos-aviso-livre">✅ Acesso irrestrito a todos os cursos</span>
-                      </div>
-                      <div class="form-error" *ngIf="erroCursos">{{ erroCursos }}</div>
-                      <div class="form-success" *ngIf="sucessoCursos">{{ sucessoCursos }}</div>
-                    </div>
-                  </td>
-                </tr>
-              </ng-container>
-            </tbody>
-          </table>
-        </div>
+        }
 
         <!-- Paginação -->
-        <div class="paginacao" *ngIf="!carregandoLista && totalPaginas > 1">
-          <button class="pag-btn" (click)="irParaPagina(1)" [disabled]="paginaAtual === 1">«</button>
-          <button class="pag-btn" (click)="irParaPagina(paginaAtual - 1)" [disabled]="paginaAtual === 1">‹</button>
-          <button
-            *ngFor="let p of paginas"
-            class="pag-btn"
-            [class.pag-ativa]="p === paginaAtual"
-            (click)="irParaPagina(p)"
-          >{{ p }}</button>
-          <button class="pag-btn" (click)="irParaPagina(paginaAtual + 1)" [disabled]="paginaAtual === totalPaginas">›</button>
-          <button class="pag-btn" (click)="irParaPagina(totalPaginas)" [disabled]="paginaAtual === totalPaginas">»</button>
-          <span class="pag-info">Página {{ paginaAtual }} de {{ totalPaginas }}</span>
-        </div>
-
-        <div class="empty-state" *ngIf="!carregandoLista && !erroLista && admins.length === 0">
-          Nenhum administrador encontrado.
-        </div>
+        @if (!carregandoLista && totalPaginas > 1) {
+          <div class="pagination">
+            <button class="btn btn-ghost btn-sm" (click)="irParaPagina(1)" [disabled]="paginaAtual === 1">«</button>
+            <button class="btn btn-ghost btn-sm" (click)="irParaPagina(paginaAtual - 1)" [disabled]="paginaAtual === 1">‹</button>
+            @for (pg of paginas; track pg) {
+              <button class="btn btn-sm" [class.btn-primary]="pg === paginaAtual"
+                [class.btn-ghost]="pg !== paginaAtual" (click)="irParaPagina(pg)">{{ pg }}</button>
+            }
+            <button class="btn btn-ghost btn-sm" (click)="irParaPagina(paginaAtual + 1)" [disabled]="paginaAtual === totalPaginas">›</button>
+            <button class="btn btn-ghost btn-sm" (click)="irParaPagina(totalPaginas)" [disabled]="paginaAtual === totalPaginas">»</button>
+            <span style="color:var(--color-text-muted);font-size:var(--font-size-sm)">Página {{ paginaAtual }} de {{ totalPaginas }}</span>
+          </div>
+        }
       </div>
     </div>
   `,
   styles: [`
-    .page-container {
-      max-width: 1300px;
-      margin: 0 auto;
-      padding: 30px 20px;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-      gap: 12px;
-    }
-
-    .page-header h2 { margin: 0; font-size: 1.6rem; color: #2c3e50; }
-
-    .btn-primary {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 500;
-      transition: background 0.2s;
-    }
-    .btn-primary:hover:not(:disabled) { background: #2980b9; }
-    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .btn-sm {
-      padding: 6px 14px;
-      border: 1px solid #bdc3c7;
-      background: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: background 0.2s;
-    }
-    .btn-sm:hover:not(:disabled) { background: #ecf0f1; }
-
-    .form-card {
-      background: white;
-      border-radius: 10px;
-      padding: 28px;
-      margin-bottom: 25px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      border-left: 4px solid #2c3e50;
-    }
-    .form-card h3 { margin: 0 0 20px; color: #2c3e50; font-size: 1.1rem; }
-
-    .list-card {
-      background: white;
-      border-radius: 10px;
-      padding: 28px;
-      margin-bottom: 25px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .list-card h3 { margin: 0 0 20px; color: #2c3e50; font-size: 1.1rem; }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 20px;
-    }
-
-    .form-row {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .form-row.span2 { grid-column: span 2; }
-
-    .form-row label { font-size: 0.88rem; font-weight: 500; color: #555; }
-
-    .form-row input {
-      padding: 9px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.92rem;
-      outline: none;
-      transition: border-color 0.2s;
-      font-family: inherit;
-    }
-    .form-row input:focus { border-color: #3498db; }
-
-    .form-actions { display: flex; gap: 10px; margin-top: 22px; }
-
-    .password-field {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .password-field input {
-      flex: 1;
-    }
-
-    .toggle-password {
-      padding: 8px 10px;
-      border: 1px solid #bdc3c7;
-      background: #f8f9fa;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: #2c3e50;
-      white-space: nowrap;
-    }
-
-    .toggle-password:hover {
-      background: #ecf0f1;
-    }
-
-    .form-error {
-      margin-top: 12px;
-      padding: 10px 14px;
-      background: #fdf2f2;
-      border: 1px solid #f5c6c6;
-      border-radius: 6px;
-      color: #c0392b;
-      font-size: 0.9rem;
-    }
-
-    .form-success {
-      margin-top: 12px;
-      padding: 10px 14px;
-      background: #eafaf1;
-      border: 1px solid #bde5c8;
-      border-radius: 6px;
-      color: #1e8449;
-      font-size: 0.9rem;
-    }
-
-    .admins-table {
-      overflow-x: auto;
-      border: 1px solid #ecf0f1;
-      border-radius: 8px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.92rem;
-    }
-
-    thead {
-      background: #f8f9fa;
-    }
-
-    th {
-      text-align: left;
-      padding: 12px 14px;
-      border-bottom: 1px solid #ecf0f1;
-      color: #2c3e50;
-      font-weight: 600;
-    }
-
-    td {
-      padding: 12px 14px;
-      border-bottom: 1px solid #f2f2f2;
-      color: #2f2f2f;
-    }
-
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .admin-nome {
-      font-weight: 600;
-    }
-
-    .role-select {
-      padding: 9px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.92rem;
-      font-family: inherit;
-      background: white;
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .role-select:focus { border-color: #3498db; }
-
-    .multi-select {
-      padding: 9px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.92rem;
-      font-family: inherit;
-      background: white;
-      outline: none;
-      transition: border-color 0.2s;
-      min-height: 120px;
-    }
-    .multi-select:focus { border-color: #3498db; }
-
-    .role-hint {
-      font-size: 0.8rem;
-      color: #7f8c8d;
-      margin-top: 3px;
-    }
-
-    .role-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-    .role-super_admin { background: #2c3e50; color: #fff; }
-    .role-instrutor   { background: #2980b9; color: #fff; }
-    .role-legacy      { background: #95a5a6; color: #fff; }
-
-    .photo-upload-container {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .photo-preview {
-      width: 100px;
-      height: 100px;
-      border: 2px dashed #bdc3c7;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f9f9f9;
-      overflow: hidden;
-    }
-
-    .preview-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .preview-placeholder {
-      text-align: center;
-      font-size: 0.85rem;
-      color: #95a5a6;
-      padding: 10px;
-    }
-
-    .upload-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .btn-upload, .btn-avatar, .btn-clear {
-      padding: 6px 12px;
-      border: 1px solid #bdc3c7;
-      background: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      font-weight: 500;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-upload:hover {
-      background: #3498db;
-      color: white;
-      border-color: #2980b9;
-    }
-
-    .btn-avatar:hover:not(:disabled) {
-      background: #27ae60;
-      color: white;
-      border-color: #229954;
-    }
-
-    .btn-avatar:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-clear:hover {
-      background: #e74c3c;
-      color: white;
-      border-color: #c0392b;
-    }
-
-    .photo-cell {
-      text-align: center;
-      padding: 8px !important;
-    }
-
-    .list-photo {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid #ecf0f1;
-    }
-
-    .list-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 0.75rem;
-      margin: 0 auto;
-    }
-
-    .loading,
-    .empty-state {
-      padding: 14px;
-      border-radius: 8px;
-      background: #f8f9fa;
-      color: #5d6d7e;
-      font-size: 0.92rem;
-    }
-
-    .actions-cell {
-      text-align: center;
-      padding: 10px !important;
-    }
-
-    .btn-edit {
-      padding: 6px 12px;
-      background: #3498db;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      transition: all 0.3s ease;
-    }
-
-    .btn-edit:hover {
-      background: #2980b9;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
-    }
-
-    .btn-edit:active {
-      transform: translateY(0);
-    }
-
-    .btn-cursos {
-      padding: 6px 12px;
-      background: #8e44ad;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      margin-left: 6px;
-    }
-
-    .btn-cursos:hover {
-      background: #7d3c98;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(142, 68, 173, 0.3);
-    }
-
-    .btn-cursos.active {
-      background: #6c3483;
-    }
-
-    .btn-delete {
-      padding: 6px 12px;
-      background: #b42318;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      margin-left: 6px;
-    }
-
-    .btn-delete:hover {
-      background: #991b1b;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(180, 35, 24, 0.3);
-    }
-
-    .btn-delete:active {
-      transform: translateY(0);
-    }
-
-    .cursos-panel-row td {
-      padding: 0 !important;
-    }
-
-    .cursos-panel-cell {
-      padding: 0 !important;
-    }
-
-    .cursos-panel {
-      background: #f9f0ff;
-      border: 1px solid #d2b4de;
-      border-radius: 8px;
-      padding: 18px 20px;
-      margin: 4px 8px 8px;
-    }
-
-    .cursos-panel-header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 14px;
-    }
-
-    .cursos-panel-header strong {
-      color: #6c3483;
-      font-size: 0.95rem;
-    }
-
-    .cursos-panel-hint {
-      font-size: 0.8rem;
-      color: #7f8c8d;
-    }
-
-    .cursos-checkboxes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .curso-checkbox-item {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 14px;
-      border: 1px solid #d7bde2;
-      border-radius: 20px;
-      background: white;
-      cursor: pointer;
-      font-size: 0.88rem;
-      color: #4a235a;
-      transition: all 0.2s;
-      user-select: none;
-    }
-
-    .curso-checkbox-item.checked {
-      background: #8e44ad;
-      color: white;
-      border-color: #8e44ad;
-    }
-
-    .curso-todos.checked {
-      background: #27ae60;
-      border-color: #27ae60;
-    }
-
-    .curso-nenhum.checked {
-      background: #c0392b;
-      border-color: #c0392b;
-    }
-
-    .cursos-aviso-restrito {
-      color: #c0392b;
-    }
-
-    .cursos-aviso-livre {
-      color: #27ae60;
-    }
-
-    .curso-checkbox-item input[type=checkbox] {
-      width: 15px;
-      height: 15px;
-      accent-color: #8e44ad;
-      cursor: pointer;
-    }
-
-    .cursos-panel-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .btn-sm-action {
-      padding: 7px 18px;
-      font-size: 0.88rem;
-    }
-
-    .cursos-aviso {
-      font-size: 0.8rem;
-      color: #e67e22;
-    }
-
-    .cursos-resumo {
-      font-size: 0.82rem;
-      color: #555;
-    }
-
-    .cursos-empty {
-      color: #7f8c8d;
-      font-size: 0.88rem;
-    }
-
-    @media (max-width: 700px) {
-      .form-grid { grid-template-columns: 1fr; }
-      .form-row.span2 { grid-column: span 1; }
-    }
-
-    /* Validação de e-mail em tempo real */
-    .email-check-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .email-check-wrapper input.input-email-available {
-      border-color: #27ae60;
-    }
-
-    .email-check-wrapper input.input-email-taken {
-      border-color: #e74c3c;
-    }
-
-    .email-status {
-      font-size: 0.78rem;
-      font-weight: 500;
-    }
-
-    .email-checking { color: #7f8c8d; }
-    .email-available { color: #27ae60; }
-    .email-taken { color: #e74c3c; }
-
-    /* Validação por campo */
-    .campo-invalido {
-      border-color: #e74c3c !important;
-    }
-    .campo-invalido:focus {
-      border-color: #e74c3c !important;
-      box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.12);
-    }
-    .campo-erro {
-      font-size: 0.78rem;
-      color: #e74c3c;
-      font-weight: 500;
-    }
-
-    /* Indicador de força da senha */
-    .forca-senha {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 5px;
-    }
-    .forca-barras {
-      display: flex;
-      gap: 4px;
-    }
-    .forca-barra {
-      width: 38px;
-      height: 5px;
-      border-radius: 3px;
-      transition: background 0.3s;
-    }
-    .forca-texto {
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-
-    /* Spinner no botão */
-    .btn-submit {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255,255,255,0.35);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
-    }
+    .admin-form-card { margin-bottom: var(--space-6); }
+    .card-section-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-5); }
+    .section-sub { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-muted); margin: var(--space-5) 0 var(--space-3); text-transform: uppercase; letter-spacing: .05em; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+    .field { display: flex; flex-direction: column; gap: var(--space-1); }
+    .field.span2 { grid-column: span 2; }
+    .field-label { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text); }
+    .field-input { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); background: var(--color-surface); color: var(--color-text); outline: none; transition: border-color var(--transition-fast); font-family: inherit; width: 100%; box-sizing: border-box; }
+    .field-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+    .field-input--error { border-color: var(--color-danger) !important; }
+    .field-input--ok { border-color: var(--color-success) !important; }
+    .field-error { font-size: var(--font-size-xs); color: var(--color-danger); }
+    .field-hint { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+    .form-footer { display: flex; gap: var(--space-3); margin-top: var(--space-5); align-items: center; }
+    .photo-row { display: flex; align-items: center; gap: var(--space-4); }
+    .photo-circle { width: 72px; height: 72px; border-radius: 50%; background: var(--color-surface-2); border: 2px solid var(--color-border); overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); flex-shrink: 0; }
+    .photo-circle__img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .email-wrap { display: flex; align-items: center; gap: var(--space-2); }
+    .email-wrap .field-input { flex: 1; }
+    .email-status { white-space: nowrap; }
+    .password-wrap { display: flex; gap: var(--space-2); align-items: center; }
+    .password-wrap .field-input { flex: 1; }
+    .password-toggle { flex-shrink: 0; }
+    .password-strength { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-1); }
+    .strength-bars { display: flex; gap: 4px; }
+    .strength-bar { width: 32px; height: 4px; border-radius: 2px; background: var(--color-border); transition: background .2s; }
+    .strength-bar--filled { background: var(--color-success); }
+    .strength-label { font-size: var(--font-size-xs); font-weight: 500; }
+    .filter-bar { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); }
+    .filter-search { flex: 1; min-width: 200px; }
+    .filter-select { width: 160px; }
+    .filter-total { font-size: var(--font-size-sm); color: var(--color-text-muted); white-space: nowrap; }
+    .list-avatar-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+    .list-avatar-initials { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--font-size-xs); font-weight: 700; }
+    .admin-nome-cell { font-weight: 500; }
+    .actions-cell { display: flex; gap: var(--space-2); align-items: center; white-space: nowrap; }
+    .cursos-panel-row td { padding: 0; }
+    .cursos-panel { padding: var(--space-5); background: var(--color-surface-2); border-top: 1px solid var(--color-border); }
+    .cursos-panel-title { font-weight: 600; font-size: var(--font-size-md); color: var(--color-text); margin: 0 0 var(--space-1); }
+    .cursos-panel-hint { font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0 0 var(--space-4); }
+    .cursos-checkboxes { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+    .curso-check-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-size: var(--font-size-sm); cursor: pointer; transition: border-color var(--transition-fast), background var(--transition-fast); }
+    .curso-check-item--on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--color-surface)); }
+    .cursos-panel-footer { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .convite-form { margin-top: 0; }
+    .convites-section { margin-top: var(--space-5); }
+    .pagination { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
+    .spinner-sm { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Barra de filtros */
-    .filtros-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .filtro-busca { flex: 1; min-width: 200px; }
-
-    .input-busca {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.92rem;
-      outline: none;
-      font-family: inherit;
-      box-sizing: border-box;
-    }
-    .input-busca:focus { border-color: #3498db; }
-
-    .filtros-selects {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .filtro-select {
-      padding: 8px 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 0.88rem;
-      background: white;
-      outline: none;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .filtro-select:focus { border-color: #3498db; }
-
-    .filtro-total {
-      font-size: 0.82rem;
-      color: #7f8c8d;
-      white-space: nowrap;
-    }
-
-    /* Status badge */
-    .status-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-    .status-ativo { background: #d5f5e3; color: #1e8449; }
-    .status-inativo { background: #fadbd8; color: #922b21; }
-
-    /* Paginação */
-    .paginacao {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 16px;
-      flex-wrap: wrap;
-    }
-
-    .pag-btn {
-      min-width: 34px;
-      height: 34px;
-      padding: 0 10px;
-      border: 1px solid #ddd;
-      background: white;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.88rem;
-      color: #2c3e50;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .pag-btn:hover:not(:disabled):not(.pag-ativa) { background: #ecf0f1; }
-    .pag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .pag-btn.pag-ativa {
-      background: #3498db;
-      color: white;
-      border-color: #3498db;
-      font-weight: 600;
-      cursor: default;
-    }
-
-    .pag-info {
-      font-size: 0.82rem;
-      color: #7f8c8d;
-      margin-left: 6px;
-    }
-
-    /* Painel de convites */
-    .convite-card { border-left-color: #8e44ad; }
-
-    .convite-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px 20px;
-    }
-
-    .convites-table {
-      overflow-x: auto;
-      border: 1px solid #ecf0f1;
-      border-radius: 8px;
-    }
-    .convites-table table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .88rem;
-    }
-    .convites-table th {
-      text-align: left;
-      padding: 10px 12px;
-      background: #f8f9fa;
-      border-bottom: 1px solid #ecf0f1;
-      color: #2c3e50;
-      font-weight: 600;
-      font-size: .85rem;
-    }
-    .convites-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #f2f2f2;
-      color: #2f2f2f;
-    }
-    .convites-table tbody tr:last-child td { border-bottom: none; }
-
-    .expira-cell { font-size: .82rem; color: #7f8c8d; }
-
-    .btn-revogar {
-      padding: 4px 10px;
-      background: white;
-      border: 1px solid #e74c3c;
-      color: #e74c3c;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: .8rem;
-      font-weight: 500;
-      transition: all .2s;
-    }
-    .btn-revogar:hover { background: #e74c3c; color: white; }
-
-    .sem-acao { color: #bdc3c7; }
-
-    @media (max-width: 700px) {
-      .convite-grid { grid-template-columns: 1fr; }
+    @media (max-width: 768px) {
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .field.span2 { grid-column: span 1; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-select { width: 100%; }
     }
   `]
 })

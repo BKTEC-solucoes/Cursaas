@@ -38,458 +38,180 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
   template: `
     <div class="form-page">
 
-      <!-- Cabeçalho -->
       <div class="form-topbar">
         <button class="btn-voltar" (click)="voltar()">← Voltar</button>
-        <h2>{{ aulaId ? '✏️ Editar Aula' : '📚 Nova Aula' }}</h2>
+        <h2 class="topbar-title">{{ aulaId ? 'Editar Aula' : 'Nova Aula' }}</h2>
         <div class="topbar-actions">
           <button class="btn-secondary" (click)="voltar()" [disabled]="salvando">Cancelar</button>
           <button class="btn-primary" (click)="salvar()" [disabled]="salvando">
-            <span *ngIf="salvando" class="spinner"></span>
-            {{ salvando ? 'Salvando...' : '💾 Salvar Aula' }}
+            @if (salvando) { <span class="spinner"></span> }
+            {{ salvando ? 'Salvando...' : 'Salvar Aula' }}
           </button>
         </div>
       </div>
 
-      <div class="form-body" *ngIf="!carregando; else loadingTpl">
-
-        <!-- Coluna principal: editor de blocos -->
-        <div class="editor-col">
-          <div class="editor-toolbar">
-            <span class="toolbar-label">Conteúdo</span>
-            <button type="button" (click)="adicionar('titulo')">+ Título</button>
-            <button type="button" (click)="adicionar('texto')">+ Texto</button>
-            <button type="button" (click)="adicionar('video')">+ Vídeo</button>
-          </div>
-
-          <div class="blocos-list">
-
-            <div class="bloco-sep" (mouseleave)="sepAtivo = -1">
-              <div class="sep-linha" (mouseenter)="sepAtivo = -1">
-                <button class="sep-btn" type="button" (click)="toggleMenu(0)" title="Inserir bloco aqui">+</button>
-              </div>
-              <div class="sep-menu" *ngIf="menuAberto === 0">
-                <button type="button" (click)="adicionarEm(0, 'titulo')">Título</button>
-                <button type="button" (click)="adicionarEm(0, 'texto')">Texto</button>
-                <button type="button" (click)="adicionarEm(0, 'video')">Vídeo</button>
-              </div>
+      @if (!carregando) {
+        <div class="form-body">
+          <div class="editor-col">
+            <div class="editor-toolbar">
+              <span class="toolbar-label">Conteúdo</span>
+              <button type="button" (click)="adicionar('titulo')">+ Título</button>
+              <button type="button" (click)="adicionar('texto')">+ Texto</button>
+              <button type="button" (click)="adicionar('video')">+ Vídeo</button>
             </div>
 
-            <ng-container *ngFor="let b of blocos; let i = index; trackBy: trackById">
-              <div class="bloco-row">
-                <div class="bloco-handle" title="Tipo: {{ b.tipo }}">
-                  <span class="tipo-tag">{{ b.tipo }}</span>
+            <div class="blocos-list">
+              <div class="bloco-sep" (mouseleave)="sepAtivo = -1">
+                <div class="sep-linha" (mouseenter)="sepAtivo = -1">
+                  <button class="sep-btn" type="button" (click)="toggleMenu(0)" title="Inserir bloco aqui">+</button>
                 </div>
-
-                <app-bloco-texto
-                  *ngIf="b.tipo === 'titulo'"
-                  [conteudo]="b.conteudo"
-                  [tipo]="b.tipo"
-                  (conteudoChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <app-rich-text-editor
-                  *ngIf="b.tipo === 'texto'"
-                  [content]="b.conteudo"
-                  placeholder="Digite um parágrafo..."
-                  (contentChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <app-bloco-video-moderno
-                  *ngIf="b.tipo === 'video'"
-                  [conteudo]="b.conteudo"
-                  [aulaId]="aulaId"
-                  (conteudoChange)="atualizar(b.id, $event)"
-                  class="bloco-content"
-                />
-
-                <button
-                  class="btn-remover"
-                  title="Remover bloco"
-                  (click)="remover(b.id)"
-                  [disabled]="isTituloUnico(b)"
-                >×</button>
+                @if (menuAberto === 0) {
+                  <div class="sep-menu">
+                    <button type="button" (click)="adicionarEm(0, 'titulo')">Título</button>
+                    <button type="button" (click)="adicionarEm(0, 'texto')">Texto</button>
+                    <button type="button" (click)="adicionarEm(0, 'video')">Vídeo</button>
+                  </div>
+                }
               </div>
 
-              <div class="bloco-sep">
-                <div class="sep-linha">
-                  <button class="sep-btn" type="button" (click)="toggleMenu(i + 1)" title="Inserir bloco aqui">+</button>
+              @for (b of blocos; track b.id; let i = $index) {
+                <div class="bloco-row">
+                  <div class="bloco-handle" title="Tipo: {{ b.tipo }}">
+                    <span class="tipo-tag">{{ b.tipo }}</span>
+                  </div>
+                  @if (b.tipo === 'titulo') {
+                    <app-bloco-texto [conteudo]="b.conteudo" [tipo]="b.tipo" (conteudoChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+                  @if (b.tipo === 'texto') {
+                    <app-rich-text-editor [content]="b.conteudo" placeholder="Digite um parágrafo..." (contentChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+                  @if (b.tipo === 'video') {
+                    <app-bloco-video-moderno [conteudo]="b.conteudo" [aulaId]="aulaId" (conteudoChange)="atualizar(b.id, $event)" class="bloco-content" />
+                  }
+                  <button class="btn-remover" title="Remover bloco" (click)="remover(b.id)" [disabled]="isTituloUnico(b)">×</button>
                 </div>
-                <div class="sep-menu" *ngIf="menuAberto === i + 1">
-                  <button type="button" (click)="adicionarEm(i + 1, 'titulo')">Título</button>
-                  <button type="button" (click)="adicionarEm(i + 1, 'texto')">Texto</button>
-                  <button type="button" (click)="adicionarEm(i + 1, 'video')">Vídeo</button>
-                </div>
-              </div>
-            </ng-container>
 
-            <div *ngIf="blocos.length === 0" class="blocos-vazio">
-              Use a barra acima para adicionar blocos de conteúdo.
+                <div class="bloco-sep">
+                  <div class="sep-linha">
+                    <button class="sep-btn" type="button" (click)="toggleMenu(i + 1)" title="Inserir bloco aqui">+</button>
+                  </div>
+                  @if (menuAberto === i + 1) {
+                    <div class="sep-menu">
+                      <button type="button" (click)="adicionarEm(i + 1, 'titulo')">Título</button>
+                      <button type="button" (click)="adicionarEm(i + 1, 'texto')">Texto</button>
+                      <button type="button" (click)="adicionarEm(i + 1, 'video')">Vídeo</button>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (blocos.length === 0) {
+                <div class="blocos-vazio">Use a barra acima para adicionar blocos de conteúdo.</div>
+              }
             </div>
           </div>
+
+          <aside class="meta-sidebar">
+            <section class="meta-section">
+              <h4>Informações</h4>
+              <div class="meta-field">
+                <label>Curso *</label>
+                <select [(ngModel)]="meta.curso_id" name="curso_id">
+                  <option [ngValue]="null" disabled>Selecione...</option>
+                  @for (c of cursos; track c.id) { <option [ngValue]="c.id">{{ c.nome }}</option> }
+                </select>
+              </div>
+              <div class="meta-field">
+                <label>Data e hora *</label>
+                <input type="datetime-local" [(ngModel)]="meta.data_aula" name="data_aula" />
+              </div>
+              <div class="meta-field">
+                <label>Duração (minutos)</label>
+                <input type="number" [(ngModel)]="meta.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
+              </div>
+              @if (aulaId) {
+                <div class="meta-field">
+                  <label>Status</label>
+                  <select [(ngModel)]="meta.ativo" name="ativo">
+                    <option [ngValue]="true">Ativa</option>
+                    <option [ngValue]="false">Inativa</option>
+                  </select>
+                </div>
+              }
+            </section>
+            @if (erro)   { <div class="meta-erro">{{ erro }}</div> }
+            @if (sucesso) { <div class="meta-ok">{{ sucesso }}</div> }
+          </aside>
         </div>
-
-        <!-- Sidebar: metadados -->
-        <aside class="meta-sidebar">
-          <section class="meta-section">
-            <h4>Informações</h4>
-
-            <div class="meta-field">
-              <label>Curso *</label>
-              <select [(ngModel)]="meta.curso_id" name="curso_id">
-                <option [ngValue]="null" disabled>Selecione...</option>
-                <option *ngFor="let c of cursos" [ngValue]="c.id">{{ c.nome }}</option>
-              </select>
-            </div>
-
-            <div class="meta-field">
-              <label>Data e hora *</label>
-              <input type="datetime-local" [(ngModel)]="meta.data_aula" name="data_aula" />
-            </div>
-
-            <div class="meta-field">
-              <label>Duração (minutos)</label>
-              <input type="number" [(ngModel)]="meta.duracao_minutos" name="duracao_minutos" min="1" placeholder="Ex: 60" />
-            </div>
-
-            <div class="meta-field" *ngIf="aulaId">
-              <label>Status</label>
-              <select [(ngModel)]="meta.ativo" name="ativo">
-                <option [ngValue]="true">Ativa</option>
-                <option [ngValue]="false">Inativa</option>
-              </select>
-            </div>
-          </section>
-
-          <div class="form-error meta-erro" *ngIf="erro">{{ erro }}</div>
-          <div class="form-success meta-ok" *ngIf="sucesso">{{ sucesso }}</div>
-        </aside>
-      </div>
-
-      <ng-template #loadingTpl>
+      } @else {
         <div class="loading-full">Carregando aula...</div>
-      </ng-template>
+      }
+
     </div>
   `,
   styles: [`
-    .form-page {
-      display: flex;
-      flex-direction: column;
-      min-height: 100%;
-      background: #f8fafc;
-    }
+    :host { display: block; }
+    .form-page { display: flex; flex-direction: column; min-height: 100%; background: var(--color-surface-2); }
 
-    .form-topbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 24px;
-      background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .form-topbar h2 {
-      flex: 1;
-      margin: 0;
-      font-size: 1.1rem;
-      color: #1e293b;
-    }
-    .btn-voltar {
-      background: none;
-      border: none;
-      color: var(--primary);
-      cursor: pointer;
-      font-size: .9rem;
-      padding: 6px 0;
-    }
+    .form-topbar { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-6); background: var(--color-surface); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 10; }
+    .topbar-title { flex: 1; margin: 0; font-size: var(--font-size-base); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
+    .btn-voltar { background: none; border: none; color: var(--primary); cursor: pointer; font-size: var(--font-size-sm); padding: var(--space-2) 0; font-weight: 600; }
     .btn-voltar:hover { text-decoration: underline; }
-    .topbar-actions { display: flex; gap: 8px; }
-    .btn-primary {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 18px;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-      font-weight: 600;
-    }
-    .btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 80%, black); }
+    .topbar-actions { display: flex; gap: var(--space-2); }
+    .btn-primary { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-5); background: var(--primary); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); font-weight: 600; transition: background var(--transition-fast); }
+    .btn-primary:hover:not(:disabled) { background: var(--secondary); }
     .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-    .btn-secondary {
-      padding: 8px 16px;
-      background: #fff;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-    }
-    .btn-secondary:hover:not(:disabled) { background: #f1f5f9; }
+    .btn-secondary { padding: var(--space-2) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+    .btn-secondary:hover:not(:disabled) { background: var(--color-surface-2); }
     .btn-secondary:disabled { opacity: .6; cursor: not-allowed; }
 
-    .form-body {
-      display: grid;
-      grid-template-columns: 1fr 280px;
-      gap: 24px;
-      padding: 24px;
-      align-items: start;
-      max-width: 1100px;
-      width: 100%;
-      margin: 0 auto;
-    }
-    @media (max-width: 768px) {
-      .form-body { grid-template-columns: 1fr; }
-    }
+    .form-body { display: grid; grid-template-columns: 1fr 280px; gap: var(--space-6); padding: var(--space-6); align-items: start; max-width: 1100px; width: 100%; margin: 0 auto; }
+    @media (max-width: 768px) { .form-body { grid-template-columns: 1fr; } }
 
-    .editor-col {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .editor-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .toolbar-label {
-      font-size: .75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #94a3b8;
-      letter-spacing: .05em;
-      margin-right: 4px;
-    }
-    .editor-toolbar button {
-      padding: 4px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      font-size: .8rem;
-      transition: background .15s;
-    }
-    .editor-toolbar button:hover { background: #e2e8f0; }
+    .editor-col { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+    .editor-toolbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); }
+    .toolbar-label { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: .05em; margin-right: var(--space-1); }
+    .editor-toolbar button { padding: 4px 12px; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); cursor: pointer; font-size: var(--font-size-xs); transition: background var(--transition-fast); color: var(--color-text); }
+    .editor-toolbar button:hover { background: var(--color-surface-2); }
 
-    .blocos-list {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-height: 200px;
-    }
-    .bloco-row {
-      display: grid;
-      grid-template-columns: 56px 1fr 28px;
-      align-items: flex-start;
-      gap: 6px;
-    }
-    .bloco-handle {
-      display: flex;
-      justify-content: flex-end;
-      padding-top: 10px;
-    }
-    .tipo-tag {
-      font-size: .62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #94a3b8;
-      letter-spacing: .04em;
-    }
+    .blocos-list { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-height: 200px; }
+    .bloco-row { display: grid; grid-template-columns: 56px 1fr 28px; align-items: flex-start; gap: var(--space-2); }
+    .bloco-handle { display: flex; justify-content: flex-end; padding-top: 10px; }
+    .tipo-tag { font-size: .62rem; font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: .04em; }
     .bloco-content { min-width: 0; }
-    .btn-remover {
-      width: 24px;
-      height: 24px;
-      border: none;
-      border-radius: 50%;
-      background: transparent;
-      color: #94a3b8;
-      font-size: 1rem;
-      cursor: pointer;
-      opacity: 0;
-      margin-top: 6px;
-      transition: opacity .15s, color .15s;
-    }
+    .btn-remover { width: 24px; height: 24px; border: none; border-radius: 50%; background: transparent; color: var(--color-text-muted); font-size: 1rem; cursor: pointer; opacity: 0; margin-top: 6px; transition: opacity .15s, color .15s; }
     .bloco-row:hover .btn-remover { opacity: 1; }
-    .btn-remover:hover:not(:disabled) { color: #ef4444; }
+    .btn-remover:hover:not(:disabled) { color: var(--color-danger); }
     .btn-remover:disabled { cursor: default; }
 
-    .bloco-sep {
-      position: relative;
-      height: 16px;
-      display: flex;
-      align-items: center;
-    }
-    .sep-linha {
-      position: relative;
-      width: 100%;
-      height: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .sep-linha::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: transparent;
-      transition: background .15s;
-      border-radius: 2px;
-    }
-    .bloco-sep:hover .sep-linha::before { background: #bbf7d0; }
-    .sep-btn {
-      position: relative;
-      z-index: 1;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 2px solid #bbf7d0;
-      background: #fff;
-      color: var(--primary);
-      font-size: 1rem;
-      line-height: 1;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity .15s, background .15s, border-color .15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-    }
+    .bloco-sep { position: relative; height: 16px; display: flex; align-items: center; }
+    .sep-linha { position: relative; width: 100%; height: 2px; display: flex; align-items: center; justify-content: center; }
+    .sep-linha::before { content: ''; position: absolute; inset: 0; background: transparent; transition: background .15s; border-radius: 2px; }
+    .bloco-sep:hover .sep-linha::before { background: color-mix(in srgb, var(--primary) 20%, transparent); }
+    .sep-btn { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); background: var(--color-surface); color: var(--primary); font-size: 1rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s, border-color .15s; display: flex; align-items: center; justify-content: center; padding: 0; }
     .bloco-sep:hover .sep-btn { opacity: 1; }
-    .sep-btn:hover {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .sep-menu {
-      position: absolute;
-      top: calc(100% + 4px);
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 100;
-      display: flex;
-      gap: 4px;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    }
-    .sep-menu button {
-      padding: 5px 12px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      background: #fff;
-      cursor: pointer;
-      font-size: .8rem;
-      white-space: nowrap;
-      transition: background .12s;
-    }
-    .sep-menu button:hover { background: #f0fdf4; color: var(--primary); border-color: #bbf7d0; }
+    .sep-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .sep-menu { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: var(--space-1); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); box-shadow: var(--shadow); }
+    .sep-menu button { padding: 5px 12px; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); cursor: pointer; font-size: var(--font-size-xs); white-space: nowrap; transition: background var(--transition-fast); color: var(--color-text); }
+    .sep-menu button:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); color: var(--primary); border-color: color-mix(in srgb, var(--primary) 25%, transparent); }
 
-    .blocos-vazio {
-      color: #94a3b8;
-      font-size: .9rem;
-      text-align: center;
-      padding: 32px;
-      border: 2px dashed #e2e8f0;
-      border-radius: 8px;
-    }
+    .blocos-vazio { color: var(--color-text-muted); font-size: var(--font-size-sm); text-align: center; padding: var(--space-8); border: 2px dashed var(--color-border); border-radius: var(--radius); }
 
-    .meta-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: sticky;
-      top: 72px;
-    }
-    .meta-section {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 16px;
-    }
-    .meta-section h4 {
-      margin: 0 0 14px;
-      font-size: .85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: #64748b;
-    }
-    .meta-field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      margin-bottom: 12px;
-    }
+    .meta-sidebar { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: 72px; }
+    .meta-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-sm); }
+    .meta-section h4 { margin: 0 0 var(--space-4); font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); }
+    .meta-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: var(--space-3); }
     .meta-field:last-child { margin-bottom: 0; }
-    .meta-field label {
-      font-size: .8rem;
-      font-weight: 600;
-      color: #475569;
-    }
-    .meta-field input,
-    .meta-field select {
-      padding: 7px 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: .875rem;
-      outline: none;
-      transition: box-shadow .15s;
-    }
-    .meta-field input:focus,
-    .meta-field select:focus {
-      box-shadow: 0 0 0 2px var(--primary);
-      border-color: var(--primary);
-    }
-    .form-error.meta-erro {
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #b91c1c;
-      font-size: .85rem;
-    }
-    .form-success.meta-ok {
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #166534;
-      font-size: .85rem;
-    }
+    .meta-field label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text); }
+    .meta-field input, .meta-field select { padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); font-size: var(--font-size-sm); outline: none; background: var(--color-surface); color: var(--color-text); transition: box-shadow var(--transition-fast); font-family: inherit; }
+    .meta-field input:focus, .meta-field select:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); border-color: var(--primary); }
 
-    .loading-full {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 80px;
-      color: #94a3b8;
-      font-size: 1rem;
-    }
+    .meta-erro { background: color-mix(in srgb, var(--color-danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent); border-radius: var(--radius); padding: var(--space-3) var(--space-4); color: var(--color-danger); font-size: var(--font-size-sm); }
+    .meta-ok  { background: color-mix(in srgb, var(--color-success) 8%, transparent); border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent); border-radius: var(--radius); padding: var(--space-3) var(--space-4); color: var(--color-success); font-size: var(--font-size-sm); }
 
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255,255,255,.4);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
+    .loading-full { flex: 1; display: flex; align-items: center; justify-content: center; padding: 80px; color: var(--color-text-muted); font-size: var(--font-size-base); }
+
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `],
 })
