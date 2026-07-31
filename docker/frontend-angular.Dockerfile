@@ -21,14 +21,10 @@ FROM nginx:1.27-alpine
 
 COPY --from=build /src/dist/cursaas-frontend /usr/share/nginx/html
 
-RUN printf 'server {\n\
-    listen 8080;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+# Arquivo de verdade, e nao um `printf` embutido: a config precisa de regras
+# distintas para assets com hash e para rotas do SPA, e escapar tudo isso numa
+# string de shell tornava a diferenca invisivel. Ver docker/nginx/spa.conf.
+COPY docker/nginx/spa.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
 
