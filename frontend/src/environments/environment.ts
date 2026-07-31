@@ -12,6 +12,6 @@ export const environment = {
   apiUrl: 'http://localhost:8000/api',
   uploadsUrl: 'http://localhost:8000/uploads',
   baseUrl: 'http://localhost:8000',
-  googleClientId: 'SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+  googleClientId: '578629612099-qn5logk3a53drffitifchstl2tgvvm9i.apps.googleusercontent.com',
   googleAuthBackendUrl: 'http://localhost:3000/auth/google',
 };

@@ -15,6 +15,6 @@ export const environment = {
   uploadsUrl: '/uploads',
   baseUrl: '',
   // Preenchido no build; ver scripts/set-google-client-id.ps1
-  googleClientId: 'SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+  googleClientId: '578629612099-qn5logk3a53drffitifchstl2tgvvm9i.apps.googleusercontent.com',
   googleAuthBackendUrl: '/auth/google',
 };

@@ -1,11 +1,11 @@
-import { Component, computed } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { environment } from '../../../environments/environment';
+import { GoogleIdentityService } from '../../core/services/google-identity.service';
 
 @Component({
   selector: 'app-login',
@@ -14,14 +14,17 @@ import { environment } from '../../../environments/environment';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
   email    = '';
   password = '';
   showPassword  = false;
   loading       = false;
   googleLoading = false;
   error         = '';
-  googleConfigured = this.hasValidGoogleClientId();
+  googleConfigured = this.googleIdentity.configurado();
+
+  /** Container onde o GIS desenha o botão oficial do Google. */
+  @ViewChild('googleBtn') googleBtn?: ElementRef<HTMLDivElement>;
 
   private readonly _theme = toSignal(this.themeService.currentTheme$);
 
@@ -62,7 +65,27 @@ export class LoginComponent {
     private authService: AuthService,
     private router: Router,
     private themeService: ThemeService,
+    private googleIdentity: GoogleIdentityService,
   ) {}
+
+  ngAfterViewInit(): void {
+    if (!this.googleConfigured || !this.googleBtn) {
+      return;
+    }
+
+    this.googleIdentity
+      .renderizarBotao(
+        this.googleBtn.nativeElement,
+        (idToken) => this.autenticarComGoogle(idToken),
+        { modoEscuro: this.darkMode() },
+      )
+      .catch(() => {
+        // Rede bloqueada, adblock ou Google fora do ar. O login por e-mail
+        // continua funcionando, então some com o botão em vez de deixar uma
+        // caixa vazia na tela.
+        this.googleConfigured = false;
+      });
+  }
 
   login(): void {
     if (!this.email || !this.password) {
@@ -73,15 +96,7 @@ export class LoginComponent {
     this.error   = '';
 
     this.authService.login(this.email, this.password).subscribe({
-      next: () => {
-        const token = this.authService.getToken() ?? '';
-        this.themeService.carregarEAplicar(token).subscribe(() => {
-          const user = this.authService.getCurrentUser();
-          if      (user?.role === 'admin')      this.router.navigate(['/admin']);
-          else if (user?.role === 'aluno')      this.router.navigate(['/aluno']);
-          else if (user?.role === 'instituicao') this.router.navigate(['/instituicao']);
-        });
-      },
+      next: () => this.aplicarTemaERedirecionar(),
       error: (err) => {
         this.error   = err.error?.detail || 'Erro ao fazer login';
         this.loading = false;
@@ -89,16 +104,47 @@ export class LoginComponent {
     });
   }
 
-  async loginWithGoogle(): Promise<void> {
-    this.error = 'Login com Google não está configurado. Use o login padrão com email e senha.';
+  /**
+   * Troca o idToken do Google por um JWT da aplicação.
+   *
+   * O side-car não cria conta: e-mail sem cadastro no Cursaas volta 403, e a
+   * mensagem precisa dizer isso, senão o usuário fica tentando de novo achando
+   * que errou a senha. Provisionamento continua sendo por convite, aprovação de
+   * solicitação ou criação pela instituição.
+   */
+  private autenticarComGoogle(idToken: string): void {
+    this.googleLoading = true;
+    this.error = '';
+
+    this.authService.loginWithGoogle(idToken).subscribe({
+      next: () => this.aplicarTemaERedirecionar(),
+      error: (err) => {
+        this.googleLoading = false;
+        // Não deixa a conta escolhida grudada: sem isso, tentar de novo com
+        // outro e-mail reenviaria silenciosamente o mesmo idToken.
+        this.googleIdentity.encerrarSessaoGoogle();
+
+        this.error = err.status === 403
+          ? (err.error?.message
+              || 'Esta conta Google não tem acesso ao Cursaas. Peça um convite à sua instituição.')
+          : (err.error?.message || 'Não foi possível entrar com o Google. Tente novamente.');
+      },
+    });
   }
 
-  private hasValidGoogleClientId(): boolean {
-    const clientId = environment.googleClientId?.trim() || '';
-    return (
-      clientId.endsWith('.apps.googleusercontent.com') &&
-      !clientId.includes('SEU_GOOGLE_CLIENT_ID')
-    );
+  /**
+   * Caminho comum aos dois logins: o tema do tenant precisa ser aplicado ANTES
+   * da navegação, senão a área autenticada monta com as cores do tenant
+   * anterior (ou com as do fallback) e troca na cara do usuário.
+   */
+  private aplicarTemaERedirecionar(): void {
+    const token = this.authService.getToken() ?? '';
+    this.themeService.carregarEAplicar(token).subscribe(() => {
+      const user = this.authService.getCurrentUser();
+      if      (user?.role === 'admin')       this.router.navigate(['/admin']);
+      else if (user?.role === 'aluno')       this.router.navigate(['/aluno']);
+      else if (user?.role === 'instituicao') this.router.navigate(['/instituicao']);
+    });
   }
 }
 

@@ -97,20 +97,21 @@
 
       </form>
 
-      <div class="divider"><span>ou</span></div>
+      @if (googleConfigured) {
+        <div class="divider"><span>ou</span></div>
 
-      <button
-        type="button"
-        class="btn btn-google btn-full"
-        [disabled]="googleLoading || !googleConfigured"
-        (click)="loginWithGoogle()"
-      >
-        {{
-          googleConfigured
-            ? (googleLoading ? 'Conectando…' : 'Entrar com Google')
-            : 'Configure o Google Client ID'
-        }}
-      </button>
+        <!--
+          O botão é desenhado pelo GIS dentro deste container (ver
+          GoogleIdentityService). Não dá para usar um botão próprio: o idToken
+          só vem pelo botão oficial do Google.
+        -->
+        <div class="google-area">
+          <div #googleBtn class="google-btn-slot" [class.is-loading]="googleLoading"></div>
+          @if (googleLoading) {
+            <p class="google-status">Conectando…</p>
+          }
+        </div>
+      }
 
       <p class="register-link">
         Não tem uma conta?

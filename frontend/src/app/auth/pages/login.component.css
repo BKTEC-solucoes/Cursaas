@@ -231,30 +231,38 @@
 
 /* ── Botão Google ───────────────────────────────────────────────────────── */
 
-.btn-google {
-  display: inline-flex;
+/*
+ * O botão em si é um iframe renderizado pelo GIS: não dá para estilizar por
+ * dentro (política de marca do Google). O que controlamos é só o entorno —
+ * centralização e o estado de "conectando".
+ */
+.google-area {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: var(--space-2);
+}
+
+.google-btn-slot {
+  display: flex;
+  justify-content: center;
   width: 100%;
-  padding: var(--space-2) var(--space-4);
-  min-height: var(--density-btn-h, 40px);
-  background: var(--card-bg, #ffffff);
-  color: var(--color-text);
-  border: 1.5px solid var(--color-border, #cbd5e1);
-  border-radius: var(--btn-radius, var(--radius));
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  /* Reserva a altura do botão do GIS (size: large = 40px) para a tela não
+     pular quando o script termina de carregar. */
+  min-height: 40px;
 }
-.btn-google:hover:not(:disabled) {
-  background: var(--color-surface-2, #f8fafc);
-  box-shadow: var(--shadow-sm);
-}
-.btn-google:disabled {
+
+/* Durante a troca do idToken o clique precisa ficar bloqueado: um segundo
+   envio abriria uma nova sessão por cima da que está em andamento. */
+.google-btn-slot.is-loading {
   opacity: 0.6;
-  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.google-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted, #64748b);
 }
 
 /* ── Divisor ────────────────────────────────────────────────────────────── */
