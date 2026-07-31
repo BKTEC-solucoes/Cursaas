@@ -1,20 +1,39 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { FaculdadeAtivaService, FaculdadeResumo } from '../../../core/services/faculdade-ativa.service';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule],
+  imports: [RouterOutlet, RouterLink, CommonModule, FormsModule],
   template: `
     <div class="admin-container">
       <header class="admin-header">
         <div class="header-content">
           <div class="header-top">
             <h1>Painel Administrativo</h1>
+
+            <div class="tenant-switch" *ngIf="ehSuperAdmin">
+              <label for="faculdadeAtiva">Gerenciando</label>
+              <select
+                id="faculdadeAtiva"
+                [ngModel]="faculdadeAtivaId"
+                (ngModelChange)="trocarFaculdade($event)"
+                [disabled]="carregandoFaculdades || faculdades.length === 0"
+              >
+                <option *ngIf="carregandoFaculdades" [ngValue]="null">Carregando…</option>
+                <option *ngIf="!carregandoFaculdades && faculdades.length === 0" [ngValue]="null">
+                  Nenhuma instituição ativa
+                </option>
+                <option *ngFor="let f of faculdades" [ngValue]="f.id">{{ f.nome }}</option>
+              </select>
+            </div>
+
             <div class="user-menu">
               <div class="user-info">
                 <span class="user-greeting">{{ usuarioNome }}</span>
@@ -106,6 +125,45 @@ import { PermissionsService } from '../../../core/services/permissions.service';
       display: flex;
       align-items: center;
       gap: 15px;
+    }
+
+    .tenant-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      margin-right: 20px;
+    }
+
+    .tenant-switch label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.75;
+      white-space: nowrap;
+    }
+
+    .tenant-switch select {
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      max-width: 260px;
+      cursor: pointer;
+    }
+
+    .tenant-switch select:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* O menu nativo herda o fundo escuro do select em alguns navegadores. */
+    .tenant-switch option {
+      color: #1f2937;
+      background: white;
     }
 
     .user-info {
@@ -208,6 +266,17 @@ import { PermissionsService } from '../../../core/services/permissions.service';
         display: none;
       }
 
+      .tenant-switch {
+        order: 3;
+        width: 100%;
+        margin: 8px 0 0;
+      }
+
+      .tenant-switch select {
+        flex: 1;
+        max-width: none;
+      }
+
       .navbar {
         overflow-x: auto;
         scrollbar-width: thin;
@@ -229,13 +298,19 @@ import { PermissionsService } from '../../../core/services/permissions.service';
     }
   `]
 })
-export class AdminLayoutComponent {
+export class AdminLayoutComponent implements OnInit {
   usuarioNome = '';
   roleLabel   = '';
+
+  ehSuperAdmin = false;
+  faculdades: FaculdadeResumo[] = [];
+  faculdadeAtivaId: number | null = null;
+  carregandoFaculdades = false;
 
   constructor(
     private authService: AuthService,
     public p: PermissionsService,
+    private faculdadeAtiva: FaculdadeAtivaService,
   ) {
     const usuario = this.authService.getCurrentUser();
     if (usuario) {
@@ -244,8 +319,38 @@ export class AdminLayoutComponent {
     }
   }
 
+  ngOnInit(): void {
+    this.ehSuperAdmin = this.faculdadeAtiva.ehSuperAdmin();
+    if (!this.ehSuperAdmin) return;
+
+    this.faculdadeAtiva.faculdadeId$.subscribe(id => (this.faculdadeAtivaId = id));
+    this.faculdadeAtiva.faculdades$.subscribe(lista => (this.faculdades = lista));
+
+    // O guard já pediu a lista; aqui só aproveitamos o cache do serviço.
+    this.carregandoFaculdades = true;
+    this.faculdadeAtiva.carregarFaculdades().subscribe({
+      next: () => (this.carregandoFaculdades = false),
+      error: () => (this.carregandoFaculdades = false),
+    });
+  }
+
+  /**
+   * Troca a instituição gerenciada e recarrega a aplicação.
+   *
+   * O reload é intencional: cada tela do painel busca seus dados no ngOnInit, e
+   * o `X-Faculdade-Id` novo só vale para requisições futuras — sem recarregar,
+   * a tela continuaria mostrando os dados da instituição anterior.
+   */
+  trocarFaculdade(faculdadeId: number | null): void {
+    if (faculdadeId === null || faculdadeId === this.faculdadeAtivaId) return;
+
+    this.faculdadeAtiva.selecionar(faculdadeId);
+    window.location.reload();
+  }
+
   logout(): void {
     if (confirm('Deseja realmente sair?')) {
+      this.faculdadeAtiva.reset();
       this.authService.logout();
     }
   }

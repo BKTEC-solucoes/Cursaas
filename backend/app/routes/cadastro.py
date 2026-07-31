@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
@@ -9,6 +9,7 @@ import string
 from app.database import get_db
 from app.models import SolicitacaoCadastro, SolicitacaoStatusEnum, Faculdade, Usuario, VinculoAlunoFaculdade, RoleEnum
 from app.routes.auth import get_current_super_admin
+from app.security.tenant import ler_escopo_faculdade
 from app.services.auth_service import AuthService
 from app.schemas import (
     SolicitacaoCadastroCreate,
@@ -122,6 +123,7 @@ def _enrich(s: SolicitacaoCadastro) -> SolicitacaoCadastroAdminResponse:
     description="Retorna todas as solicitações com status **pendente**, ordenadas da mais antiga para a mais nova. Requer super_admin.",
 )
 def listar_pendentes(
+    request: Request,
     faculdade_id: Optional[int] = Query(None, description="Filtrar por faculdade específica"),
     db: Session = Depends(get_db),
     _: Usuario = Depends(get_current_super_admin),
@@ -155,6 +157,12 @@ def listar_pendentes(
         .order_by(SolicitacaoCadastro.criado_em.asc())  # mais antigas primeiro
     )
 
+    # Esta rota não usa TenantContext (é super_admin puro), então o escopo do
+    # painel entra como filtro padrão: quem está gerenciando uma instituição vê
+    # as solicitações dela. `?faculdade_id=` explícito continua tendo prioridade.
+    if faculdade_id is None:
+        faculdade_id = ler_escopo_faculdade(request)
+
     if faculdade_id is not None:
         query = query.filter(SolicitacaoCadastro.faculdade_id == faculdade_id)
 
@@ -169,6 +177,7 @@ def listar_pendentes(
     description="Retorna todas as solicitações independente do status. Suporta filtro por `status` e `faculdade_id`. Requer super_admin.",
 )
 def listar_todas(
+    request: Request,
     status_filtro: Optional[str] = Query(None, alias="status", description="pendente | aprovada | recusada"),
     faculdade_id:  Optional[int] = Query(None, description="Filtrar por faculdade"),
     db: Session = Depends(get_db),
@@ -188,6 +197,9 @@ def listar_todas(
                 detail=f"Status inválido. Use: pendente, aprovada ou recusada",
             )
         query = query.filter(SolicitacaoCadastro.status == status_enum)
+
+    if faculdade_id is None:
+        faculdade_id = ler_escopo_faculdade(request)
 
     if faculdade_id is not None:
         query = query.filter(SolicitacaoCadastro.faculdade_id == faculdade_id)

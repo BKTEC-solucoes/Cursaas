@@ -53,13 +53,14 @@ def create_aluno(
 ):
     """Cria um novo aluno (admin)"""
     # Aluno sem faculdade_id fica órfão: invisível em toda listagem filtrada por
-    # tenant e 403 em qualquer assert_access. Super admin não tem tenant próprio
-    # e por isso não cria aluno por aqui.
+    # tenant e 403 em qualquer assert_access. Super admin não tem tenant próprio —
+    # precisa estar gerenciando uma instituição (cabeçalho X-Faculdade-Id).
     if tc.faculdade_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Não foi possível determinar a faculdade do aluno. "
-                   "Super admins devem usar POST /api/faculdades/{faculdade_id}/alunos.",
+                   "Selecione a instituição que está gerenciando ou use "
+                   "POST /api/faculdades/{faculdade_id}/alunos.",
         )
 
     existing = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()

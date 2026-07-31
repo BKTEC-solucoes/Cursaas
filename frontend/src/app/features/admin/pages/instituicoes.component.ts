@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '../../../../environments/environment';
+import { FaculdadeAtivaService } from '../../../core/services/faculdade-ativa.service';
 
 export interface Instituicao {
   id: number;
@@ -117,6 +118,15 @@ interface PageResponse {
                 <button class="btn-detail" (click)="verDetalhes(inst.id)">
                   &#128269; Detalhes
                 </button>
+                <button
+                  class="btn-manage"
+                  *ngIf="ehSuperAdmin && inst.ativa"
+                  [class.ativa]="inst.id === faculdadeAtivaId"
+                  (click)="gerenciar(inst)"
+                  [title]="inst.id === faculdadeAtivaId ? 'Já é a instituição em gestão' : 'Passar a gerenciar esta instituição'"
+                >
+                  {{ inst.id === faculdadeAtivaId ? '✓ Gerenciando' : '⚙️ Gerenciar' }}
+                </button>
               </td>
             </tr>
             <tr *ngIf="!carregando && instituicoes.length === 0">
@@ -198,6 +208,11 @@ interface PageResponse {
     .btn-detail { border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 7px; padding: 7px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
     .btn-detail:hover { background: #f3f4f6; border-color: #9ca3af; }
 
+    .btn-manage { border: none; background: #2c3e50; color: white; border-radius: 7px; padding: 7px 12px; margin-top: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.15s; white-space: nowrap; width: 100%; }
+    .btn-manage:hover       { background: #34495e; }
+    .btn-manage.ativa       { background: #dcfce7; color: #15803d; cursor: default; }
+    .btn-manage.ativa:hover { background: #dcfce7; }
+
     .empty-row { text-align: center; color: #9ca3af; padding: 40px; font-size: 14px; }
 
     .pagination { display: flex; align-items: center; gap: 6px; margin-top: 20px; flex-wrap: wrap; }
@@ -229,10 +244,30 @@ export class AdminInstituicoesComponent implements OnInit {
   total = 0;
   totalPages = 1;
 
-  constructor(private http: HttpClient, private router: Router) {}
+  ehSuperAdmin = false;
+  faculdadeAtivaId: number | null = null;
+
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private faculdadeAtiva: FaculdadeAtivaService,
+  ) {}
 
   ngOnInit(): void {
+    this.ehSuperAdmin     = this.faculdadeAtiva.ehSuperAdmin();
+    this.faculdadeAtivaId = this.faculdadeAtiva.faculdadeId;
     this.carregar();
+  }
+
+  /**
+   * Passa a gerenciar a instituição: a partir daí cursos, aulas, provas e alunos
+   * do painel são os dela. Recarrega em /admin porque cada tela busca os dados
+   * no ngOnInit, com o escopo vigente no momento da montagem.
+   */
+  gerenciar(inst: Instituicao): void {
+    if (inst.id === this.faculdadeAtivaId) return;
+    this.faculdadeAtiva.selecionar(inst.id);
+    window.location.href = '/admin/dashboard';
   }
 
   carregar(): void {

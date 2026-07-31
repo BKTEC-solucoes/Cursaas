@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ApiService } from '../../../shared/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { CursosService } from '../../../core/services/cursos.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -300,7 +300,7 @@ export class AdminDashboardComponent implements OnInit {
   totalProvas = 0;
   totalAulas = 0;
 
-  constructor(private apiService: ApiService, private authService: AuthService) {
+  constructor(private cursosService: CursosService, private authService: AuthService) {
     const usuario = this.authService.getCurrentUser();
     if (usuario) {
       this.usuarioNome = usuario.nome;
@@ -312,9 +312,12 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadStats(): void {
-    // Carrega dados dos endpoints da API
-    this.apiService.getCursos().subscribe({
-      next: (cursos: any) => {
+    // `/cursos/` é filtrado por tenant (a instituição em gestão, para o super
+    // admin). Antes isto lia `/cursos/catalogo`, o marketplace público, que
+    // exige `?faculdade=<slug>` e respondia 400 para quem não tem faculdade
+    // própria — o painel do super admin mostrava 0 cursos sempre.
+    this.cursosService.getCursos().subscribe({
+      next: (cursos) => {
         this.totalCursos = Array.isArray(cursos) ? cursos.length : 0;
       },
       error: () => this.totalCursos = 0

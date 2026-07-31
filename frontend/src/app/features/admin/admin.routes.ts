@@ -12,6 +12,7 @@ import { AdminPresencaComponent } from './pages/presenca.component';
 import { AdminAlunosComponent } from './pages/alunos.component';
 import { AdminAdministradoresComponent } from './pages/administradores.component';
 import { permissionGuard } from '../../core/guards/permission.guard';
+import { faculdadeAtivaGuard } from '../../core/guards/faculdade-ativa.guard';
 import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
 import { AdminInstituicoesComponent } from './pages/instituicoes.component';
 import { AdminInstituicaoDetalheComponent } from './pages/instituicao-detalhe.component';
@@ -21,90 +22,96 @@ export const ADMIN_ROUTES: Routes = [
   {
     path: '',
     component: AdminLayoutComponent,
+    // `faculdadeAtivaGuard` fica nas rotas filhas, não aqui: quando não há
+    // nenhuma faculdade cadastrada ele redireciona para /admin/instituicoes, e
+    // no pai esse redirecionamento cairia no próprio guard, em loop.
     children: [
       {
         path: 'dashboard',
-        component: AdminDashboardComponent
+        component: AdminDashboardComponent,
+        canActivate: [faculdadeAtivaGuard]
       },
       {
         path: 'cursos',
         component: AdminCursosComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['cursos:read'] }
       },
       {
         path: 'aulas',
         component: AdminAulasComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['aulas:read'] }
       },
       {
         path: 'aulas/nova',
         component: AdminAulaFormComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['aulas:write'] }
       },
       {
         path: 'aulas/:id/editar',
         component: AdminAulaFormComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['aulas:write'] }
       },
       {
         path: 'provas',
         component: AdminProvasComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['provas:read'] }
       },
       {
         path: 'provas/nova',
         component: AdminProvaFormComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['provas:write'] }
       },
       {
         path: 'provas/:id/editar',
         component: AdminProvaFormComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['provas:write'] }
       },
       {
         path: 'provas/:id/resultados',
         component: AdminProvaResultadosComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['provas:read'] }
       },
       {
         path: 'notas',
         component: AdminNotasComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['notas:read'] }
       },
       {
         path: 'presenca',
         component: AdminPresencaComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['presenca:read'] }
       },
       {
         path: 'alunos',
         component: AdminAlunosComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['alunos:read'] }
       },
       {
         path: 'administradores',
         component: AdminAdministradoresComponent,
-        canActivate: [permissionGuard],
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['administradores:read'] }
       },
       {
         path: 'solicitacoes',
-        component: AdminSolicitacoesComponent
+        component: AdminSolicitacoesComponent,
+        canActivate: [faculdadeAtivaGuard]
       },
       {
         path: 'cadastros',
-        component: AdminCadastrosComponent
+        component: AdminCadastrosComponent,
+        canActivate: [faculdadeAtivaGuard]
       },
       {
         path: 'instituicoes',

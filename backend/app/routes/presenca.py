@@ -191,22 +191,34 @@ async def atualizar_progresso_aula(
     aula_id: int,
     progress: PresencaProgressRequest,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Atualiza o progresso de visualização de uma aula (chamado pelo player de vídeo)
     Registra presença automaticamente quando atinge 75% de visualização
     """
+    # Sem esta checagem qualquer usuário autenticado gravava presença em nome de
+    # outro aluno — inclusive marcando aula como concluída.
+    if current_user.role.value != "admin" and current_user.id != aluno_id:
+        raise HTTPException(status_code=403, detail="Permissão negada")
+
     # Validar que o aluno existe e está ativo
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id, Usuario.ativo == True).first()
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado ou inativo")
-    
+
     # Validar que a aula existe
     aula = db.query(Aula).filter(Aula.id == aula_id, Aula.ativo == True).first()
     if not aula:
         raise HTTPException(status_code=404, detail="Aula não encontrada ou inativa")
-    
+
+    # Aula não tem faculdade_id: o tenant vem do curso (mesmo padrão das demais).
+    # O aluno já está limitado ao próprio progresso pela checagem acima.
+    if current_user.role.value == "admin":
+        curso = db.query(Curso).filter(Curso.id == aula.curso_id).first()
+        tc.assert_access(curso.faculdade_id if curso else None)
+
     # Buscar ou criar registro de presença
     presenca = db.query(Presenca).filter(
         Presenca.usuario_id == aluno_id,
@@ -256,25 +268,36 @@ async def get_presenca_aula(
     aluno_id: int,
     aula_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém presença de um aluno em uma aula específica
-    Aluno pode ver apenas seus registros, admin pode ver de qualquer aluno
+    Aluno pode ver apenas seus registros, admin pode ver de qualquer aluno —
+    dentro do próprio tenant.
     """
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
-    
+
     # Buscar presença
     presenca = db.query(Presenca).filter(
         Presenca.usuario_id == aluno_id,
         Presenca.aula_id == aula_id
     ).first()
-    
+
     if not presenca:
         raise HTTPException(status_code=404, detail="Presença não encontrada")
-    
+
+    if current_user.role.value == "admin":
+        curso = (
+            db.query(Curso)
+            .join(Aula, Aula.curso_id == Curso.id)
+            .filter(Aula.id == aula_id)
+            .first()
+        )
+        tc.assert_access(curso.faculdade_id if curso else None)
+
     return PresencaDetailResponse(
         id=presenca.id,
         usuario_id=presenca.usuario_id,
@@ -293,21 +316,26 @@ async def get_presenca_aula(
 async def get_presenca_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém todos os registros de presença de um aluno
-    Aluno pode ver apenas seus registros, admin pode ver de qualquer aluno
+    Aluno pode ver apenas seus registros, admin pode ver de qualquer aluno —
+    dentro do próprio tenant.
     """
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
-    
+
     # Validar que o aluno existe
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
-    
+
+    if current_user.role.value == "admin":
+        tc.assert_access(aluno.faculdade_id)
+
     # Buscar presenças com detalhes da aula (filtrando por cursos permitidos para admins restritos)
     query = db.query(Presenca).filter(Presenca.usuario_id == aluno_id)
     if current_user.role.value == "admin":

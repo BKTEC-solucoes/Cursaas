@@ -16,7 +16,7 @@ from app.schemas import (
     AulaDetailResponse,
 )
 from app.routes.auth import get_current_user, get_current_admin, _resolve_request_user
-from app.security.tenant import TenantContext, tenant_context
+from app.security.tenant import TenantContext, tenant_context, ler_escopo_faculdade
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
@@ -121,7 +121,9 @@ def list_catalogo(
     else:
         usuario = _resolve_request_user(request, db)
         if usuario is not None:
-            faculdade_id = usuario.faculdade_id
+            # Super admin não tem faculdade própria: vale a instituição que ele
+            # está gerenciando no painel.
+            faculdade_id = usuario.faculdade_id or ler_escopo_faculdade(request)
 
     if faculdade_id is None:
         raise HTTPException(
@@ -146,20 +148,27 @@ def list_catalogo(
 def list_all_courses_for_admin(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_admin),
+    tc: TenantContext = Depends(tenant_context),
 ):
-    """Lista cursos para o admin. Instrutores veem apenas seus cursos, super admin vê todos."""
+    """
+    Lista cursos para o admin, incluindo inativos e pendentes.
+
+    Instrutores veem apenas seus cursos; super admin vê os da faculdade que está
+    gerenciando (ou todas, se não houver escopo). Sem o `filter_query` esta rota
+    devolvia os cursos de todos os tenants a qualquer admin.
+    """
     try:
+        query = tc.filter_query(db.query(Curso), Curso.faculdade_id)
+
         allowed = get_allowed_course_ids(db, current_user)
-        
-        if allowed is None:
-            # Super admin: retorna todos
-            cursos = db.query(Curso).order_by(Curso.data_criacao.desc()).all()
-        else:
-            # Instrutor: retorna apenas seus cursos
+        if allowed is not None:
+            # Instrutor: restrito aos cursos vinculados a ele
             if not allowed:
                 return []
-            cursos = db.query(Curso).filter(Curso.id.in_(allowed)).order_by(Curso.data_criacao.desc()).all()
-        
+            query = query.filter(Curso.id.in_(allowed))
+
+        cursos = query.order_by(Curso.data_criacao.desc()).all()
+
         result = []
         for curso in cursos:
             try:
@@ -212,13 +221,15 @@ def create_curso(
     # Sem isto o curso nasce com faculdade_id NULL: some de toda listagem
     # filtrada por tenant e devolve 403 em qualquer assert_access.
     if tc.is_super_admin:
-        # Super admin não tem tenant próprio — precisa dizer de quem é o curso.
-        if curso_data.faculdade_id is None:
+        # Super admin não tem tenant próprio — o alvo vem do payload ou da
+        # faculdade que ele está gerenciando no painel (cabeçalho X-Faculdade-Id).
+        alvo = curso_data.faculdade_id or tc.faculdade_id
+        if alvo is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Super admin deve informar 'faculdade_id' ao criar um curso",
+                detail="Super admin deve selecionar uma faculdade ou informar 'faculdade_id' ao criar um curso",
             )
-        db_curso.faculdade_id = curso_data.faculdade_id
+        db_curso.faculdade_id = alvo
     else:
         tc.stamp(db_curso)
 

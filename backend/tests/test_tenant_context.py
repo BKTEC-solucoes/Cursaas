@@ -1,22 +1,30 @@
 """
 TenantContext — o invariante central do multi-tenant.
 
-Estes testes cobrem os TRÊS estados possíveis. O bug historico tratava
+Estes testes cobrem os QUATRO estados possíveis. O bug historico tratava
 "sem tenant" como "super admin", entregando todos os tenants a qualquer conta
 órfã (admin criado por convite, aluno não aprovado, conta legada).
+
+O quarto estado é o super admin com escopo: o painel administrativo gerenciando
+uma instituição por vez (cabeçalho ``X-Faculdade-Id``).
 
 Sem banco: TenantContext é lógica pura sobre um faculdade_id e uma flag.
 """
 import pytest
 from fastapi import HTTPException
 
-from app.security.tenant import TenantContext
+from app.security.tenant import TenantContext, ler_escopo_faculdade
 
 
-# ── Fábricas dos três estados ────────────────────────────────────────────────
+# ── Fábricas dos quatro estados ─────────────────────────────────────────────
 
 def super_admin() -> TenantContext:
     return TenantContext(faculdade_id=None, is_super_admin=True)
+
+
+def super_admin_com_escopo(fid: int = 1) -> TenantContext:
+    """Super admin gerenciando UMA faculdade — via cabeçalho X-Faculdade-Id."""
+    return TenantContext(faculdade_id=fid, is_super_admin=True, escopo_explicito=True)
 
 
 def do_tenant(fid: int = 1) -> TenantContext:
@@ -138,3 +146,57 @@ def test_orfao_recebe_filtro_que_nega_tudo():
     orfao().filter_query(q, "coluna")
     assert len(q.filtros) == 1
     assert "false" in str(q.filtros[0]).lower()
+
+
+# ── Super admin com escopo (painel gerenciando uma instituição) ──────────────
+
+def test_escopo_filtra_como_admin_do_tenant():
+    """Sem isso o painel mostrava cursos/aulas de todos os tenants misturados."""
+    q = _QueryFake()
+    super_admin_com_escopo(5).filter_query(q, "coluna")
+    assert len(q.filtros) == 1
+
+
+def test_escopo_acessa_a_faculdade_escolhida():
+    super_admin_com_escopo(5).assert_access(5)
+
+
+@pytest.mark.parametrize("recurso", [6, None])
+def test_escopo_bloqueia_fora_da_faculdade_escolhida(recurso):
+    """Trocar de faculdade é trocar o escopo, não furar o filtro."""
+    with pytest.raises(HTTPException) as exc:
+        super_admin_com_escopo(5).assert_access(recurso)
+    assert exc.value.status_code == 403
+
+
+def test_escopo_carimba_novos_registros():
+    """É o que permite ao super admin criar curso/aluno sem informar o tenant."""
+    obj = _Linha()
+    super_admin_com_escopo(5).stamp(obj)
+    assert obj.faculdade_id == 5
+
+
+def test_escopo_satisfaz_require_tenant():
+    assert super_admin_com_escopo(5).require_tenant() == 5
+
+
+# ── Leitura do cabeçalho de escopo ──────────────────────────────────────────
+
+class _RequestFake:
+    def __init__(self, valor=None):
+        self.headers = {} if valor is None else {"X-Faculdade-Id": valor}
+
+
+@pytest.mark.parametrize("valor", [None, "", "   ", "todas", "all", "null"])
+def test_escopo_ausente_ou_neutro_vira_none(valor):
+    assert ler_escopo_faculdade(_RequestFake(valor)) is None
+
+
+def test_escopo_numerico_e_lido():
+    assert ler_escopo_faculdade(_RequestFake("42")) == 42
+
+
+def test_escopo_invalido_e_erro_do_cliente():
+    with pytest.raises(HTTPException) as exc:
+        ler_escopo_faculdade(_RequestFake("abc"))
+    assert exc.value.status_code == 400

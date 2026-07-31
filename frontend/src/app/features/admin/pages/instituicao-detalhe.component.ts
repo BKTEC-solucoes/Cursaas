@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { FaculdadeAtivaService } from '../../../core/services/faculdade-ativa.service';
 
 interface Instituicao {
   id: number;
@@ -29,6 +30,11 @@ interface Instituicao {
       <div class="page-header">
         <button class="btn-back" (click)="voltar()">← Voltar</button>
         <h2>🏛️ Detalhes da Instituição</h2>
+        <button
+          class="btn-gerenciar"
+          *ngIf="podeGerenciar()"
+          (click)="gerenciar()"
+        >⚙️ Gerenciar esta instituição</button>
       </div>
 
       <div class="feedback error" *ngIf="erro">{{ erro }}</div>
@@ -148,6 +154,21 @@ interface Instituicao {
       transition: background 0.15s;
     }
     .btn-back:hover { background: #f3f4f6; }
+
+    .btn-gerenciar {
+      margin-left: auto;
+      border: none;
+      background: #2c3e50;
+      color: white;
+      border-radius: 8px;
+      padding: 9px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-gerenciar:hover { background: #34495e; }
 
     .feedback.error {
       padding: 13px 16px;
@@ -307,7 +328,24 @@ export class AdminInstituicaoDetalheComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private http: HttpClient,
+    private faculdadeAtiva: FaculdadeAtivaService,
   ) {}
+
+  /** Só faz sentido para o super admin, e só em instituição ativa. */
+  podeGerenciar(): boolean {
+    return this.faculdadeAtiva.ehSuperAdmin() && !!this.inst?.ativa;
+  }
+
+  /**
+   * Passa a gerenciar esta instituição: cursos, aulas, provas e alunos do painel
+   * passam a ser os dela. Recarrega em /admin para que as telas já montem com o
+   * novo escopo.
+   */
+  gerenciar(): void {
+    if (!this.inst) return;
+    this.faculdadeAtiva.selecionar(this.inst.id);
+    window.location.href = '/admin/dashboard';
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));

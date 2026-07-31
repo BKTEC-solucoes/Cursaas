@@ -67,10 +67,15 @@ Nearly every row carries `faculdade_id`. Two layers enforce isolation and **both
 | Estado | `is_super_admin` | `faculdade_id` | Efeito |
 |---|---|---|---|
 | super admin | `True` | `None` | sem filtro, vê todos os tenants |
+| super admin com escopo | `True` | `int` | filtra por `faculdade_id` (ver abaixo) |
 | vinculado | `False` | `int` | filtra por `faculdade_id` |
 | **sem tenant** | `False` | `None` | **não vê nada** (`WHERE false`, 403) |
 
 O terceiro estado é real: admin criado por convite, aluno não aprovado, conta legada. Tratá-lo como super admin era um vazamento entre tenants. Nunca derive isolamento de `faculdade_id is None` — use `TenantContext`. `get_current_faculdade_id` (em `routes/auth.py`) devolve `None` para os dois casos e por isso não serve para autorização.
+
+**Escopo do painel do super admin.** O super admin não tem tenant próprio, então o painel administrativo trabalha com **uma instituição por vez**: o front manda o cabeçalho `X-Faculdade-Id` em toda chamada a `/api` (`authInterceptor` + `FaculdadeAtivaService`) e `tenant_context` devolve um `TenantContext` com `is_super_admin=True` **e** `faculdade_id` preenchido — listagens filtram, `assert_access` bloqueia fora do escopo e `stamp` carimba a instituição escolhida. `faculdadeAtivaGuard` fixa a seleção (primeira faculdade ativa) antes de qualquer rota de `/admin` abrir, e o seletor no cabeçalho do `AdminLayoutComponent` troca de instituição (com reload, porque cada tela carrega os dados no `ngOnInit`). Para usuários com vínculo o cabeçalho não amplia nada: só é aceito se coincidir com o `faculdade_id` real, senão 403. É conveniência de UI, não fronteira de segurança — o valor vem do cliente. As rotas de `/api/faculdades` (gestão das instituições) seguem globais, sem `TenantContext`. As rotas que são super-admin-only e não usam `TenantContext` (`/api/cadastro/admin/*`, `/api/convites`) leem o cabeçalho direto via `ler_escopo_faculdade(request)` e o aplicam como filtro padrão.
+
+`ConviteAdmin` ganhou `faculdade_id` (`database/migration_convite_faculdade.sql`, **precisa ser aplicada à mão em bancos existentes**): o admin convidado nasce vinculado à instituição que estava em gestão quando o convite foi enviado. Sem isso ele caía no estado "sem tenant" — logava e não via nada.
 
 For entities without a direct `faculdade_id` (e.g. `Aula`, `CourseRequest`), join through `Curso` and filter on `Curso.faculdade_id`. The middleware logs a `TENANT_AUDIT` warning when a 2xx response came from a non-super-admin with no tenant — that's the signal an endpoint forgot `TenantContext`.
 

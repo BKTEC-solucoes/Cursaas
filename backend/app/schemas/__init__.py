@@ -743,12 +743,17 @@ class AdminListResponse(BaseModel):
 class ConviteAdminCreate(BaseModel):
     email: EmailStr
     admin_role: AdminRoleEnum = AdminRoleEnum.instrutor
+    # Opcional: por padrão vale a instituição que o super admin está gerenciando
+    # no painel (cabeçalho X-Faculdade-Id).
+    faculdade_id: Optional[int] = None
 
 
 class ConviteAdminResponse(BaseModel):
     id: int
     email: EmailStr
     admin_role: AdminRoleEnum
+    faculdade_id: Optional[int] = None
+    faculdade_nome: Optional[str] = None
     usado: bool
     data_criacao: datetime
     data_expiracao: datetime

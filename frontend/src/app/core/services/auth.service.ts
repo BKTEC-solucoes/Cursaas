@@ -112,6 +112,10 @@ export class AuthService {
   private limparSessao(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('tenant_theme');
+    // Instituição que o super admin estava gerenciando (FaculdadeAtivaService).
+    // Removida aqui também porque limparSessao() roda em caminhos que não
+    // passam pelo botão Sair — token expirado, 401 do interceptor.
+    localStorage.removeItem('faculdade_ativa_id');
     this.tokenSubject.next(null);
     this.currentUserSubject.next(null);
   }

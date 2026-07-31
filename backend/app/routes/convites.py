@@ -10,12 +10,12 @@ DELETE /api/convites/{id}    → Revoga convite não usado
 import secrets
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.config import settings
-from app.models import Usuario, RoleEnum, AdminRoleEnum as ModelAdminRoleEnum, ConviteAdmin
+from app.models import Usuario, RoleEnum, AdminRoleEnum as ModelAdminRoleEnum, ConviteAdmin, Faculdade
 from app.schemas import (
     ConviteAdminCreate,
     ConviteAdminResponse,
@@ -26,6 +26,7 @@ from app.schemas import (
 from app.services.auth_service import AuthService
 from app.services.email_service import enviar_convite
 from app.routes.auth import get_current_user
+from app.security.tenant import ler_escopo_faculdade
 
 router = APIRouter()
 
@@ -33,6 +34,44 @@ _ROLE_LABELS: dict[str, str] = {
     "super_admin": "Super Admin",
     "instrutor":   "Instrutor",
 }
+
+
+def _resolver_faculdade_do_convite(
+    request,
+    dados: ConviteAdminCreate,
+    current_user: Usuario,
+    db: Session,
+) -> int | None:
+    """
+    Decide em que faculdade o admin convidado vai nascer.
+
+    Prioridade: ``faculdade_id`` do payload → instituição que o super admin está
+    gerenciando no painel (``X-Faculdade-Id``) → vínculo do próprio convidante
+    (caso do admin legado). Sem nenhuma das três o convite cria uma conta órfã,
+    que loga mas não enxerga nada — por isso o instrutor exige faculdade.
+    """
+    faculdade_id = dados.faculdade_id or ler_escopo_faculdade(request) or current_user.faculdade_id
+
+    if faculdade_id is None:
+        # Super admin é global por definição; instrutor sem tenant é conta morta.
+        if dados.admin_role == AdminRoleEnum.super_admin:
+            return None
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selecione a instituição do convidado antes de enviar o convite",
+        )
+
+    existe = (
+        db.query(Faculdade.id)
+        .filter(Faculdade.id == faculdade_id, Faculdade.ativa == True)
+        .first()
+    )
+    if not existe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Faculdade não encontrada ou inativa",
+        )
+    return faculdade_id
 
 
 def _exige_super_admin(current_user: Usuario) -> None:
@@ -51,11 +90,14 @@ def _exige_super_admin(current_user: Usuario) -> None:
 
 @router.post("", response_model=ConviteAdminResponse, status_code=status.HTTP_201_CREATED)
 def enviar_convite_admin(
+    request: Request,
     dados: ConviteAdminCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     _exige_super_admin(current_user)
+
+    faculdade_id = _resolver_faculdade_do_convite(request, dados, current_user, db)
 
     email_lower = dados.email.strip().lower()
 
@@ -89,6 +131,7 @@ def enviar_convite_admin(
         token=token,
         email=email_lower,
         admin_role=ModelAdminRoleEnum(dados.admin_role.value),
+        faculdade_id=faculdade_id,
         convidado_por_id=current_user.id,
         usado=False,
         data_criacao=datetime.utcnow(),
@@ -124,12 +167,22 @@ def enviar_convite_admin(
 
 @router.get("", response_model=list[ConviteAdminResponse])
 def listar_convites(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     _exige_super_admin(current_user)
+
+    query = db.query(ConviteAdmin)
+
+    # Gerenciando uma instituição: mostra só os convites dela. Sem escopo, a
+    # lista continua global (visão do super admin).
+    escopo = ler_escopo_faculdade(request) or current_user.faculdade_id
+    if escopo is not None:
+        query = query.filter(ConviteAdmin.faculdade_id == escopo)
+
     convites = (
-        db.query(ConviteAdmin)
+        query
         .order_by(ConviteAdmin.data_criacao.desc())
         .limit(200)
         .all()
@@ -169,6 +222,9 @@ def aceitar_convite(dados: AceitarConviteRequest, db: Session = Depends(get_db))
         senha=dados.senha,
         role="admin",
         admin_role=convite.admin_role,
+        # Sem o vínculo a conta nasce órfã: loga, mas toda listagem volta vazia
+        # e toda escrita responde 403.
+        faculdade_id=convite.faculdade_id,
     )
 
     # Marcar como usado — invalidação imediata (sem reutilização)
@@ -220,6 +276,8 @@ def _to_response(convite: ConviteAdmin, db: Session) -> ConviteAdminResponse:
         id=convite.id,
         email=convite.email,
         admin_role=AdminRoleEnum(convite.admin_role.value),
+        faculdade_id=convite.faculdade_id,
+        faculdade_nome=convite.faculdade.nome if convite.faculdade else None,
         usado=convite.usado,
         data_criacao=convite.data_criacao,
         data_expiracao=convite.data_expiracao,

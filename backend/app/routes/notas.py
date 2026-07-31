@@ -116,25 +116,32 @@ async def get_nota_prova(
     aluno_id: int,
     prova_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém a nota de um aluno em uma prova específica
-    Aluno pode ver sua nota, admin vê de qualquer um
+    Aluno pode ver sua nota, admin vê de qualquer um — dentro do próprio tenant.
     """
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
-    
+
     # Buscar nota
     nota = db.query(Nota).filter(
         Nota.usuario_id == aluno_id,
         Nota.prova_id == prova_id
     ).first()
-    
+
     if not nota:
         raise HTTPException(status_code=404, detail="Nota não encontrada")
-    
+
+    # Sem esta checagem a rota entregava a nota de qualquer aluno de qualquer
+    # faculdade — basta conhecer os dois ids. O aluno já está limitado a si
+    # mesmo pela checagem acima; o assert é o que falta para o admin.
+    if current_user.role.value == "admin":
+        tc.assert_access(nota.prova.faculdade_id if nota.prova else None)
+
     return NotaDetailResponse(
         id=nota.id,
         usuario_id=nota.usuario_id,
@@ -206,7 +213,8 @@ async def atualizar_nota(
 async def get_notas_curso(
     curso_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém relatório detalhado de notas de um curso (admin only)
@@ -215,14 +223,15 @@ async def get_notas_curso(
     # Verificar se é admin
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode acessar relatórios de notas")
-    
-    ensure_admin_can_access_course(db, current_user, curso_id)
-    
+
     # Validar que o curso existe
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso não encontrado")
-    
+
+    tc.assert_access(curso.faculdade_id)
+    ensure_admin_can_access_course(db, current_user, curso_id)
+
     # Buscar todas as notas do curso através das provas
     prova_ids = db.query(Prova.id).filter(Prova.curso_id == curso_id).all()
     prova_ids = [p[0] for p in prova_ids]
@@ -276,7 +285,8 @@ async def calcular_media_curso(
     aluno_id: int,
     curso_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Calcula a média final de um aluno em um curso (admin only)
@@ -285,19 +295,22 @@ async def calcular_media_curso(
     # Verificar se é admin
     if current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Apenas admin pode calcular médias")
-    
-    ensure_admin_can_access_course(db, current_user, curso_id)
-    
+
     # Validar que o aluno existe
     aluno = db.query(Usuario).filter(Usuario.id == aluno_id).first()
     if not aluno:
         raise HTTPException(status_code=404, detail="Aluno não encontrado")
-    
+
     # Validar que o curso existe
     curso = db.query(Curso).filter(Curso.id == curso_id).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso não encontrado")
-    
+
+    # Escrita: aluno e curso precisam ser do tenant do chamador.
+    tc.assert_access(curso.faculdade_id)
+    tc.assert_access(aluno.faculdade_id)
+    ensure_admin_can_access_course(db, current_user, curso_id)
+
     # Buscar todas as provas do curso
     provas = db.query(Prova).filter(Prova.curso_id == curso_id).all()
     if not provas:
@@ -381,19 +394,28 @@ async def get_nota_curso_aluno(
     aluno_id: int,
     curso_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tc: TenantContext = Depends(tenant_context),
 ):
     """
     Obtém a nota (média) de um aluno em um curso específico
-    Aluno pode ver sua nota, admin vê de qualquer um
+    Aluno pode ver sua nota, admin vê de qualquer um — dentro do próprio tenant.
     """
     # Verificar permissão
     if current_user.role.value != "admin" and current_user.id != aluno_id:
         raise HTTPException(status_code=403, detail="Permissão negada")
-    
+
+    curso = db.query(Curso).filter(Curso.id == curso_id).first()
+    if not curso:
+        raise HTTPException(status_code=404, detail="Curso não encontrado")
+
+    # O aluno já está limitado às próprias notas; o assert fecha o acesso
+    # cruzado do admin, que podia ler a média de qualquer curso de qualquer
+    # faculdade.
     if current_user.role.value == "admin":
+        tc.assert_access(curso.faculdade_id)
         ensure_admin_can_access_course(db, current_user, curso_id)
-    
+
     # Buscar NotaCurso
     nota_curso = db.query(NotaCurso).filter(
         NotaCurso.usuario_id == aluno_id,

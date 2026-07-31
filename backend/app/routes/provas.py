@@ -148,6 +148,9 @@ async def create_prova(
     # Criar nova prova (sem questões)
     prova_data = prova.model_dump(exclude={'questoes'})
     db_prova = Prova(**prova_data)
+    # Sem isto a prova nasce com faculdade_id NULL e some de toda listagem
+    # filtrada por tenant. O curso é a fonte da verdade — a prova é dele.
+    db_prova.faculdade_id = curso.faculdade_id
     db.add(db_prova)
     db.commit()
     db.refresh(db_prova)

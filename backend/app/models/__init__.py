@@ -307,6 +307,9 @@ class ConviteAdmin(Base):
     token = Column(String(128), unique=True, nullable=False, index=True)
     email = Column(String(255), nullable=False, index=True)
     admin_role = Column(Enum(AdminRoleEnum), nullable=False, default=AdminRoleEnum.instrutor)
+    # Faculdade em que o admin convidado vai nascer. NULL só em convites antigos:
+    # sem ela a conta criada fica órfã (sem tenant) e não enxerga nada.
+    faculdade_id = Column(Integer, ForeignKey("faculdades.id", ondelete="CASCADE"), nullable=True, index=True)
     # quem enviou o convite
     convidado_por_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     # controle de estado
@@ -316,6 +319,7 @@ class ConviteAdmin(Base):
     data_uso = Column(DateTime, nullable=True)
 
     convidado_por = relationship("Usuario", foreign_keys=[convidado_por_id])
+    faculdade = relationship("Faculdade", foreign_keys=[faculdade_id])
 
 
 class AdminCurso(Base):

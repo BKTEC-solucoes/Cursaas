@@ -16,7 +16,7 @@ from app.config import settings
 # get_current_user vive em security/deps.py para quebrar o ciclo de import com
 # security/tenant.py; reexportado aqui porque as rotas importam daqui.
 from app.security.deps import get_current_user
-from app.security.tenant import TenantContext, tenant_context
+from app.security.tenant import TenantContext, tenant_context, ler_escopo_faculdade
 
 router = APIRouter()
 security = HTTPBearer()
@@ -267,6 +267,17 @@ def admin_registro(
             detail="Email já registrado"
         )
     
+    # Faculdade do novo admin: quem tem vínculo próprio cria dentro dele; o
+    # super admin cria dentro da instituição que está gerenciando no painel
+    # (cabeçalho X-Faculdade-Id). Sem isso o admin nascia órfão — sem
+    # faculdade_id ele não aparece em nenhuma listagem filtrada por tenant.
+    faculdade_do_novo_admin: Optional[int] = None
+    if current_user is not None:
+        if current_user.admin_role == ModelAdminRoleEnum.super_admin:
+            faculdade_do_novo_admin = ler_escopo_faculdade(request)
+        else:
+            faculdade_do_novo_admin = current_user.faculdade_id
+
     # Criar novo usuário
     user = AuthService.create_user(
         db=db,
@@ -275,6 +286,7 @@ def admin_registro(
         senha=usuario_data.senha,
         role="admin",
         admin_role=usuario_data.admin_role,
+        faculdade_id=faculdade_do_novo_admin,
         foto_perfil=usuario_data.foto_perfil,
         telefone=usuario_data.telefone,
         sexo=usuario_data.sexo,

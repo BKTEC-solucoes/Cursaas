@@ -1,12 +1,13 @@
 from math import ceil
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Faculdade, FaculdadeTema, TemaPreset, VinculoAlunoFaculdade, Usuario, RoleEnum
 from app.routes.auth import get_current_super_admin, get_current_user
+from app.security.tenant import ler_escopo_faculdade
 from app.schemas import (
     FaculdadeCreate,
     FaculdadeUpdate,
@@ -312,6 +313,27 @@ def _guard_tenant(user: Usuario, faculdade_id: int) -> None:
 # White-label: helpers
 # ---------------------------------------------------------------------------
 
+def _faculdade_do_painel(request: Request, user: Usuario, db: Session) -> Faculdade:
+    """
+    Resolve a faculdade das rotas ``/minha/...`` para quem administra.
+
+    Ordem: vínculo do próprio usuário → instituição que o super admin está
+    gerenciando no painel (``X-Faculdade-Id``). Sem nenhuma das duas, 404.
+
+    Existe porque o super admin não tem faculdade própria: sem isto o painel dele
+    respondia 422 em ``/minha/tema`` a cada navegação, e o PUT caía em
+    ``_ensure_faculdade``, que criaria uma faculdade fantasma chamada "Super
+    Admin" e ainda vincularia a conta a ela.
+    """
+    faculdade_id = user.faculdade_id or ler_escopo_faculdade(request)
+    if faculdade_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhuma instituição em gestão. Selecione uma no painel.",
+        )
+    return _get_or_404(db, faculdade_id)
+
+
 def _ensure_faculdade(db: Session, user: Usuario) -> Faculdade:
     """Retorna a Faculdade do usuário, criando uma nova se ainda não existir.
     Isso cobre usuários de instituição criados antes da migração multi-tenant.
@@ -416,29 +438,27 @@ def _assert_tema_owner(tema: FaculdadeTema, faculdade_id: int) -> None:
     ),
 )
 def obter_meu_tema(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     from app.models import AdminRoleEnum as ModelAdminRoleEnum
 
-    # Super admin sem faculdade_id vinculado não tem tema próprio
-    is_super_admin_sem_tenant = (
-        current_user.admin_role == ModelAdminRoleEnum.super_admin
-        and not current_user.faculdade_id
-    )
-    if is_super_admin_sem_tenant:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Super admins sem faculdade vinculada não possuem tema próprio",
-        )
+    faculdade_id = current_user.faculdade_id or ler_escopo_faculdade(request)
 
-    if not current_user.faculdade_id:
+    # Super admin sem faculdade vinculada NEM instituição em gestão não tem tema.
+    if faculdade_id is None:
+        if current_user.admin_role == ModelAdminRoleEnum.super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Super admins sem faculdade vinculada não possuem tema próprio",
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuário não está vinculado a nenhuma faculdade",
         )
 
-    f = db.query(Faculdade).filter(Faculdade.id == current_user.faculdade_id).first()
+    f = db.query(Faculdade).filter(Faculdade.id == faculdade_id).first()
     if not f:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -454,6 +474,7 @@ def obter_meu_tema(
     summary="Atualizar tema ativo (admin)",
 )
 def atualizar_meu_tema(
+    request: Request,
     payload: FaculdadeTemaUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
@@ -468,7 +489,12 @@ def atualizar_meu_tema(
 
     from app.services.color_palette import generate_palette, validate_contrast
 
-    f = _ensure_faculdade(db, current_user)
+    # Super admin edita o tema da instituição em gestão. `_ensure_faculdade` só
+    # vale para quem tem vínculo — para ele criaria uma faculdade fantasma.
+    if current_user.faculdade_id:
+        f = _ensure_faculdade(db, current_user)
+    else:
+        f = _faculdade_do_painel(request, current_user, db)
 
     data = payload.model_dump(exclude_unset=True)
 
@@ -535,12 +561,11 @@ def atualizar_meu_tema(
     summary="Listar todos os temas da minha faculdade",
 )
 def listar_meus_temas(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    if not current_user.faculdade_id:
-        raise HTTPException(status_code=404, detail="Sem faculdade vinculada")
-    f = _get_or_404(db, current_user.faculdade_id)
+    f = _faculdade_do_painel(request, current_user, db)
     temas = db.query(FaculdadeTema).filter(FaculdadeTema.faculdade_id == f.id).order_by(FaculdadeTema.criado_em).all()
     return [
         FaculdadeTemaListItem(
@@ -561,6 +586,7 @@ def listar_meus_temas(
     summary="Criar novo tema",
 )
 def criar_tema(
+    request: Request,
     payload: FaculdadeTemaCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
@@ -569,12 +595,10 @@ def criar_tema(
     if current_user.role not in (ModelRoleEnum.admin, ModelRoleEnum.instituicao) \
             and not current_user.admin_role:
         raise HTTPException(status_code=403, detail="Sem permissão")
-    if not current_user.faculdade_id:
-        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
 
     from app.services.color_palette import generate_palette
 
-    f = _get_or_404(db, current_user.faculdade_id)
+    f = _faculdade_do_painel(request, current_user, db)
 
     data = payload.model_dump()
     if data.get("primary_color"):
@@ -627,14 +651,13 @@ def criar_tema(
     summary="Atualizar tema específico",
 )
 def atualizar_tema(
+    request: Request,
     tema_id: int,
     payload: FaculdadeTemaUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    if not current_user.faculdade_id:
-        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
-    f = _get_or_404(db, current_user.faculdade_id)
+    f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
         raise HTTPException(status_code=404, detail="Tema não encontrado")
@@ -687,13 +710,12 @@ def atualizar_tema(
     summary="Ativar tema (trocar tema em uso)",
 )
 def ativar_tema(
+    request: Request,
     tema_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    if not current_user.faculdade_id:
-        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
-    f = _get_or_404(db, current_user.faculdade_id)
+    f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
         raise HTTPException(status_code=404, detail="Tema não encontrado")
@@ -710,13 +732,12 @@ def ativar_tema(
     summary="Excluir tema (não pode ser o ativo)",
 )
 def excluir_tema(
+    request: Request,
     tema_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    if not current_user.faculdade_id:
-        raise HTTPException(status_code=403, detail="Sem faculdade vinculada")
-    f = _get_or_404(db, current_user.faculdade_id)
+    f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
         raise HTTPException(status_code=404, detail="Tema não encontrado")
