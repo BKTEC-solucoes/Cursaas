@@ -36,6 +36,26 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", str(500 * 1024 * 1024)))
     ALLOWED_VIDEO_FORMATS: list = ["mp4", "webm", "avi", "mov"]
 
+    # Entrega de vídeo
+    #
+    # O byte do vídeo não sai mais pelo processo Python: a rota autoriza e
+    # delega ao nginx via X-Accel-Redirect. Isso devolve range request e seek,
+    # que o download por XHR não tinha.
+    #
+    # Só funciona atrás do nginx (o header não significa nada para o uvicorn
+    # sozinho), então o default é desligado — para `uvicorn --reload` a rota cai
+    # no FileResponse de antes. O Compose liga explicitamente.
+    VIDEO_X_ACCEL: bool = os.getenv("VIDEO_X_ACCEL", "false").lower() == "true"
+
+    # Location `internal` que o nginx expõe sobre uploads/videos.
+    VIDEO_X_ACCEL_PREFIX: str = os.getenv("VIDEO_X_ACCEL_PREFIX", "/_video/")
+
+    # Validade da URL assinada. Curta de propósito: a assinatura não carrega
+    # usuário nem tenant (o `<video src>` não manda header nenhum), então quem
+    # tiver o link entra. O TTL é o que limita o estrago de um link vazado —
+    # precisa cobrir o início da reprodução, não a aula inteira.
+    VIDEO_URL_TTL_SECONDS: int = int(os.getenv("VIDEO_URL_TTL_SECONDS", "900"))
+
     # SMTP (deixado em branco desativa envio real — apenas loga o link)
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))

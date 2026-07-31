@@ -95,7 +95,7 @@ JWT claims: `sub` (email), `role`, `admin_role`, `user_id`, `nome`, `faculdade_i
 
 ### Backend layout (`backend/app/`)
 
-- `main.py` — creates the app, runs `Base.metadata.create_all()` **no lifespan** (startup, não no import — o módulo importa sem tocar no banco), mounts `/uploads/profile_pictures` as static, registers 13 routers. Vídeos **não** são servidos como estático: passam por `/api/aulas/video/{filename}`, que exige auth e checa tenant.
+- `main.py` — creates the app, runs `Base.metadata.create_all()` **no lifespan** (startup, não no import — o módulo importa sem tocar no banco), mounts `/uploads/profile_pictures` as static, registers 13 routers. Vídeos **não** são servidos como estático — ver "Entrega de vídeo" abaixo.
 - `security/deps.py` — `get_current_user`, isolado para evitar ciclo de import.
 - `models/__init__.py` — **all** ORM models and enums live here (~570 lines). `models/models.py` is only a re-export shim for legacy imports; don't add models to it.
 - `schemas/__init__.py` — all Pydantic schemas in one file (~1250 lines).
@@ -114,7 +114,22 @@ Standalone bootstrap in `main.ts`, no NgModules. `app.routes.ts` lazy-loads `fea
 
 **API base URL vem sempre de `environment`.** `environment.ts` (dev) usa URLs absolutas (`http://localhost:8000/api`); `environment.prod.ts` usa caminhos relativos (`/api`, `/uploads`, `/auth/google`), trocado por `fileReplacements` no `angular.json`. Nenhum `localhost` sobrevive ao build de produção — não reintroduza literais.
 
-`VideoService` (`core/services/video.service.ts`) baixa vídeo via `HttpClient` e devolve object URL, porque `<video src>` não manda header e o endpoint exige `Authorization`. Custo: download integral antes de tocar, sem seek.
+`VideoService` (`core/services/video.service.ts`) pede a URL assinada e devolve a string pronta para `<video [src]>` — ver "Entrega de vídeo" abaixo. Cacheia por arquivo; `liberar()` no `ngOnDestroy` descarta o cache, porque a URL expira.
+
+### Entrega de vídeo
+
+Autorização e entrega são **duas requisições distintas**, porque `<video src>` não envia cabeçalho nenhum:
+
+1. `GET /api/aulas/video/{filename}/url` — autenticada. Resolve o vídeo pelo sufixo de `caminho_arquivo`, aplica `tc.assert_access(curso.faculdade_id)` e devolve `{"url": "/aulas/video/...?exp=...&sig=..."}`. **Este é o único ponto onde o tenant é verificado.**
+2. `GET /api/aulas/video/{filename}?exp&sig` — sem dependência de auth, de propósito. Só valida o HMAC (`app/services/video_url.py`, chave = `SECRET_KEY`).
+
+Com `VIDEO_X_ACCEL=true` (definido no serviço `backend` do Compose, não no `.env`) o passo 2 responde 200 vazio com `X-Accel-Redirect: /_video/<arquivo>`, e o nginx entrega o arquivo pela location `internal` — o byte não passa pelo processo Python, e o player ganha range request e seek. Sem a flag cai no `FileResponse`, que é o caminho do `uvicorn --reload`.
+
+Duas armadilhas:
+- A location `/_video/` precisa existir em **ambas** as configs (`default.conf` e `default.tls.conf`) e o volume `uploads_data` precisa estar montado no container do **nginx** — senão o FastAPI responde 200 e o 404 só aparece no log do nginx.
+- Não adicione `/api/aulas/video/` a `_PUBLIC_PREFIXES`: a allowlist casa por prefixo e engoliria a rota `/url`, que sairia do middleware sem `request.state.faculdade_id` e quebraria o `tenant_context`.
+
+A assinatura cobre arquivo + expiração, não usuário nem tenant — um link repassado funciona até vencer. O controle é o TTL (`VIDEO_URL_TTL_SECONDS`, 15 min).
 
 ### White-label theming
 
@@ -163,4 +178,4 @@ docker exec -i cursaas-db-1 mysql -u root -p cursaas < database/migration_xyz.sq
 
 ## Environment variables
 
-Set in `.env` (root, for Compose) and/or `backend/.env` (for standalone runs): `DB_*` + `DATABASE_URL`, `SECRET_KEY` (≥32 chars), `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `UPLOAD_DIR`, `MAX_FILE_SIZE`, `ALLOWED_ORIGINS`, `FRONTEND_URL` (invite links), `INVITE_EXPIRE_HOURS`, `SMTP_*`, `PERCENTUAL_PRESENCA_MINIMA_PADRAO`. The Google client ID lives in `frontend/src/environments/environment.ts` and can be set with `scripts/set-google-client-id.ps1`.
+Set in `.env` (root, for Compose) and/or `backend/.env` (for standalone runs): `DB_*` + `DATABASE_URL`, `SECRET_KEY` (≥32 chars), `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `UPLOAD_DIR`, `MAX_FILE_SIZE`, `VIDEO_X_ACCEL`, `VIDEO_URL_TTL_SECONDS`, `ALLOWED_ORIGINS`, `FRONTEND_URL` (invite links), `INVITE_EXPIRE_HOURS`, `SMTP_*`, `PERCENTUAL_PRESENCA_MINIMA_PADRAO`. The Google client ID lives in `frontend/src/environments/environment.ts` and can be set with `scripts/set-google-client-id.ps1`.

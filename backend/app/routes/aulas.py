@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -7,9 +7,11 @@ from app.schemas import AulaCreate, AulaUpdate, AulaResponse, AulaDetailResponse
 import os
 import shutil
 from pathlib import Path
+from urllib.parse import quote
 from app.config import settings
 from app.routes.auth import get_current_user
 from app.security.tenant import TenantContext, tenant_context
+from app.services.video_url import assinar_url_video, verificar_assinatura
 from app.services.admin_course_access import get_allowed_course_ids, ensure_admin_can_access_course
 
 router = APIRouter()
@@ -283,33 +285,53 @@ def upload_video(
             detail=f"Erro ao fazer upload do vídeo: {str(e)}"
         )
 
-@router.get("/video/{filename}")
-def get_video_file(
+def _resolver_caminho_video(filename: str) -> Path:
+    """
+    Confina `filename` (que vem da URL) em uploads/videos.
+
+    Normaliza para que nenhuma sequência de travessia ("..", caminho absoluto)
+    escape do diretório. Levanta 404 quando o arquivo não existe ou escapou.
+    """
+    videos_dir = Path(settings.UPLOAD_DIR).resolve() / "videos"
+    file_path = (videos_dir / filename).resolve()
+
+    if not file_path.is_file() or videos_dir not in file_path.parents:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vídeo não encontrado"
+        )
+
+    return file_path
+
+
+@router.get("/video/{filename}/url")
+def get_video_url(
     filename: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
     tc: TenantContext = Depends(tenant_context),
 ):
     """
-    Serve arquivos de vídeo para reprodução.
+    Autoriza o acesso ao vídeo e devolve a URL assinada de reprodução.
 
-    Exige `Authorization: Bearer`. O frontend não pode usar `<video src>` direto
-    aqui — precisa baixar via HttpClient (que passa pelo authInterceptor) e
-    reproduzir a partir de uma object URL. Ver `VideoService` no Angular.
+    Este é o ponto onde o tenant é verificado. A rota de entrega
+    (`GET /video/{filename}`) não tem como fazer essa checagem, porque o
+    `<video src>` não envia `Authorization` — ela confia na assinatura emitida
+    aqui. Ver `app/services/video_url.py`.
 
     **Parâmetros:**
     - `filename` (str): Nome do arquivo de vídeo
 
     **Retorna:**
-    - Arquivo de vídeo para streaming
+    - `{"url": "/aulas/video/...?exp=...&sig=..."}` — caminho relativo à base da API
 
     **Erros:**
     - 403: Vídeo pertence a um curso de outro tenant
     - 404: Vídeo não encontrado
     """
     # O vídeo precisa existir em `videos` para que exista um curso — e portanto
-    # um tenant — contra o qual autorizar. Servir pelo nome do arquivo sem esta
-    # busca deixaria qualquer autenticado baixar mídia de qualquer faculdade.
+    # um tenant — contra o qual autorizar. Assinar pelo nome do arquivo sem esta
+    # busca deixaria qualquer autenticado obter mídia de qualquer faculdade.
     #
     # `caminho_arquivo` guarda o path completo gravado no upload (separador varia
     # com o SO), então casamos pelo sufixo. Wildcards de LIKE vindos da URL são
@@ -330,22 +352,63 @@ def get_video_file(
     curso = db.query(Curso).filter(Curso.id == aula.curso_id).first() if aula else None
     tc.assert_access(curso.faculdade_id if curso else None)
 
-    # `filename` vem da URL: normaliza e confina em uploads/videos para que
-    # nenhuma sequência de travessia ("..", caminho absoluto) escape do diretório.
-    videos_dir = Path(settings.UPLOAD_DIR).resolve() / "videos"
-    file_path = (videos_dir / filename).resolve()
+    # Falha cedo se o registro estiver órfão do arquivo — melhor 404 aqui do que
+    # uma URL assinada que só quebra quando o player tenta tocar.
+    _resolver_caminho_video(filename)
 
-    if not file_path.is_file() or videos_dir not in file_path.parents:
+    return {"url": assinar_url_video(filename)}
+
+
+@router.get("/video/{filename}")
+def get_video_file(
+    filename: str,
+    exp: int = Query(..., description="Timestamp de expiração da assinatura"),
+    sig: str = Query(..., description="Assinatura HMAC emitida por /video/{filename}/url"),
+):
+    """
+    Entrega o arquivo de vídeo. **Sem dependência de autenticação, de propósito.**
+
+    Quem autoriza é `GET /video/{filename}/url`, que checa o tenant e emite a
+    assinatura. Aqui só a assinatura é validada — o `<video src>` do navegador
+    não envia `Authorization`, e é justamente por isso que o player ganhou range
+    request e seek.
+
+    Com `VIDEO_X_ACCEL` ligado (Compose), o byte não sai por este processo: a
+    resposta é só um `X-Accel-Redirect` e o nginx entrega o arquivo. Sem ele
+    (`uvicorn` standalone), cai no FileResponse.
+
+    **Erros:**
+    - 403: assinatura inválida ou expirada
+    - 404: vídeo não encontrado
+    """
+    # NÃO adicione este caminho a `_PUBLIC_PREFIXES` no TenantMiddleware. A rota
+    # já dispensa auth por não declarar a dependência, e a allowlist casa por
+    # PREFIXO: "/api/aulas/video/" engoliria também "/video/{filename}/url", que
+    # sairia do middleware sem `request.state.faculdade_id` — quebrando o
+    # `tenant_context` justamente na rota que faz a autorização.
+    if not verificar_assinatura(filename, exp, sig):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vídeo não encontrado"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Link de vídeo inválido ou expirado"
         )
 
-    return FileResponse(
-        file_path, 
-        media_type="video/mp4",
-        headers={"Accept-Ranges": "bytes"}
-    )
+    file_path = _resolver_caminho_video(filename)
+
+    if settings.VIDEO_X_ACCEL:
+        # O corpo vai vazio; o nginx substitui pelo arquivo da location interna.
+        # `quote` porque o header carrega uma URI, não um path de sistema.
+        destino = f"{settings.VIDEO_X_ACCEL_PREFIX}{quote(file_path.name)}"
+        return Response(
+            status_code=status.HTTP_200_OK,
+            headers={"X-Accel-Redirect": destino},
+        )
+
+    # Fallback de desenvolvimento. SEM "Accept-Ranges: bytes": o FileResponse do
+    # Starlette 0.27 ignora o header Range e devolve 200 com o arquivo inteiro,
+    # então anunciar suporte a range só faz o player pedir seek e receber o
+    # arquivo todo. Quem entrega range de verdade é o nginx, no caminho
+    # X-Accel-Redirect acima — que é o de produção.
+    return FileResponse(file_path, media_type="video/mp4")
 
 @router.get("/{aula_id}/video", response_model=VideoResponse)
 def get_video(

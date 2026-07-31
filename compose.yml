@@ -27,6 +27,11 @@ services:
         UVICORN_APP: "app.main:app"
     env_file:
       - .env
+    environment:
+      # Delega a entrega do arquivo ao nginx. Fica aqui, e nao no .env, porque
+      # depende de estar ATRAS do nginx — que e verdade no Compose e falso num
+      # `uvicorn --reload` local lendo o mesmo .env.
+      VIDEO_X_ACCEL: "true"
     volumes:
       # Sem este volume os videos enviados sumiam a cada recriacao do container:
       # UPLOAD_DIR fica dentro do filesystem efemero da imagem.
@@ -83,6 +88,12 @@ services:
       - "80:80"
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Os videos que o nginx entrega pela location interna /_video/. Somente
+      # leitura: quem escreve aqui e o backend, pelo upload. Sem esta montagem
+      # o X-Accel-Redirect aponta para um caminho inexistente e todo video da
+      # 404 — com o agravante de que o FastAPI ja respondeu 200, entao o erro
+      # aparece so no log do nginx.
+      - uploads_data:/var/lib/cursaas/uploads:ro
       # Webroot do desafio ACME. Fica no compose base, e nao no overlay de TLS,
       # porque a emissao inicial do certificado acontece com o nginx ainda em
       # HTTP puro: o overlay so pode entrar depois que o certificado existe.

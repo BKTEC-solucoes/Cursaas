@@ -4,23 +4,21 @@ import { Observable, map, of, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /**
- * Carrega vídeos de aula a partir de `GET /api/aulas/video/{filename}`.
+ * Resolve a URL de reprodução de um vídeo de aula.
  *
- * Esse endpoint exige `Authorization: Bearer` e checa o tenant do curso dono do
- * vídeo. Como `<video src="...">` não envia headers, o arquivo precisa passar
- * pelo HttpClient (que passa pelo authInterceptor) e ser reproduzido a partir de
- * uma object URL.
+ * Pede a autorização a `GET /api/aulas/video/{filename}/url` — que passa pelo
+ * authInterceptor, checa o tenant do curso dono do vídeo e devolve uma URL
+ * assinada de curta duração. Essa URL vai direto no `<video [src]>`.
  *
- * ⚠️ Consequência do download via XHR: o vídeo é baixado por INTEIRO antes de
- * começar a tocar — sem range requests, sem seek durante o carregamento — e o
- * blob fica em memória. Para arquivos grandes (MAX_FILE_SIZE no backend admite
- * até 500 MB) isso é pesado. Se virar problema, a saída é troca de arquitetura:
- * URL assinada de curta duração ou cookie de sessão só para mídia.
+ * A troca em relação ao download por XHR: o navegador passa a fazer range
+ * request no arquivo, então o vídeo começa a tocar na hora e aceita seek, em vez
+ * de baixar os (até 500 MB) inteiros para a memória antes do primeiro frame. O
+ * byte também deixa de sair pelo processo Python — o nginx entrega via
+ * X-Accel-Redirect. Ver `app/services/video_url.py` no backend.
  */
 @Injectable({ providedIn: 'root' })
 export class VideoService {
   private readonly cache = new Map<string, Observable<string>>();
-  private readonly objectUrls = new Set<string>();
 
   constructor(private http: HttpClient) {}
 
@@ -30,7 +28,7 @@ export class VideoService {
   }
 
   /**
-   * Devolve uma object URL pronta para `<video [src]>`.
+   * Devolve uma URL pronta para `<video [src]>`.
    * Aceita tanto o `caminho_arquivo` completo quanto só o nome do arquivo.
    */
   carregar(caminhoOuNome: string): Observable<string> {
@@ -42,15 +40,14 @@ export class VideoService {
     let stream = this.cache.get(nome);
     if (!stream) {
       stream = this.http
-        .get(`${environment.apiUrl}/aulas/video/${encodeURIComponent(nome)}`, {
-          responseType: 'blob',
-        })
+        .get<{ url: string }>(
+          `${environment.apiUrl}/aulas/video/${encodeURIComponent(nome)}/url`,
+        )
         .pipe(
-          map((blob) => {
-            const url = URL.createObjectURL(blob);
-            this.objectUrls.add(url);
-            return url;
-          }),
+          // O backend devolve o caminho relativo à base da API de propósito:
+          // atrás do nginx ele não tem como saber o hostname público. Quem sabe
+          // é o environment — absoluto no `ng serve`, relativo no build de prod.
+          map((resposta) => `${environment.apiUrl}${resposta.url}`),
           shareReplay({ bufferSize: 1, refCount: false }),
         );
       this.cache.set(nome, stream);
@@ -59,13 +56,16 @@ export class VideoService {
   }
 
   /**
-   * Revoga as object URLs criadas e limpa o cache.
-   * Chame no `ngOnDestroy` das telas que exibem vídeo — sem isso os blobs ficam
-   * retidos em memória pelo resto da sessão.
+   * Limpa o cache de URLs.
+   *
+   * Continua valendo a pena chamar no `ngOnDestroy`: as URLs assinadas expiram
+   * (`VIDEO_URL_TTL_SECONDS`, 15 min por padrão) e uma URL cacheada além disso
+   * faria o player falhar com 403. Descartar ao sair da tela garante que a
+   * próxima visita assine de novo.
+   *
+   * Não há mais object URL para revogar — sem blob, não há o que vazar.
    */
   liberar(): void {
-    this.objectUrls.forEach((url) => URL.revokeObjectURL(url));
-    this.objectUrls.clear();
     this.cache.clear();
   }
 }

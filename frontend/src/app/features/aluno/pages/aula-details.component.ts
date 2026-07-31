@@ -222,9 +222,10 @@ export class AulaDetailsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cria um bloco de vídeo com `videoUrl` vazia e preenche quando o download
-   * autenticado terminar. O endpoint exige Bearer token, então a URL não pode
-   * ir direto para `<video src>` — ver VideoService.
+   * Cria um bloco de vídeo com `videoUrl` vazia e preenche quando a URL assinada
+   * chegar. A autorização é uma chamada JSON curta (não o arquivo), então o
+   * preenchimento é quase imediato e o `<video>` faz o streaming sozinho — ver
+   * VideoService.
    */
   private blocoVideoUpload(caminhoOuUrl: string): BlocoRender {
     const bloco: BlocoRender = { tipo: 'video-upload' as const, videoUrl: '' };
