@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Subject, EMPTY } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, merge } from 'rxjs/operators';
-import { ADMIN_ROLE_OPTIONS, AdminRole, ADMIN_ROLE_LABELS, type Permission } from '../../../core/permissions';
+import { ADMIN_ROLE_OPTIONS_INSTITUICAO, AdminRole, ADMIN_ROLE_LABELS, type Permission } from '../../../core/permissions';
 import { PermissionsService } from '../../../core/services/permissions.service';
+import { FaculdadeAtivaService } from '../../../core/services/faculdade-ativa.service';
 import { environment } from '../../../../environments/environment';
 
 interface AdminForm {
@@ -14,7 +15,8 @@ interface AdminForm {
   confirmarEmail: string;
   senha: string;
   confirmarSenha: string;
-  admin_role: AdminRole;
+  /** `null` só aparece ao editar uma conta legada — o formulário nunca cria uma. */
+  admin_role: AdminRole | null;
   foto_perfil: string | null;  // URL relativa ou data URI
   curso_ids: number[];
   // Dados pessoais
@@ -63,7 +65,7 @@ function adminFormVazio(): AdminForm {
     confirmarEmail: '',
     senha: '',
     confirmarSenha: '',
-    admin_role: 'super_admin',
+    admin_role: 'instrutor',
     foto_perfil: null,
     curso_ids: [],
     telefone: '',
@@ -96,10 +98,25 @@ interface ConviteItem {
       <!-- â•â• Cabeçalho â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div class="page-header">
         <div>
-          <h1 class="page-title">Administradores</h1>
-          <p class="page-subtitle">Gerencie os administradores do sistema</p>
+          <h1 class="page-title">Administradores da Instituição</h1>
+          <p class="page-subtitle">
+            @if (nomeFaculdade) {
+              Quem administra <strong>{{ nomeFaculdade }}</strong> — cursos, aulas, provas, notas e presença.
+            } @else {
+              Quem administra a instituição — cursos, aulas, provas, notas e presença.
+            }
+          </p>
         </div>
       </div>
+
+      @if (ehSuperAdmin) {
+        <div class="msg msg-info escopo-aviso">
+          As contas criadas aqui pertencem
+          @if (nomeFaculdade) { a <strong>{{ nomeFaculdade }}</strong> } @else { à instituição em gestão }
+          e só enxergam os dados dela. Contas com acesso à plataforma inteira ficam em
+          <strong>Sistema › Super Admins</strong>.
+        </div>
+      }
 
       <!-- â•â• Painel 1: Formulário de criação / edição â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
       <div class="card card-elevated admin-form-card">
@@ -145,17 +162,21 @@ interface ConviteItem {
               </div>
             </div>
 
-            <!-- Tipo de admin -->
+            <!-- Tipo de admin — fixo no escopo da instituição -->
             <div class="field span2">
-              <label class="field-label">Tipo de Administrador *</label>
-              <select class="field-input" [(ngModel)]="adminForm.admin_role" name="admin_role" required>
-                @for (opt of roleOptions; track opt.value) {
-                  <option [value]="opt.value">{{ opt.label }}</option>
-                }
-              </select>
-              @if (adminForm.admin_role) {
-                <span class="field-hint">{{ getRoleDescription(adminForm.admin_role) }}</span>
+              <label class="field-label">Tipo de Administrador</label>
+              @if (roleOptions.length > 1 && !editandoAdminId) {
+                <select class="field-input" [(ngModel)]="adminForm.admin_role" name="admin_role" required>
+                  @for (opt of roleOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              } @else {
+                <div class="role-fixo">
+                  <span class="badge badge-primary">{{ getRoleLabel(adminForm.admin_role) }}</span>
+                </div>
               }
+              <span class="field-hint">{{ getRoleDescription(adminForm.admin_role) }}</span>
             </div>
 
             <!-- Email -->
@@ -296,6 +317,10 @@ interface ConviteItem {
       @if (p.can('administradores:write')) {
         <div class="card card-elevated">
           <div class="card-section-title">Convidar por E-mail</div>
+          <p class="section-hint">
+            O convidado define a própria senha pelo link e nasce vinculado
+            @if (nomeFaculdade) { a <strong>{{ nomeFaculdade }}</strong>. } @else { à instituição em gestão. }
+          </p>
           <form (ngSubmit)="enviarConvite()" class="convite-form">
             <div class="form-grid-2">
               <div class="field">
@@ -303,12 +328,18 @@ interface ConviteItem {
                 <input class="field-input" type="email" [(ngModel)]="conviteEmail" name="convite_email" required placeholder="novo@exemplo.com" />
               </div>
               <div class="field">
-                <label class="field-label">Perfil *</label>
-                <select class="field-input" [(ngModel)]="conviteRole" name="convite_role">
-                  @for (opt of roleOptions; track opt.value) {
-                    <option [value]="opt.value">{{ opt.label }}</option>
-                  }
-                </select>
+                <label class="field-label">Perfil</label>
+                @if (roleOptions.length > 1) {
+                  <select class="field-input" [(ngModel)]="conviteRole" name="convite_role">
+                    @for (opt of roleOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                } @else {
+                  <div class="role-fixo">
+                    <span class="badge badge-primary">{{ getRoleLabel(conviteRole) }}</span>
+                  </div>
+                }
               </div>
             </div>
             <div class="form-footer">
@@ -510,6 +541,13 @@ interface ConviteItem {
   `,
   styles: [`
     .admin-form-card { margin-bottom: var(--space-6); }
+    .escopo-aviso { margin-bottom: var(--space-5); }
+    .msg-info { padding: var(--space-3) var(--space-4); border-radius: var(--radius);
+                background: color-mix(in srgb, var(--primary) 10%, transparent);
+                color: var(--color-text); font-size: var(--font-size-sm);
+                border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); }
+    .section-hint { font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0 0 var(--space-4); }
+    .role-fixo { display: flex; align-items: center; min-height: 38px; }
     .card-section-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-5); }
     .section-sub { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-muted); margin: var(--space-5) 0 var(--space-3); text-transform: uppercase; letter-spacing: .05em; }
     .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
@@ -625,23 +663,42 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     return { score: nivel, texto: textos[nivel], cor: cores[nivel] };
   }
 
-  readonly roleOptions = ADMIN_ROLE_OPTIONS;
+  /**
+   * Só papéis de instituição: super admin é global e sai do menu Sistema.
+   * Com uma única opção o `<select>` vira um rótulo — ver o template.
+   */
+  readonly roleOptions = ADMIN_ROLE_OPTIONS_INSTITUICAO;
 
   private readonly ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
-    super_admin: 'Acesso total e irrestrito ao sistema e a todos os cursos.',
-    instrutor:   'Gerencia cursos, aulas, provas, notas e presença. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
+    super_admin: 'Acesso total e irrestrito à plataforma e a todas as instituições.',
+    instrutor:   'Gerencia cursos, aulas, provas, notas e presença desta instituição. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
   };
 
   private readonly adminApiUrl  = `${environment.apiUrl}/auth/admin-registro`;
   private readonly adminsListUrl = `${environment.apiUrl}/auth/admins`;
 
-  constructor(private http: HttpClient, public permissionsService: PermissionsService) {}
+  /** Instituição em gestão — o escopo desta tela, exibido no cabeçalho. */
+  nomeFaculdade: string | null = null;
+  ehSuperAdmin = false;
+
+  constructor(
+    private http: HttpClient,
+    public permissionsService: PermissionsService,
+    private faculdadeAtiva: FaculdadeAtivaService,
+  ) {}
 
   get p(): PermissionsService {
     return this.permissionsService;
   }
 
   ngOnInit(): void {
+    this.ehSuperAdmin = this.faculdadeAtiva.ehSuperAdmin();
+    this.nomeFaculdade = this.faculdadeAtiva.nomeAtual;
+    // A lista pode não ter chegado ainda (reload direto nesta rota).
+    this.faculdadeAtiva.faculdades$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => (this.nomeFaculdade = this.faculdadeAtiva.nomeAtual));
+
     this.carregarCursosDisponiveis();
     this.carregarAdmins();
     this.carregarConvites();
@@ -698,7 +755,8 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     return role ? ADMIN_ROLE_LABELS[role] : 'Legado';
   }
 
-  getRoleDescription(role: AdminRole): string {
+  getRoleDescription(role: AdminRole | null): string {
+    if (!role) return 'Conta legada, anterior aos perfis — mantém acesso amplo. Edite os dados sem alterar o perfil.';
     return this.ROLE_DESCRIPTIONS[role] ?? '';
   }
 
@@ -999,7 +1057,9 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
       confirmarEmail: admin.email,
       senha: '',
       confirmarSenha: '',
-      admin_role: admin.admin_role ?? 'super_admin',
+      // Preserva o papel atual: esta tela não promove ninguém — nem a
+      // super admin (menu Sistema), nem tira o "legado" de uma conta antiga.
+      admin_role: admin.admin_role,
       foto_perfil: admin.foto_perfil,
       curso_ids: admin.curso_ids ?? [],
       telefone: this.formatarCelularValor(admin.telefone ?? ''),

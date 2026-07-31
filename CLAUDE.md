@@ -75,6 +75,15 @@ O terceiro estado é real: admin criado por convite, aluno não aprovado, conta 
 
 **Escopo do painel do super admin.** O super admin não tem tenant próprio, então o painel administrativo trabalha com **uma instituição por vez**: o front manda o cabeçalho `X-Faculdade-Id` em toda chamada a `/api` (`authInterceptor` + `FaculdadeAtivaService`) e `tenant_context` devolve um `TenantContext` com `is_super_admin=True` **e** `faculdade_id` preenchido — listagens filtram, `assert_access` bloqueia fora do escopo e `stamp` carimba a instituição escolhida. `faculdadeAtivaGuard` fixa a seleção (primeira faculdade ativa) antes de qualquer rota de `/admin` abrir, e o seletor no cabeçalho do `AdminLayoutComponent` troca de instituição (com reload, porque cada tela carrega os dados no `ngOnInit`). Para usuários com vínculo o cabeçalho não amplia nada: só é aceito se coincidir com o `faculdade_id` real, senão 403. É conveniência de UI, não fronteira de segurança — o valor vem do cliente. As rotas de `/api/faculdades` (gestão das instituições) seguem globais, sem `TenantContext`. As rotas que são super-admin-only e não usam `TenantContext` (`/api/cadastro/admin/*`, `/api/convites`) leem o cabeçalho direto via `ler_escopo_faculdade(request)` e o aplicam como filtro padrão.
 
+**Instituição vs. Sistema — as duas metades do painel.** O menu de `/admin` separa o que tem tenant do que não tem, porque as duas coisas se confundiam na mesma tela:
+
+- **Instituição** (Visão Geral, Acadêmico, Gestão da Instituição): tudo passa pelo `TenantContext` e pelo `X-Faculdade-Id`. `Gestão › Administradores` (`administradores.component.ts`) cria **instrutores da faculdade em gestão** — a lista já vinha filtrada por tenant, então um super admin global (`faculdade_id NULL`) nunca aparecia ali.
+- **Sistema** (`/admin/sistema/super-admins` → `pages/sistema/super-admins.component.ts`): global, sem tenant, atende `/api/sistema/super-admins` (`routes/sistema.py`, todo `Depends(get_current_super_admin)`). É a **única** porta para criar super admin; a rota recusa desativar/excluir a própria conta e o último super admin ativo.
+
+Duas travas acompanham a separação: `/api/auth/admin-registro` responde 400 para `admin_role=super_admin` (só o bootstrap, com o banco sem nenhum admin, ainda cria um) e passou a exigir super admin ou admin legado — antes **qualquer** admin, inclusive um instrutor, podia se criar um par com acesso a todos os tenants por ali. No front, `ADMIN_ROLE_OPTIONS_INSTITUICAO` (sem `super_admin`) alimenta os formulários da instituição, e `PermissionsService.can` deixa de dar `sistema:*` / `instituicoes:*` ao admin legado, que o backend recusaria de todo jeito.
+
+Convite de super admin é global por definição: `_resolver_faculdade_do_convite` ignora o `X-Faculdade-Id` quando `admin_role=super_admin` (senão o convidado nasceria preso à faculdade aberta na tela), e `GET /api/convites?escopo=sistema` lista só esses — a listagem padrão, da instituição, agora os exclui.
+
 `ConviteAdmin` ganhou `faculdade_id` (`database/migration_convite_faculdade.sql`, **precisa ser aplicada à mão em bancos existentes**): o admin convidado nasce vinculado à instituição que estava em gestão quando o convite foi enviado. Sem isso ele caía no estado "sem tenant" — logava e não via nada.
 
 `faculdade_temas.logo_url_override` e `.favicon_url` passaram de `VARCHAR(500)` para `TEXT` (`database/migration_tema_urls_text.sql`, **também manual**): as colunas agora recebem data URIs base64 do upload de logo/favicon, e qualquer PNG estoura 500 caracteres.
@@ -89,13 +98,13 @@ Two independent columns on `usuarios`:
 - `role` (`RoleEnum`): `admin` | `aluno` | `instituicao` — drives the Angular route areas (`/admin`, `/aluno`, `/instituicao`).
 - `admin_role` (`AdminRoleEnum`, nullable): `super_admin` | `instrutor` — sub-role within `role='admin'`. **`NULL` is a meaningful third state**: legacy admins, handled explicitly in `routes/auth.py` (e.g. `is_legacy_admin = current_user.admin_role is None`) and filterable via `?admin_role=legacy`.
 
-Frontend RBAC is a separate, duplicated matrix in `frontend/src/app/core/permissions.ts` (`ROLE_PERMISSIONS` maps `super_admin`/`instrutor` to tokens like `cursos:write`), consumed by `permissionGuard` and `PermissionsService`. Changing what a role can do usually means editing **both** the backend dependency and that table.
+Frontend RBAC is a separate, duplicated matrix in `frontend/src/app/core/permissions.ts` (`ROLE_PERMISSIONS` maps `super_admin`/`instrutor` to tokens like `cursos:write`; `sistema:*` e `instituicoes:*` são só do super admin), consumed by `permissionGuard` and `PermissionsService`. Changing what a role can do usually means editing **both** the backend dependency and that table.
 
 JWT claims: `sub` (email), `role`, `admin_role`, `user_id`, `nome`, `faculdade_id`.
 
 ### Backend layout (`backend/app/`)
 
-- `main.py` — creates the app, runs `Base.metadata.create_all()` **no lifespan** (startup, não no import — o módulo importa sem tocar no banco), mounts `/uploads/profile_pictures` as static, registers 13 routers. Vídeos **não** são servidos como estático — ver "Entrega de vídeo" abaixo.
+- `main.py` — creates the app, runs `Base.metadata.create_all()` **no lifespan** (startup, não no import — o módulo importa sem tocar no banco), mounts `/uploads/profile_pictures` as static, registers 14 routers. Vídeos **não** são servidos como estático — ver "Entrega de vídeo" abaixo.
 - `security/deps.py` — `get_current_user`, isolado para evitar ciclo de import.
 - `models/__init__.py` — **all** ORM models and enums live here (~570 lines). `models/models.py` is only a re-export shim for legacy imports; don't add models to it.
 - `schemas/__init__.py` — all Pydantic schemas in one file (~1250 lines).
@@ -104,7 +113,7 @@ JWT claims: `sub` (email), `role`, `admin_role`, `user_id`, `nome`, `faculdade_i
 - `repositories/` — thin; only two institution repositories exist. Most data access still sits in routes.
 - `security/` — `middleware.py` (TenantMiddleware) + `tenant.py` (TenantContext).
 
-Router prefixes: `/api/auth`, `/api/cursos`, `/api/admin`, `/api/aulas`, `/api/provas`, `/api/alunos`, `/api/presenca`, `/api/notas`, `/api/requests`, `/api/convites`, `/api/faculdades`, `/api/cadastro`, plus `instituicao.router` mounted at bare `/api` (its paths carry their own segments). Health: `/health` and `/api/health`.
+Router prefixes: `/api/auth`, `/api/cursos`, `/api/admin`, `/api/aulas`, `/api/provas`, `/api/alunos`, `/api/presenca`, `/api/notas`, `/api/requests`, `/api/convites`, `/api/faculdades`, `/api/cadastro`, `/api/sistema`, plus `instituicao.router` mounted at bare `/api` (its paths carry their own segments). Health: `/health` and `/api/health`.
 
 ### Frontend layout (`frontend/src/app/`)
 

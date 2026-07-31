@@ -738,6 +738,71 @@ class AdminListResponse(BaseModel):
     total_pages: int
 
 
+# ==================== SCHEMAS DO PAINEL DE SISTEMA ====================
+#
+# Super admin não pertence a nenhuma instituição: ele é a conta que administra a
+# plataforma. Por isso tem schemas próprios — sem ``admin_role`` (é sempre
+# super_admin) e sem ``curso_ids`` (acesso irrestrito, não se concede curso a
+# curso). O painel de instituição não cria contas deste tipo.
+
+class SuperAdminCreate(BaseModel):
+    nome: str = Field(..., min_length=2)
+    email: EmailStr
+    senha: str = Field(..., min_length=6)
+    foto_perfil: Optional[str] = None
+    # Dados pessoais opcionais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
+
+
+class SuperAdminUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    foto_perfil: Optional[str] = None
+    ativo: Optional[bool] = None
+    # Dados pessoais opcionais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
+
+
+class SuperAdminResponse(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    foto_perfil: Optional[str] = None
+    ativo: bool = True
+    data_criacao: Optional[datetime] = None
+    #: Preenchido apenas para contas legadas — super admin novo nasce global.
+    faculdade_id: Optional[int] = None
+    faculdade_nome: Optional[str] = None
+    # Dados pessoais
+    telefone: Optional[str] = None
+    sexo: Optional[str] = None
+    data_nascimento: Optional[date] = None
+    cpf_rg: Optional[str] = None
+    cep: Optional[str] = None
+    endereco: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SuperAdminListResponse(BaseModel):
+    items: List[SuperAdminResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 # ==================== SCHEMAS DE CONVITE ====================
 
 class ConviteAdminCreate(BaseModel):

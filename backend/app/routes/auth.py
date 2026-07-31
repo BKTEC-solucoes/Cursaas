@@ -240,8 +240,15 @@ def admin_registro(
     db: Session = Depends(get_db)
 ):
     """
-    Endpoint para criar novo usuário admin.
-    Se já existir admin no sistema, requer autenticação de admin.
+    Cria um administrador **da instituição em gestão**.
+
+    Só o primeiro admin da plataforma (banco sem nenhum) nasce por aqui sem
+    autenticação e pode ser super admin — o bootstrap. Depois disso a rota fica
+    restrita ao painel da instituição: cria instrutor, carimbado com a faculdade
+    do cabeçalho ``X-Faculdade-Id``. Contas de super admin passaram para
+    ``/api/sistema/super-admins``, que exige um super admin de verdade; antes,
+    qualquer admin — inclusive um instrutor — podia se criar um par com acesso
+    irrestrito a todos os tenants por este endpoint.
     """
     existe_admin = db.query(Usuario).filter(Usuario.role == RoleEnum.admin).first() is not None
     current_user = _resolve_request_user(request, db)
@@ -258,7 +265,24 @@ def admin_registro(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Acesso restrito a administradores"
             )
-    
+
+        criador_super  = current_user.admin_role == ModelAdminRoleEnum.super_admin
+        criador_legado = current_user.admin_role is None
+        if not (criador_super or criador_legado):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas Super Admin pode cadastrar administradores",
+            )
+
+        if usuario_data.admin_role == AdminRoleEnum.super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Contas de super admin são criadas no painel de Sistema "
+                    "(POST /api/sistema/super-admins), fora do escopo de uma instituição"
+                ),
+            )
+
     # Verificar se o email já existe
     existing_user = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
     if existing_user:
