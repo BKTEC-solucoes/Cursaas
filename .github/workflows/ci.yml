@@ -1,0 +1,83 @@
+name: CI
+
+# Roda em toda PR. Na main quem dispara e o deploy.yml, via workflow_call, e o
+# deploy so prossegue se estes jobs passarem - build quebrado nunca chega em
+# producao. Nao ha gatilho `push` aqui de proposito: com ele, todo push na main
+# rodaria a suite duas vezes (uma direta, outra chamada pelo deploy).
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  backend:
+    name: backend (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Instalar dependencias
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # pytest.ini limita a coleta a tests/ porque os test_*.py legados na raiz
+      # do backend disparam rede no import. A suite de tests/ e logica pura:
+      # sem banco, sem servidor, roda em segundos.
+      - name: pytest
+        working-directory: backend
+        run: pytest
+
+  frontend:
+    name: frontend (build de producao)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+
+      # `npm test` e `npm run lint` estao declarados no package.json mas nao
+      # existem de fato (sem karma, sem eslint, sem .spec.ts) - chamar aqui so
+      # produziria um job vermelho permanente. O build com a configuracao de
+      # producao e a verificacao real: type-check completo e os
+      # fileReplacements de environment.prod.ts.
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  imagens:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Os tres Dockerfiles usam `context: .` e dependem do .dockerignore da
+      # raiz. Construir aqui pega quebra de Dockerfile antes que a VPS - que
+      # tem 1 vCPU e leva minutos por build - gaste o tempo dela.
+      - name: Construir as tres imagens
+        run: docker compose build
+        env:
+          # Valores de fachada: `docker compose build` interpola as variaveis do
+          # compose.yml mesmo sem usa-las no build, e avisa em toda ausente.
+          DB_ROOT_PASSWORD: ci
+          DB_NAME: ci
+          DB_USER: ci
+          DB_PASSWORD: ci
+          SECRET_KEY: ci-placeholder-com-32-caracteres-ok
+          GOOGLE_CLIENT_ID: ci.apps.googleusercontent.com

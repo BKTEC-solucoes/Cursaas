@@ -172,6 +172,22 @@ docker exec -i cursaas-db-1 mysql -u root -p cursaas < database/migration_xyz.sq
 - O Compose precisa de um `.env` na **raiz** (`env_file`), separado do `backend/.env`: o da raiz aponta para o host `db`, o do backend para `localhost`. Sem o da raiz o `compose up` falha por variável indefinida.
 - `docker compose up --build` **foi validado end-to-end**: 5 serviços sobem, o SPA é servido pelo nginx, `/api/` chega intacto ao FastAPI, o build de produção usa caminhos relativos e o schema nasce completo via `create_all()`. O `backend-node` fica em restart loop enquanto `GOOGLE_CLIENT_ID` for o placeholder — é validação do próprio side-car, e só `/auth/google` é afetado.
 
+### Deploy (produção)
+
+Produção é **bktec.dev.br**, uma VPS Ubuntu 24.04 com **1 vCPU / 3.9 GB**, stack em `/opt/cursaas`, rodando com o overlay de TLS (`compose.yml` + `compose.tls.yml`). O certificado Let's Encrypt já foi emitido e o serviço `certbot` renova sozinho.
+
+`scripts/deploy.sh` é o **único** caminho de deploy: `.github/workflows/deploy.yml` só faz SSH e o executa, então rodar à mão no servidor é idêntico ao pipeline. Push na `main` → `ci.yml` (pytest + build do Angular + `docker compose build`) → deploy. O CI é chamado por `workflow_call`; não tem gatilho `push` próprio, senão rodaria duas vezes por push.
+
+Três coisas que a forma do script codifica:
+
+- **Constrói antes de trocar os containers.** Em 1 vCPU o build do Angular leva minutos; fazer `up -d --build` deixaria o site fora do ar esse tempo todo. Com `build` separado, a indisponibilidade é só o restart.
+- **Aborta quando chega migração nova.** `git diff --diff-filter=A` sobre `database/migration_*.sql` no intervalo de commits. Como não há ferramenta de migração, deployar código que espera uma coluna inexistente é 500 garantido — o script para *antes* de trocar qualquer container, e dá `git reset --hard` de volta para o commit que está rodando (senão a execução seguinte veria "sem commits novos" e deixaria a migração passar). `IGNORAR_MIGRACOES=1` pula a checagem.
+- **`git merge --ff-only`.** Edição em arquivo versionado feita no servidor faz o deploy falhar em vez de gerar conflito no meio do processo. Os `.env` não são versionados, então a configuração local nunca é tocada.
+
+Backup do banco (`mysqldump`) vai para `/opt/cursaas-backups` a cada deploy, com retenção de 15.
+
+Secrets do repositório usados pelo workflow: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (chave privada `cursaas-deploy`), `VPS_HOST_KEY` (linha do `known_hosts` — fixada de propósito, para o runner não aceitar qualquer host que responda naquele IP).
+
 ### Tensão conhecida no modelo de dados
 
 `usuarios.faculdade_id` é uma coluna **singular**, mas `vinculos_aluno_faculdade` é N:N. O banco permite um aluno em várias faculdades; o `TenantContext` lê `faculdade_id` e só enxerga uma. Um aluno com dois vínculos fica preso ao tenant da coluna. Resolver isso é redesenho de autorização, não conserto pontual.

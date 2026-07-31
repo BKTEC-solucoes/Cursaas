@@ -1,0 +1,50 @@
+name: Deploy
+
+# Deploy automatico em bktec.dev.br a cada push na main, depois que o CI passa.
+# `workflow_dispatch` permite redeploy manual sem commit novo (util para
+# reconciliar containers depois de mexer no .env do servidor).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Dois pushes seguidos nao devem deployar em paralelo. `cancel-in-progress:
+# false` de proposito: cancelar um deploy no meio do `up -d` deixaria a stack
+# parcialmente trocada. O segundo espera o primeiro terminar.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    # O build acontece na VPS (1 vCPU), entao este job passa a maior parte do
+    # tempo apenas segurando a conexao SSH.
+    timeout-minutes: 30
+    steps:
+      - name: Preparar a chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          # Host key fixada no secret, e nao StrictHostKeyChecking=no: sem isso
+          # o runner aceitaria qualquer host que responda naquele IP.
+          echo "${{ secrets.VPS_HOST_KEY }}" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            'cd /opt/cursaas && ./scripts/deploy.sh'
+
+      # O script ja verifica /api/health de dentro da VPS. Este passo confirma
+      # de fora, pela internet publica: pega TLS expirado, DNS trocado e firewall
+      # - falhas que so aparecem do lado de fora.
+      - name: Conferir o site publico
+        run: |
+          curl -fsS --max-time 20 -o /dev/null https://bktec.dev.br/
+          curl -fsS --max-time 20 https://bktec.dev.br/api/health
