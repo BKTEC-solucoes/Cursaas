@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Subject, EMPTY } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, merge } from 'rxjs/operators';
 import { ADMIN_ROLE_OPTIONS, AdminRole, ADMIN_ROLE_LABELS, type Permission } from '../../../core/permissions';
@@ -655,12 +655,11 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
           return EMPTY;
         }
         this.emailStatus = 'checking';
-        const url = new URL(`${environment.apiUrl}/auth/check-email`);
-        url.searchParams.set('email', email);
+        let params = new HttpParams().set('email', email);
         if (this.editandoAdminId) {
-          url.searchParams.set('exclude_id', String(this.editandoAdminId));
+          params = params.set('exclude_id', String(this.editandoAdminId));
         }
-        return this.http.get<{ available: boolean }>(url.toString());
+        return this.http.get<{ available: boolean }>(`${environment.apiUrl}/auth/check-email`, { params });
       }),
       takeUntil(this.destroy$)
     ).subscribe({
@@ -1158,14 +1157,14 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
     this.carregandoLista = true;
     this.erroLista = '';
 
-    const url = new URL(this.adminsListUrl);
-    if (this.filtroBusca.trim()) url.searchParams.set('busca', this.filtroBusca.trim());
-    if (this.filtroAdminRole) url.searchParams.set('admin_role', this.filtroAdminRole);
-    if (this.filtroAtivo !== '') url.searchParams.set('ativo', this.filtroAtivo);
-    url.searchParams.set('page', String(this.paginaAtual));
-    url.searchParams.set('page_size', String(this.tamanhoPagina));
+    let params = new HttpParams()
+      .set('page', String(this.paginaAtual))
+      .set('page_size', String(this.tamanhoPagina));
+    if (this.filtroBusca.trim()) params = params.set('busca', this.filtroBusca.trim());
+    if (this.filtroAdminRole) params = params.set('admin_role', this.filtroAdminRole);
+    if (this.filtroAtivo !== '') params = params.set('ativo', this.filtroAtivo);
 
-    this.http.get<AdminListResponse>(url.toString(), { headers: this.getHeaders() }).subscribe({
+    this.http.get<AdminListResponse>(this.adminsListUrl, { headers: this.getHeaders(), params }).subscribe({
       next: (data) => {
         this.admins = data.items;
         this.total = data.total;
