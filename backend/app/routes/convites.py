@@ -49,7 +49,14 @@ def _resolver_faculdade_do_convite(
     gerenciando no painel (``X-Faculdade-Id``) → vínculo do próprio convidante
     (caso do admin legado). Sem nenhuma das três o convite cria uma conta órfã,
     que loga mas não enxerga nada — por isso o instrutor exige faculdade.
+
+    Convite de super admin é a exceção: ele administra a plataforma, não uma
+    instituição, então nasce global. Sem esta regra o cabeçalho de escopo (que o
+    front manda em toda chamada) o prenderia à faculdade aberta no painel.
     """
+    if dados.admin_role == AdminRoleEnum.super_admin and dados.faculdade_id is None:
+        return None
+
     faculdade_id = dados.faculdade_id or ler_escopo_faculdade(request) or current_user.faculdade_id
 
     if faculdade_id is None:
@@ -168,18 +175,31 @@ def enviar_convite_admin(
 @router.get("", response_model=list[ConviteAdminResponse])
 def listar_convites(
     request: Request,
+    escopo: str | None = None,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    """
+    Lista convites. ``escopo=sistema`` devolve os convites de super admin (visão
+    global do painel de Sistema); o padrão é a visão da instituição, que mostra
+    apenas convites de admin da faculdade em gestão.
+    """
     _exige_super_admin(current_user)
 
     query = db.query(ConviteAdmin)
 
-    # Gerenciando uma instituição: mostra só os convites dela. Sem escopo, a
-    # lista continua global (visão do super admin).
-    escopo = ler_escopo_faculdade(request) or current_user.faculdade_id
-    if escopo is not None:
-        query = query.filter(ConviteAdmin.faculdade_id == escopo)
+    if escopo == "sistema":
+        query = query.filter(ConviteAdmin.admin_role == ModelAdminRoleEnum.super_admin)
+    else:
+        # Convite de super admin é assunto do painel de Sistema — some daqui
+        # mesmo em bases antigas, onde ele podia ter nascido com faculdade.
+        query = query.filter(ConviteAdmin.admin_role != ModelAdminRoleEnum.super_admin)
+
+        # Gerenciando uma instituição: mostra só os convites dela. Sem escopo, a
+        # lista continua global (visão do super admin).
+        faculdade = ler_escopo_faculdade(request) or current_user.faculdade_id
+        if faculdade is not None:
+            query = query.filter(ConviteAdmin.faculdade_id == faculdade)
 
     convites = (
         query

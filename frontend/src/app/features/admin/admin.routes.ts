@@ -17,6 +17,7 @@ import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
 import { AdminInstituicoesComponent } from './pages/instituicoes.component';
 import { AdminInstituicaoDetalheComponent } from './pages/instituicao-detalhe.component';
 import { AdminCadastrosComponent } from './pages/cadastros.component';
+import { SistemaSuperAdminsComponent } from './pages/sistema/super-admins.component';
 
 export const ADMIN_ROUTES: Routes = [
   {
@@ -113,13 +114,31 @@ export const ADMIN_ROUTES: Routes = [
         component: AdminCadastrosComponent,
         canActivate: [faculdadeAtivaGuard]
       },
+      // Gestão das instituições e do sistema: escopo global, fora de qualquer
+      // faculdade — por isso sem `faculdadeAtivaGuard`, que existe para fixar a
+      // instituição em gestão antes das telas de dentro dela.
       {
         path: 'instituicoes',
-        component: AdminInstituicoesComponent
+        component: AdminInstituicoesComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['instituicoes:read'] }
       },
       {
         path: 'instituicoes/:id',
-        component: AdminInstituicaoDetalheComponent
+        component: AdminInstituicaoDetalheComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['instituicoes:read'] }
+      },
+      {
+        path: 'sistema/super-admins',
+        component: SistemaSuperAdminsComponent,
+        canActivate: [permissionGuard],
+        data: { permissions: ['sistema:read'] }
+      },
+      {
+        path: 'sistema',
+        redirectTo: 'sistema/super-admins',
+        pathMatch: 'full'
       },
       {
         path: '',

@@ -25,6 +25,7 @@ const icons = {
   cadastros: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`,
   solicit:   `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
   institui:  `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>`,
+  superadm:  `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.4 9.1 8 11 4.6-1.9 8-6 8-11V5l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>`,
 };
 
 @Component({
@@ -68,10 +69,29 @@ const icons = {
           </div>
         </div>
 
-        <!-- Nav — grupo Visão Geral -->
+        <!--
+          Nav — a ordem conta: primeiro as instituições (o objeto do painel),
+          depois o trabalho dentro da instituição em gestão, e por último o
+          Sistema, que é global e não deve se misturar ao resto.
+        -->
         <nav class="sidebar-nav">
+          @if (p.can('instituicoes:read')) {
+            <div class="nav-group">
+              @if (!isCollapsed()) {<span class="nav-group-label">Plataforma</span>}
+              <a routerLink="/admin/instituicoes" routerLinkActive="active" [title]="isCollapsed() ? 'Instituições' : ''">
+                <span class="icon" [innerHTML]="icons.institui"></span>
+                <span class="nav-label">Instituições</span>
+              </a>
+            </div>
+          }
+
           <div class="nav-group">
-            @if (!isCollapsed()) {<span class="nav-group-label">Visão Geral</span>}
+            @if (!isCollapsed()) {
+              <span class="nav-group-label">Visão Geral</span>
+              @if (ehSuperAdmin && nomeFaculdadeAtiva) {
+                <span class="nav-group-escopo" [title]="nomeFaculdadeAtiva">{{ nomeFaculdadeAtiva }}</span>
+              }
+            }
             <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" [title]="isCollapsed() ? 'Dashboard' : ''">
               <span class="icon" [innerHTML]="icons.dashboard"></span>
               <span class="nav-label">Dashboard</span>
@@ -113,7 +133,7 @@ const icons = {
           </div>
 
           <div class="nav-group">
-            @if (!isCollapsed()) {<span class="nav-group-label">Gestão</span>}
+            @if (!isCollapsed()) {<span class="nav-group-label">Gestão da Instituição</span>}
             @if (p.can('alunos:read')) {
               <a routerLink="/admin/alunos" routerLinkActive="active" [title]="isCollapsed() ? 'Alunos' : ''">
                 <span class="icon" [innerHTML]="icons.alunos"></span>
@@ -136,13 +156,20 @@ const icons = {
             </a>
           </div>
 
-          <div class="nav-group">
-            @if (!isCollapsed()) {<span class="nav-group-label">Plataforma</span>}
-            <a routerLink="/admin/instituicoes" routerLinkActive="active" [title]="isCollapsed() ? 'Instituições' : ''">
-              <span class="icon" [innerHTML]="icons.institui"></span>
-              <span class="nav-label">Instituições</span>
-            </a>
-          </div>
+          <!--
+            Sistema — administração da plataforma, fora de qualquer faculdade.
+            Fica separado justamente para não parecer parte da instituição que
+            está sendo gerenciada: aqui o cabeçalho X-Faculdade-Id não vale nada.
+          -->
+          @if (p.can('sistema:read')) {
+            <div class="nav-group nav-group--sistema">
+              @if (!isCollapsed()) {<span class="nav-group-label">Sistema</span>}
+              <a routerLink="/admin/sistema/super-admins" routerLinkActive="active" [title]="isCollapsed() ? 'Super Admins' : ''">
+                <span class="icon" [innerHTML]="icons.superadm"></span>
+                <span class="nav-label">Super Admins</span>
+              </a>
+            </div>
+          }
         </nav>
 
         <!-- Footer -->
@@ -274,6 +301,15 @@ const icons = {
       display: block; user-select: none;
       white-space: nowrap; overflow: hidden;
     }
+    /* Nome da instituição em gestão — o escopo dos grupos seguintes. */
+    .nav-group-escopo {
+      display: block; padding: 0 var(--space-3) var(--space-2);
+      font-size: 11px; font-weight: 600; color: var(--sidebar-text-active);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* Área global: separada do bloco da instituição, não é o mesmo escopo. */
+    .nav-group--sistema { margin-top: var(--space-2); }
+    .nav-group--sistema .nav-group-label { color: var(--color-danger); opacity: .8; }
 
     .sidebar-nav a {
       display: flex; align-items: center; gap: var(--space-3);
@@ -438,6 +474,11 @@ export class AdminLayoutComponent implements OnInit {
   faculdades: FaculdadeResumo[] = [];
   faculdadeAtivaId: number | null = null;
   carregandoFaculdades = false;
+
+  /** Instituição em gestão, exibida na sidebar como escopo dos grupos. */
+  get nomeFaculdadeAtiva(): string | null {
+    return this.faculdadeAtiva.nomeAtual;
+  }
 
   private readonly _themeService = inject(ThemeService);
 

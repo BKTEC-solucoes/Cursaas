@@ -16,7 +16,7 @@ from app.database import Base, engine
 # faria uma tabela sumir do schema ao se reorganizar imports.
 from app import models  # noqa: F401
 from app.security.middleware import TenantMiddleware
-from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro
+from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro, sistema
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,7 @@ app.include_router(convites.router, prefix="/api/convites", tags=["Convites"])
 app.include_router(instituicao.router, prefix="/api", tags=["Instituições"])
 app.include_router(faculdades.router, prefix="/api/faculdades", tags=["Faculdades"])
 app.include_router(cadastro.router,   prefix="/api/cadastro",   tags=["Cadastro Público"])
+app.include_router(sistema.router,    prefix="/api/sistema",    tags=["Sistema"])
 
 
 @app.get("/health", tags=["Health"])
