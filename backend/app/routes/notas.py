@@ -17,7 +17,7 @@ router = APIRouter()
 
 # ==================== NOTAS - ENDPOINTS ====================
 
-@router.get("", response_model=list[NotaListResponse], status_code=200)
+@router.get("/", response_model=list[NotaListResponse], status_code=200)
 async def listar_notas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
