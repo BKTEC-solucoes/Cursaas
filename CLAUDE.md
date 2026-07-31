@@ -150,9 +150,12 @@ docker exec -i cursaas-db-1 mysql -u root -p cursaas < database/migration_xyz.sq
 ## Infra
 
 - `docker/nginx/default.conf` faz proxy de `/api/`, `/uploads/` e `/auth/` **sem barra final** no `proxy_pass` — a barra faria o nginx trocar o prefixo casado e devolver 404 em toda a API. `client_max_body_size` é 512m, alinhado ao `MAX_FILE_SIZE`.
+- **Todo upstream do nginx passa por variável** (`set $upstream_backend backend:8000;` + `resolver 127.0.0.11`), nos dois arquivos de config. Com o nome literal o nginx resolve o IP uma única vez, ao carregar a config, e isso quebra de duas formas: upstream ausente no boot impede o nginx de iniciar, e upstream que troca de IP passa a receber 502 para sempre (`connect() failed (113: Host is unreachable)`) — qualquer `docker compose restart backend` derrubava a API até um reload manual. Com a variável a resolução é por requisição, então cada rota degrada sozinha e se recupera quando o serviço volta. `proxy_pass http://$var;` continua sendo "sem URI" e repassa a URI original — **não** acrescente barra nem `$request_uri`.
 - O Compose tem 5 serviços: `db`, `backend`, `backend-node`, `frontend`, `nginx`. Uploads ficam no volume `uploads_data` — sem ele os vídeos somem a cada recriação do container.
 - `ALLOWED_ORIGINS` defaults to `["http://localhost:4200", "http://localhost:3000"]` in `config.py`; when set via env it must be a JSON array. Atrás do nginx o SPA usa mesma origem, então CORS só importa no `ng serve`.
-- **Ainda não validado end-to-end:** as correções de nginx/Compose foram feitas mas nunca rodadas — `docker compose up --build` é o próximo passo real.
+- O `.dockerignore` na raiz **não é opcional**: os três builds usam `context: .` e os Dockerfiles fazem `COPY <dir>/ /app/` *depois* de instalar as dependências, então sem ele o `venv`/`node_modules` do host é copiado por cima do que foi instalado no container (em host Windows isso troca binários linux por win32 e quebra o build do Angular), e o `backend/.env` vai assado na imagem.
+- O Compose precisa de um `.env` na **raiz** (`env_file`), separado do `backend/.env`: o da raiz aponta para o host `db`, o do backend para `localhost`. Sem o da raiz o `compose up` falha por variável indefinida.
+- `docker compose up --build` **foi validado end-to-end**: 5 serviços sobem, o SPA é servido pelo nginx, `/api/` chega intacto ao FastAPI, o build de produção usa caminhos relativos e o schema nasce completo via `create_all()`. O `backend-node` fica em restart loop enquanto `GOOGLE_CLIENT_ID` for o placeholder — é validação do próprio side-car, e só `/auth/google` é afetado.
 
 ### Tensão conhecida no modelo de dados
 
