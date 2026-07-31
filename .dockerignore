@@ -1,0 +1,59 @@
+# =============================================================================
+# Contexto de build do Docker
+#
+# Os tres builds do compose usam `context: .` (a raiz do repo), entao este
+# arquivo unico vale para backend, backend-node e frontend.
+#
+# Nao e so questao de tamanho: os Dockerfiles fazem `COPY <dir>/ /app/` DEPOIS
+# de instalar as dependencias, entao qualquer venv/node_modules do host e
+# copiado por cima do que foi instalado no container. Como o host aqui e
+# Windows, isso substitui binarios nativos de linux por binarios win32 — o
+# build do Angular quebra e o Python importa modulos compilados para a
+# plataforma errada.
+# =============================================================================
+
+# --- Segredos --------------------------------------------------------------
+# backend/.env seria copiado para dentro da imagem por `COPY backend/ /app/`,
+# assando credenciais de banco na camada. No Compose as variaveis chegam por
+# env_file em tempo de execucao; a imagem nao deve conter nenhuma.
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.local
+backend-node/.env
+
+# --- Dependencias instaladas no host ---------------------------------------
+backend/venv
+backend/.venv
+**/node_modules
+
+# --- Artefatos de build ----------------------------------------------------
+frontend/dist
+frontend/.angular
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+
+# --- Controle de versao e tooling -------------------------------------------
+.git
+.gitignore
+.github
+.claude
+.vscode
+.idea
+
+# --- Dados locais ------------------------------------------------------------
+# O volume uploads_data cobre isso em runtime; os arquivos do host nao devem
+# entrar na imagem.
+uploads
+*.log
+
+# --- Documentacao e scripts que nao afetam o runtime -------------------------
+docs
+*.md
+!backend/tools/README.md
+scripts
+database
