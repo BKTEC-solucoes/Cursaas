@@ -10,6 +10,7 @@ import {
   ViewChild,
   ElementRef,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,14 +40,9 @@ export interface Video {
 
       <!-- Abas de seleção -->
       <div class="video-tabs">
-        <button class="tab-btn" [class.active]="modo === 'youtube'" (click)="selecionarModo('youtube')" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.42a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.42 8.6.42 8.6.42s6.88 0 8.6-.42a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
-          Link do YouTube
-        </button>
-        <button class="tab-btn" [class.active]="modo === 'upload'" (click)="selecionarModo('upload')" type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload do PC
-        </button>
+        <button class="tab-btn" [class.active]="modo === 'youtube'" (click)="selecionarModo('youtube')" type="button">YouTube</button>
+        <span class="tab-sep">·</span>
+        <button class="tab-btn" [class.active]="modo === 'upload'" (click)="selecionarModo('upload')" type="button">Upload do PC</button>
       </div>
 
       <!-- Conteúdo das abas -->
@@ -72,18 +68,14 @@ export interface Video {
                 @else { <span class="spinner-mini"></span> }
               </button>
             </div>
-            <div class="form-messages">
-              @if (youtubeError) { <p class="error-msg">{{ youtubeError }}</p> }
-            </div>
+            @if (youtubeError) { <p class="error-msg">{{ youtubeError }}</p> }
           </div>
 
           <!-- Preview do YouTube -->
           @if (youtubePreview) {
             <div class="youtube-preview">
               <div class="preview-thumb" [style.backgroundImage]="'url(' + youtubePreview.thumbnail + ')'"></div>
-              <div class="preview-info">
-                <p class="preview-label">Vídeo detectado</p>
-              </div>
+              <p class="preview-label">Vídeo detectado</p>
             </div>
           }
         </div>
@@ -103,22 +95,17 @@ export interface Video {
                 (click)="fileInput.click()"
               >
                 <input #fileInput type="file" accept="video/mp4,video/webm,video/ogg" style="display: none" (change)="onFileSelected($event)" />
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <p class="dropzone-title">Arraste um vídeo ou clique para selecionar</p>
-                <p class="dropzone-formats">MP4, WebM ou OGG · máx. 500MB</p>
+                <p class="dropzone-formats">MP4 · WebM · OGG — máx. 500MB</p>
               </div>
             }
 
             <!-- Arquivo selecionado -->
             @if (arquivoSelecionado && !carregando) {
               <div class="arquivo-info">
-                <div class="arquivo-details">
-                  <p class="arquivo-nome">{{ arquivoSelecionado.name }}</p>
-                  <p class="arquivo-tamanho">{{ formatarTamanho(arquivoSelecionado.size) }}</p>
-                </div>
-                <button class="btn-remove-file" (click)="limparArquivo()" type="button" title="Remover arquivo">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
+                <p class="arquivo-nome">{{ arquivoSelecionado.name }}</p>
+                <span class="arquivo-tamanho">{{ formatarTamanho(arquivoSelecionado.size) }}</span>
+                <button class="btn-text" (click)="limparArquivo()" type="button">Remover</button>
               </div>
             }
 
@@ -134,12 +121,12 @@ export interface Video {
             }
 
             @if (uploadError) {
-              <div class="error-box">{{ uploadError }}</div>
+              <p class="error-msg">{{ uploadError }}</p>
             }
 
             @if (arquivoSelecionado && !carregando) {
               <div class="form-actions">
-                <button class="btn-upload" [disabled]="!!uploadError" (click)="enviarArquivo()" type="button">Enviar vídeo</button>
+                <button class="btn-upload" (click)="enviarArquivo()" type="button">Enviar vídeo</button>
               </div>
             }
           </div>
@@ -149,29 +136,14 @@ export interface Video {
       <!-- Lista de vídeos adicionados -->
       @if (videos.length > 0) {
         <div class="videos-list">
-          <div class="videos-grid">
-            @for (video of videos; track video.id; let i = $index) {
-              <div class="video-item">
-                <div class="video-thumbnail">
-                  @if (video.tipo === 'youtube') {
-                    <div class="yt-thumb" [style.backgroundImage]="'url(' + video.thumbnail + ')'"></div>
-                  } @else {
-                    <div class="upload-thumb">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                      <span class="file-badge">{{ formatarTamanho(video.tamanho || 0) }}</span>
-                    </div>
-                  }
-                </div>
-                <div class="video-details">
-                  <p class="video-type-badge" [class]="video.tipo">{{ video.tipo === 'youtube' ? 'YouTube' : 'Upload' }}</p>
-                  <p class="video-url" title="{{ video.url }}">{{ truncarUrl(video.url) }}</p>
-                </div>
-                <button class="btn-delete" (click)="removerVideo(i)" type="button" title="Remover vídeo">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>
-            }
-          </div>
+          @for (video of videos; track video.id; let i = $index) {
+            <div class="video-item">
+              <span class="video-type-badge" [class]="video.tipo">{{ video.tipo === 'youtube' ? 'YouTube' : 'Upload' }}</span>
+              <p class="video-url" title="{{ video.url }}">{{ truncarUrl(video.url) }}</p>
+              @if (video.tamanho) { <span class="video-tamanho">{{ formatarTamanho(video.tamanho) }}</span> }
+              <button class="btn-text btn-remove" (click)="removerVideo(i)" type="button">Remover</button>
+            </div>
+          }
         </div>
       }
     </div>
@@ -181,56 +153,35 @@ export interface Video {
       display: flex;
       flex-direction: column;
       gap: var(--space-4);
-      padding: var(--space-4);
-      background: var(--color-surface);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--color-border);
     }
 
     /* ──── ABAS ──── */
     .video-tabs {
       display: flex;
-      gap: var(--space-1);
-      border-bottom: 1px solid var(--color-border);
+      align-items: center;
+      gap: var(--space-2);
     }
 
+    .tab-sep { color: var(--color-border); font-size: var(--font-size-sm); }
+
     .tab-btn {
-      flex: 1;
-      padding: var(--space-2) var(--space-3);
+      padding: 0;
       background: none;
       border: none;
-      border-bottom: 2px solid transparent;
       font-size: var(--font-size-sm);
       font-weight: 500;
       color: var(--color-text-muted);
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-2);
-      transition: color var(--transition-fast), border-color var(--transition-fast);
-      position: relative;
-      bottom: -1px;
       font-family: inherit;
+      transition: color var(--transition-fast);
     }
 
     .tab-btn:hover { color: var(--color-text); }
-
-    .tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
+    .tab-btn.active { color: var(--color-text); font-weight: 600; }
 
     /* ──── CONTEÚDO DAS ABAS ──── */
-    .video-content { position: relative; }
-
-    .tab-pane {
-      display: none;
-    }
-
-    .tab-pane.active {
-      display: block;
-    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
 
     /* ──── FORMULÁRIOS ──── */
     .form-group {
@@ -240,61 +191,47 @@ export interface Video {
     }
 
     .form-input {
-      padding: var(--space-2) var(--space-3);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
+      padding: var(--space-2) 0;
+      border: none;
+      border-bottom: 1px solid var(--color-border);
+      border-radius: 0;
       font-size: var(--font-size-sm);
       outline: none;
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-      background: var(--color-surface);
+      transition: border-color var(--transition-fast);
+      background: transparent;
       color: var(--color-text);
       font-family: inherit;
     }
 
-    .form-input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
-    }
-
-    .form-input.error {
-      border-color: var(--color-danger);
-    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-input.error { border-color: var(--color-danger); }
 
     /* ──── INPUT GROUP ──── */
-    .input-group { display: flex; gap: var(--space-2); }
+    .input-group { display: flex; align-items: center; gap: var(--space-3); }
     .input-group .form-input { flex: 1; }
 
     .btn-add {
-      padding: var(--space-2) var(--space-4);
-      background: var(--primary);
-      color: #fff;
+      padding: var(--space-2) 0;
+      background: none;
+      color: var(--primary);
       border: none;
-      border-radius: var(--radius);
       font-size: var(--font-size-sm);
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
       transition: opacity var(--transition-fast);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-1);
       font-family: inherit;
     }
 
-    .btn-add:hover:not(:disabled) { opacity: 0.9; }
-
-    .btn-add:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+    .btn-add:hover:not(:disabled) { opacity: 0.7; }
+    .btn-add:disabled { opacity: 0.35; cursor: not-allowed; }
 
     .spinner-mini {
       display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.35);
-      border-top-color: #fff;
+      width: 12px;
+      height: 12px;
+      border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+      border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }
@@ -302,108 +239,86 @@ export interface Video {
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ──── MENSAGENS ──── */
-    .form-messages { min-height: 18px; }
     .error-msg { font-size: var(--font-size-xs); color: var(--color-danger); margin: 0; }
 
     /* ──── PREVIEW YOUTUBE ──── */
     .youtube-preview {
       display: flex;
+      align-items: center;
       gap: var(--space-3);
-      padding: var(--space-2);
-      background: var(--color-surface-2);
-      border-radius: var(--radius);
-      border: 1px solid var(--color-border);
     }
 
     .preview-thumb {
-      width: 100px;
-      height: 56px;
+      width: 88px;
+      height: 50px;
       border-radius: var(--radius);
       background-size: cover;
       background-position: center;
       flex-shrink: 0;
     }
 
-    .preview-info { display: flex; align-items: center; }
     .preview-label { margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     /* ──── DROPZONE ──── */
     .dropzone {
-      padding: var(--space-6);
+      padding: var(--space-5) var(--space-4);
       border: 1px dashed var(--color-border);
-      border-radius: var(--radius-lg);
-      background: var(--color-surface-2);
+      border-radius: var(--radius);
       cursor: pointer;
-      transition: border-color var(--transition-fast), background var(--transition-fast);
+      transition: border-color var(--transition-fast), color var(--transition-fast);
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-2);
       color: var(--color-text-muted);
     }
 
-    .dropzone:hover { border-color: var(--primary); color: var(--primary); }
+    .dropzone:hover, .dropzone.drag-over { border-color: var(--primary); color: var(--primary); }
 
-    .dropzone.drag-over {
-      border-color: var(--primary);
-      background: color-mix(in srgb, var(--primary) 6%, transparent);
-      color: var(--primary);
-    }
-
-    .dropzone-title { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
-    .dropzone-formats { margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+    .dropzone-title { margin: 0; font-size: var(--font-size-sm); color: var(--color-text); }
+    .dropzone-formats { margin: var(--space-1) 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     /* ──── ARQUIVO INFO ──── */
     .arquivo-info {
       display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      padding: var(--space-3);
-      background: var(--color-surface-2);
-      border-radius: var(--radius);
-      border: 1px solid var(--color-border);
+      align-items: baseline;
+      gap: var(--space-2);
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--color-border);
     }
-
-    .arquivo-details { flex: 1; min-width: 0; }
 
     .arquivo-nome {
       margin: 0;
       font-size: var(--font-size-sm);
-      font-weight: 600;
       color: var(--color-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
     }
 
-    .arquivo-tamanho { margin: 2px 0 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+    .arquivo-tamanho { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
 
-    .btn-remove-file {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 26px;
-      height: 26px;
-      background: transparent;
+    .btn-text {
+      padding: 0;
+      background: none;
+      border: none;
       color: var(--color-text-muted);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
       cursor: pointer;
-      flex-shrink: 0;
-      transition: color var(--transition-fast), border-color var(--transition-fast);
+      font-family: inherit;
+      white-space: nowrap;
+      transition: color var(--transition-fast);
     }
 
-    .btn-remove-file:hover { color: var(--color-danger); border-color: var(--color-danger); }
+    .btn-text:hover { color: var(--color-danger); }
 
     /* ──── PROGRESSO ──── */
     .progress-container { display: flex; flex-direction: column; gap: var(--space-2); }
 
     .progress-bar {
       width: 100%;
-      height: 6px;
+      height: 2px;
       background: var(--color-border);
-      border-radius: 3px;
       overflow: hidden;
     }
 
@@ -419,25 +334,14 @@ export interface Video {
 
     .progress-percent { font-weight: 600; color: var(--primary); }
 
-    /* ──── ERRO ──── */
-    .error-box {
-      padding: var(--space-2) var(--space-3);
-      background: color-mix(in srgb, var(--color-danger) 8%, transparent);
-      border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
-      border-radius: var(--radius);
-      font-size: var(--font-size-xs);
-      color: var(--color-danger);
-    }
-
     /* ──── AÇÕES ──── */
     .form-actions { display: flex; justify-content: flex-end; }
 
     .btn-upload {
-      padding: var(--space-2) var(--space-5);
-      background: var(--primary);
-      color: #fff;
+      padding: var(--space-2) 0;
+      background: none;
+      color: var(--primary);
       border: none;
-      border-radius: var(--radius);
       font-size: var(--font-size-sm);
       font-weight: 600;
       cursor: pointer;
@@ -445,82 +349,39 @@ export interface Video {
       font-family: inherit;
     }
 
-    .btn-upload:hover:not(:disabled) { opacity: 0.9; }
-    .btn-upload:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-upload:hover:not(:disabled) { opacity: 0.7; }
+    .btn-upload:disabled { opacity: 0.35; cursor: not-allowed; }
 
     /* ──── LISTA DE VÍDEOS ──── */
-    .videos-list { border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
-
-    .videos-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    .videos-list {
+      border-top: 1px solid var(--color-border);
+      padding-top: var(--space-3);
+      display: flex;
+      flex-direction: column;
       gap: var(--space-2);
     }
 
     .video-item {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      padding: var(--space-2);
-      background: var(--color-surface-2);
-      border-radius: var(--radius);
-      border: 1px solid var(--color-border);
-      transition: border-color var(--transition-fast);
-      position: relative;
-    }
-
-    .video-item:hover { border-color: var(--primary); }
-
-    .video-thumbnail {
-      width: 100%;
-      aspect-ratio: 16/9;
-      border-radius: var(--radius);
-      overflow: hidden;
-      background: var(--color-border);
-      position: relative;
-    }
-
-    .yt-thumb { width: 100%; height: 100%; background-size: cover; background-position: center; }
-
-    .upload-thumb {
-      display: flex;
       align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      flex-direction: column;
-      gap: var(--space-1);
-      color: var(--color-text-muted);
+      gap: var(--space-3);
     }
-
-    .file-badge {
-      font-size: 10px;
-      color: var(--color-text-muted);
-      background: var(--color-surface);
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-
-    .video-details { flex: 1; min-width: 0; }
 
     .video-type-badge {
-      margin: 0 0 var(--space-1) 0;
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .04em;
-      padding: 1px 6px;
-      background: var(--color-surface);
       color: var(--color-text-muted);
-      border-radius: 3px;
-      display: inline-block;
-      width: fit-content;
+      white-space: nowrap;
     }
 
     .video-type-badge.youtube { color: #b45309; }
     .video-type-badge.upload { color: var(--primary); }
 
     .video-url {
+      flex: 1;
+      min-width: 0;
       margin: 0;
       font-size: var(--font-size-xs);
       color: var(--color-text-muted);
@@ -529,26 +390,10 @@ export interface Video {
       text-overflow: ellipsis;
     }
 
-    .btn-delete {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 22px;
-      height: 22px;
-      background: var(--color-surface);
-      color: var(--color-text-muted);
-      border: 1px solid var(--color-border);
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      transition: opacity var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
-    }
+    .video-tamanho { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
 
-    .video-item:hover .btn-delete { opacity: 1; }
-    .btn-delete:hover { color: var(--color-danger); border-color: var(--color-danger); }
+    .btn-remove { color: var(--color-text-muted); }
+    .btn-remove:hover { color: var(--color-danger); }
   `]
 })
 export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
@@ -585,7 +430,8 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -765,6 +611,7 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
         this.carregando = false;
         this.progressoTexto = '';
         this.uploadError = e instanceof Error ? e.message : 'Erro ao salvar a aula antes do envio.';
+        this.cdr.markForCheck();
         return;
       }
     }
@@ -773,6 +620,7 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
     this.uploadError = '';
     this.progressoUpload = 0;
     this.progressoTexto = 'Inicializando...';
+    this.cdr.markForCheck();
 
     const formData = new FormData();
     formData.append('file', this.arquivoSelecionado);
@@ -788,6 +636,7 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
             const total = event.total || 0;
             this.progressoUpload = Math.round((event.loaded / total) * 100);
             this.progressoTexto = `${this.formatarTamanho(event.loaded)} / ${this.formatarTamanho(total)}`;
+            this.cdr.markForCheck();
           } else if (event.type === HttpEventType.Response) {
             const body = event.body;
             const nomeArquivo = (body.caminho_arquivo as string).split(/[\\/]/).pop() || body.arquivo_nome;
@@ -811,12 +660,14 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
 
             // Upload concluído: agora é seguro atualizar a URL para /editar.
             this.aulaIdResolvido.emit(aulaId as number);
+            this.cdr.markForCheck();
           }
         },
         error: (error) => {
           this.carregando = false;
           this.uploadError = error.error?.erro || 'Erro ao enviar vídeo. Tente novamente.';
           console.error('Erro no upload:', error);
+          this.cdr.markForCheck();
         },
       });
   }
