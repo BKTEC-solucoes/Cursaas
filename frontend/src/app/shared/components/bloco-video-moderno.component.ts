@@ -23,8 +23,10 @@ import { VideoUploadComponent, Video } from './video-upload.component';
       <app-video-upload
         [aulaId]="aulaId"
         [videosIniciais]="videos"
+        [garantirAulaSalva]="garantirAulaSalva"
         (videosAdicionados)="onVideosAdicionados($event)"
         (videoRemovido)="onVideoRemovido()"
+        (aulaIdResolvido)="aulaIdResolvido.emit($event)"
       ></app-video-upload>
     </div>
   `,
@@ -37,7 +39,9 @@ import { VideoUploadComponent, Video } from './video-upload.component';
 export class BlocoVideoModernoComponent implements OnInit, OnChanges {
   @Input() aulaId?: number;
   @Input() conteudo = '';
+  @Input() garantirAulaSalva?: () => Promise<number>;
   @Output() conteudoChange = new EventEmitter<string>();
+  @Output() aulaIdResolvido = new EventEmitter<number>();
 
   videos: Video[] = [];
   private interagido = false;

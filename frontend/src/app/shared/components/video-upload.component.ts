@@ -35,711 +35,452 @@ export interface Video {
   imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- Container Principal -->
     <div class="video-upload-container">
-      
+
       <!-- Abas de seleção -->
       <div class="video-tabs">
-        <button
-          class="tab-btn"
-          [class.active]="modo === 'youtube'"
-          (click)="selecionarModo('youtube')"
-          type="button"
-        >
-          <span class="tab-icon">📺</span> Link do YouTube
+        <button class="tab-btn" [class.active]="modo === 'youtube'" (click)="selecionarModo('youtube')" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.42a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.42 8.6.42 8.6.42s6.88 0 8.6-.42a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+          Link do YouTube
         </button>
-        <button
-          class="tab-btn"
-          [class.active]="modo === 'upload'"
-          (click)="selecionarModo('upload')"
-          type="button"
-        >
-          <span class="tab-icon">📁</span> Upload do PC
+        <button class="tab-btn" [class.active]="modo === 'upload'" (click)="selecionarModo('upload')" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload do PC
         </button>
       </div>
 
       <!-- Conteúdo das abas -->
       <div class="video-content">
-        
+
         <!-- Tab: YouTube -->
         <div class="tab-pane" [class.active]="modo === 'youtube'">
           <div class="form-group">
-            <label class="form-label">
-              Cole a URL do YouTube
-              <span class="label-optional">(ex: youtube.com/watch?v=...)</span>
-            </label>
             <div class="input-group">
               <input
                 #youtubeInput
                 type="text"
                 class="form-input"
                 [class.error]="youtubeError"
-                placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                placeholder="Cole a URL do YouTube..."
                 [(ngModel)]="youtubeUrl"
                 (input)="validarYoutubeUrl()"
                 (keydown.enter)="adicionarYoutube()"
                 (paste)="onYoutubePaste($event)"
               />
-              <button
-                class="btn-add"
-                [disabled]="!youtubeUrl || youtubeError || adicionando"
-                (click)="adicionarYoutube()"
-                type="button"
-              >
-                <span *ngIf="!adicionando">✓ Adicionar</span>
-                <span *ngIf="adicionando" class="spinner-mini"></span>
+              <button class="btn-add" [disabled]="!youtubeUrl || youtubeError || adicionando" (click)="adicionarYoutube()" type="button">
+                @if (!adicionando) { Adicionar }
+                @else { <span class="spinner-mini"></span> }
               </button>
             </div>
             <div class="form-messages">
-              <p *ngIf="youtubeError" class="error-msg">🚫 {{ youtubeError }}</p>
-              <p *ngIf="youtubePreview && !youtubeError" class="success-msg">✓ URL válida detectada</p>
+              @if (youtubeError) { <p class="error-msg">{{ youtubeError }}</p> }
             </div>
           </div>
 
           <!-- Preview do YouTube -->
-          <div *ngIf="youtubePreview" class="youtube-preview">
-            <div class="preview-thumb" 
-              [style.backgroundImage]="'url(' + youtubePreview.thumbnail + ')'">
-              <div class="play-icon">▶</div>
+          @if (youtubePreview) {
+            <div class="youtube-preview">
+              <div class="preview-thumb" [style.backgroundImage]="'url(' + youtubePreview.thumbnail + ')'"></div>
+              <div class="preview-info">
+                <p class="preview-label">Vídeo detectado</p>
+              </div>
             </div>
-            <div class="preview-info">
-              <h4>{{ youtubePreview.titulo }}</h4>
-              <p class="preview-meta">Duração: {{ youtubePreview.duracao || 'N/A' }}</p>
-            </div>
-          </div>
+          }
         </div>
 
         <!-- Tab: Upload -->
         <div class="tab-pane" [class.active]="modo === 'upload'">
           <div class="form-group">
-            <label class="form-label">Selecione um vídeo para upload</label>
-            
+
             <!-- Drop Zone -->
-            <div
-              class="dropzone"
-              [class.drag-over]="dragOver"
-              [class.disabled]="carregando"
-              (dragover)="onDragOver($event)"
-              (dragleave)="onDragLeave()"
-              (drop)="onDropFiles($event)"
-              (click)="!carregando && fileInput.click()"
-            >
-              <input
-                #fileInput
-                type="file"
-                accept="video/mp4,video/webm,video/ogg"
-                style="display: none"
-                (change)="onFileSelected($event)"
-              />
-              
-              <div class="dropzone-content">
-                <div class="dropzone-icon">🎬</div>
-                <p class="dropzone-title">Arraste um vídeo aqui ou clique para selecionar</p>
-                <p class="dropzone-formats">Formatos: MP4, WebM, OGG (máx. 500MB)</p>
+            @if (!arquivoSelecionado && !carregando) {
+              <div
+                class="dropzone"
+                [class.drag-over]="dragOver"
+                (dragover)="onDragOver($event)"
+                (dragleave)="onDragLeave()"
+                (drop)="onDropFiles($event)"
+                (click)="fileInput.click()"
+              >
+                <input #fileInput type="file" accept="video/mp4,video/webm,video/ogg" style="display: none" (change)="onFileSelected($event)" />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p class="dropzone-title">Arraste um vídeo ou clique para selecionar</p>
+                <p class="dropzone-formats">MP4, WebM ou OGG · máx. 500MB</p>
               </div>
-            </div>
+            }
 
             <!-- Arquivo selecionado -->
-            <div *ngIf="arquivoSelecionado && !carregando" class="arquivo-info">
-              <div class="arquivo-icon">📄</div>
-              <div class="arquivo-details">
-                <p class="arquivo-nome">{{ arquivoSelecionado.name }}</p>
-                <p class="arquivo-tamanho">{{ formatarTamanho(arquivoSelecionado.size) }}</p>
+            @if (arquivoSelecionado && !carregando) {
+              <div class="arquivo-info">
+                <div class="arquivo-details">
+                  <p class="arquivo-nome">{{ arquivoSelecionado.name }}</p>
+                  <p class="arquivo-tamanho">{{ formatarTamanho(arquivoSelecionado.size) }}</p>
+                </div>
+                <button class="btn-remove-file" (click)="limparArquivo()" type="button" title="Remover arquivo">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
-              <button
-                class="btn-remove-file"
-                (click)="limparArquivo()"
-                type="button"
-              >✕</button>
-            </div>
+            }
 
             <!-- Barra de progresso -->
-            <div *ngIf="carregando" class="progress-container">
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width]="progressoUpload + '%'"></div>
+            @if (carregando) {
+              <div class="progress-container">
+                <div class="progress-bar"><div class="progress-fill" [style.width]="progressoUpload + '%'"></div></div>
+                <div class="progress-info">
+                  <span class="progress-percent">{{ progressoUpload }}%</span>
+                  <span class="progress-text">{{ progressoTexto }}</span>
+                </div>
               </div>
-              <div class="progress-info">
-                <span class="progress-percent">{{ progressoUpload }}%</span>
-                <span class="progress-text">{{ progressoTexto }}</span>
-              </div>
-            </div>
+            }
 
-            <!-- Mensagens de erro -->
-            <div *ngIf="uploadError" class="error-box">
-              <span class="error-icon">⚠️</span>
-              <div>
-                <p class="error-title">Erro no upload</p>
-                <p class="error-detail">{{ uploadError }}</p>
-              </div>
-            </div>
+            @if (uploadError) {
+              <div class="error-box">{{ uploadError }}</div>
+            }
 
-            <!-- Botão de upload -->
-            <div class="form-actions">
-              <button
-                class="btn-upload"
-                [disabled]="!arquivoSelecionado || carregando || !!uploadError"
-                (click)="enviarArquivo()"
-                type="button"
-              >
-                <span *ngIf="!carregando">🚀 Enviar vídeo</span>
-                <span *ngIf="carregando">Enviando...</span>
-              </button>
-            </div>
+            @if (arquivoSelecionado && !carregando) {
+              <div class="form-actions">
+                <button class="btn-upload" [disabled]="!!uploadError" (click)="enviarArquivo()" type="button">Enviar vídeo</button>
+              </div>
+            }
           </div>
         </div>
       </div>
 
       <!-- Lista de vídeos adicionados -->
-      <div *ngIf="videos.length > 0" class="videos-list">
-        <h3 class="videos-title">Vídeos añadidos</h3>
-        <div class="videos-grid">
-          <div *ngFor="let video of videos; let i = index" class="video-item">
-            <div class="video-thumbnail" [class.youtube]="video.tipo === 'youtube'">
-              <div *ngIf="video.tipo === 'youtube'" class="yt-thumb"
-                [style.backgroundImage]="'url(' + video.thumbnail + ')'">
-                <div class="play-badge">▶ YouTube</div>
+      @if (videos.length > 0) {
+        <div class="videos-list">
+          <div class="videos-grid">
+            @for (video of videos; track video.id; let i = $index) {
+              <div class="video-item">
+                <div class="video-thumbnail">
+                  @if (video.tipo === 'youtube') {
+                    <div class="yt-thumb" [style.backgroundImage]="'url(' + video.thumbnail + ')'"></div>
+                  } @else {
+                    <div class="upload-thumb">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                      <span class="file-badge">{{ formatarTamanho(video.tamanho || 0) }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="video-details">
+                  <p class="video-type-badge" [class]="video.tipo">{{ video.tipo === 'youtube' ? 'YouTube' : 'Upload' }}</p>
+                  <p class="video-url" title="{{ video.url }}">{{ truncarUrl(video.url) }}</p>
+                </div>
+                <button class="btn-delete" (click)="removerVideo(i)" type="button" title="Remover vídeo">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
-              <div *ngIf="video.tipo === 'upload'" class="upload-thumb">
-                <div class="video-icon">🎬</div>
-                <span class="file-badge">{{ formatarTamanho(video.tamanho || 0) }}</span>
-              </div>
-            </div>
-            <div class="video-details">
-              <p class="video-type-badge" [class]="video.tipo">
-                {{ video.tipo === 'youtube' ? '📺 YouTube' : '📁 Upload' }}
-              </p>
-              <p class="video-url" title="{{ video.url }}">{{ truncarUrl(video.url) }}</p>
-            </div>
-            <button
-              class="btn-delete"
-              (click)="removerVideo(i)"
-              type="button"
-              title="Remover vídeo"
-            >✕</button>
+            }
           </div>
         </div>
-      </div>
-
-      <!-- Hint de informação -->
-      <div class="info-box">
-        <span class="info-icon">ℹ️</span>
-        <p>
-          <strong>Dica:</strong> Você pode adicionar múltiplos vídeos. Todos serão exibidos na aula.
-        </p>
-      </div>
+      }
     </div>
   `,
   styles: [`
     .video-upload-container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      padding: 20px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #f0f4f8 100%);
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
     }
 
     /* ──── ABAS ──── */
     .video-tabs {
       display: flex;
-      gap: 8px;
-      border-bottom: 2px solid #e2e8f0;
+      gap: var(--space-1);
+      border-bottom: 1px solid var(--color-border);
     }
 
     .tab-btn {
       flex: 1;
-      padding: 12px 16px;
+      padding: var(--space-2) var(--space-3);
       background: none;
       border: none;
-      border-bottom: 3px solid transparent;
-      font-size: 0.95rem;
+      border-bottom: 2px solid transparent;
+      font-size: var(--font-size-sm);
       font-weight: 500;
-      color: #64748b;
+      color: var(--color-text-muted);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: all 0.2s ease;
+      gap: var(--space-2);
+      transition: color var(--transition-fast), border-color var(--transition-fast);
       position: relative;
-      bottom: -2px;
+      bottom: -1px;
+      font-family: inherit;
     }
 
-    .tab-btn:hover {
-      color: #475569;
-      background-color: #f1f5f9;
-    }
+    .tab-btn:hover { color: var(--color-text); }
 
     .tab-btn.active {
-      color: #3b82f6;
-      border-bottom-color: #3b82f6;
-    }
-
-    .tab-icon {
-      font-size: 1.2rem;
+      color: var(--primary);
+      border-bottom-color: var(--primary);
     }
 
     /* ──── CONTEÚDO DAS ABAS ──── */
-    .video-content {
-      position: relative;
-      min-height: 300px;
-    }
+    .video-content { position: relative; }
 
     .tab-pane {
-      opacity: 0;
-      pointer-events: none;
-      position: absolute;
-      width: 100%;
-      transition: opacity 0.25s ease;
+      display: none;
     }
 
     .tab-pane.active {
-      opacity: 1;
-      pointer-events: all;
-      position: relative;
+      display: block;
     }
 
     /* ──── FORMULÁRIOS ──── */
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-    }
-
-    .form-label {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #1e293b;
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-    }
-
-    .label-optional {
-      font-size: 0.8rem;
-      font-weight: 400;
-      color: #94a3b8;
+      gap: var(--space-2);
     }
 
     .form-input {
-      padding: 10px 14px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      padding: var(--space-2) var(--space-3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      font-size: var(--font-size-sm);
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      background: white;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-family: inherit;
     }
 
     .form-input:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
     }
 
     .form-input.error {
-      border-color: #ef4444;
-      background-color: #fee2e2;
-    }
-
-    .form-input.error:focus {
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+      border-color: var(--color-danger);
     }
 
     /* ──── INPUT GROUP ──── */
-    .input-group {
-      display: flex;
-      gap: 8px;
-    }
-
-    .input-group .form-input {
-      flex: 1;
-    }
+    .input-group { display: flex; gap: var(--space-2); }
+    .input-group .form-input { flex: 1; }
 
     .btn-add {
-      padding: 10px 20px;
-      background: #3b82f6;
-      color: white;
+      padding: var(--space-2) var(--space-4);
+      background: var(--primary);
+      color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      border-radius: var(--radius);
+      font-size: var(--font-size-sm);
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.2s, box-shadow 0.2s;
+      transition: opacity var(--transition-fast);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: var(--space-1);
+      font-family: inherit;
     }
 
-    .btn-add:hover:not(:disabled) {
-      background: #2563eb;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    }
+    .btn-add:hover:not(:disabled) { opacity: 0.9; }
 
     .btn-add:disabled {
-      background: #cbd5e1;
+      opacity: 0.4;
       cursor: not-allowed;
-      opacity: 0.6;
     }
 
     .spinner-mini {
       display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ──── MENSAGENS ──── */
-    .form-messages {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-height: 20px;
-    }
-
-    .error-msg {
-      font-size: 0.85rem;
-      color: #dc2626;
-      margin: 0;
-    }
-
-    .success-msg {
-      font-size: 0.85rem;
-      color: #16a34a;
-      margin: 0;
-    }
+    .form-messages { min-height: 18px; }
+    .error-msg { font-size: var(--font-size-xs); color: var(--color-danger); margin: 0; }
 
     /* ──── PREVIEW YOUTUBE ──── */
     .youtube-preview {
       display: flex;
-      gap: 12px;
-      padding: 12px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      gap: var(--space-3);
+      padding: var(--space-2);
+      background: var(--color-surface-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--color-border);
     }
 
     .preview-thumb {
-      width: 120px;
-      height: 67px;
-      border-radius: 6px;
+      width: 100px;
+      height: 56px;
+      border-radius: var(--radius);
       background-size: cover;
       background-position: center;
-      position: relative;
       flex-shrink: 0;
-      overflow: hidden;
     }
 
-    .play-icon {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.4);
-      color: white;
-      font-size: 24px;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .preview-thumb:hover .play-icon {
-      opacity: 1;
-    }
-
-    .preview-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .preview-info h4 {
-      margin: 0 0 4px 0;
-      font-size: 0.95rem;
-      color: #1e293b;
-      font-weight: 600;
-    }
-
-    .preview-meta {
-      margin: 0;
-      font-size: 0.8rem;
-      color: #64748b;
-    }
+    .preview-info { display: flex; align-items: center; }
+    .preview-label { margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     /* ──── DROPZONE ──── */
     .dropzone {
-      padding: 32px;
-      border: 2px dashed #cbd5e1;
-      border-radius: 12px;
-      background: white;
+      padding: var(--space-6);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface-2);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
       text-align: center;
-    }
-
-    .dropzone:hover:not(.disabled) {
-      border-color: #3b82f6;
-      background: #f0f7ff;
-    }
-
-    .dropzone.drag-over {
-      border-color: #3b82f6;
-      background: #e0f0ff;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    }
-
-    .dropzone.disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .dropzone-content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-2);
+      color: var(--color-text-muted);
     }
 
-    .dropzone-icon {
-      font-size: 2.5rem;
+    .dropzone:hover { border-color: var(--primary); color: var(--primary); }
+
+    .dropzone.drag-over {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 6%, transparent);
+      color: var(--primary);
     }
 
-    .dropzone-title {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    .dropzone-formats {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #64748b;
-    }
+    .dropzone-title { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
+    .dropzone-formats { margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     /* ──── ARQUIVO INFO ──── */
     .arquivo-info {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-surface-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--color-border);
     }
 
-    .arquivo-icon {
-      font-size: 1.8rem;
-      flex-shrink: 0;
-    }
-
-    .arquivo-details {
-      flex: 1;
-      min-width: 0;
-    }
+    .arquivo-details { flex: 1; min-width: 0; }
 
     .arquivo-nome {
       margin: 0;
-      font-size: 0.95rem;
+      font-size: var(--font-size-sm);
       font-weight: 600;
-      color: #1e293b;
+      color: var(--color-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .arquivo-tamanho {
-      margin: 4px 0 0 0;
-      font-size: 0.8rem;
-      color: #64748b;
-    }
+    .arquivo-tamanho { margin: 2px 0 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
     .btn-remove-file {
-      padding: 6px 10px;
-      background: #fee2e2;
-      color: #dc2626;
-      border: none;
-      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
       cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.2s;
       flex-shrink: 0;
+      transition: color var(--transition-fast), border-color var(--transition-fast);
     }
 
-    .btn-remove-file:hover {
-      background: #fca5a5;
-    }
+    .btn-remove-file:hover { color: var(--color-danger); border-color: var(--color-danger); }
 
     /* ──── PROGRESSO ──── */
-    .progress-container {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .progress-container { display: flex; flex-direction: column; gap: var(--space-2); }
 
     .progress-bar {
       width: 100%;
-      height: 8px;
-      background: #e2e8f0;
-      border-radius: 4px;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 3px;
       overflow: hidden;
     }
 
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #3b82f6, #2563eb);
-      width: 0%;
-      transition: width 0.3s ease;
-    }
+    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
 
     .progress-info {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.85rem;
-      color: #64748b;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
     }
 
-    .progress-percent {
-      font-weight: 600;
-      color: #3b82f6;
-    }
+    .progress-percent { font-weight: 600; color: var(--primary); }
 
     /* ──── ERRO ──── */
     .error-box {
-      display: flex;
-      gap: 12px;
-      padding: 12px;
-      background: #fee2e2;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-    }
-
-    .error-icon {
-      font-size: 1.4rem;
-      flex-shrink: 0;
-    }
-
-    .error-title {
-      margin: 0 0 4px 0;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #dc2626;
-    }
-
-    .error-detail {
-      margin: 0;
-      font-size: 0.85rem;
-      color: #b91c1c;
+      padding: var(--space-2) var(--space-3);
+      background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+      border-radius: var(--radius);
+      font-size: var(--font-size-xs);
+      color: var(--color-danger);
     }
 
     /* ──── AÇÕES ──── */
-    .form-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
+    .form-actions { display: flex; justify-content: flex-end; }
 
     .btn-upload {
-      padding: 10px 24px;
-      background: #10b981;
-      color: white;
+      padding: var(--space-2) var(--space-5);
+      background: var(--primary);
+      color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      border-radius: var(--radius);
+      font-size: var(--font-size-sm);
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s, box-shadow 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      transition: opacity var(--transition-fast);
+      font-family: inherit;
     }
 
-    .btn-upload:hover:not(:disabled) {
-      background: #059669;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-
-    .btn-upload:disabled {
-      background: #a3e635;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
+    .btn-upload:hover:not(:disabled) { opacity: 0.9; }
+    .btn-upload:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* ──── LISTA DE VÍDEOS ──── */
-    .videos-list {
-      border-top: 2px solid #e2e8f0;
-      padding-top: 20px;
-    }
-
-    .videos-title {
-      margin: 0 0 14px 0;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #1e293b;
-    }
+    .videos-list { border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
 
     .videos-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: var(--space-2);
     }
 
     .video-item {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 8px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      transition: all 0.2s;
+      gap: var(--space-2);
+      padding: var(--space-2);
+      background: var(--color-surface-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--color-border);
+      transition: border-color var(--transition-fast);
       position: relative;
     }
 
-    .video-item:hover {
-      border-color: #3b82f6;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-    }
+    .video-item:hover { border-color: var(--primary); }
 
     .video-thumbnail {
       width: 100%;
       aspect-ratio: 16/9;
-      border-radius: 6px;
+      border-radius: var(--radius);
       overflow: hidden;
-      background: #f1f5f9;
+      background: var(--color-border);
       position: relative;
     }
 
-    .yt-thumb {
-      width: 100%;
-      height: 100%;
-      background-size: cover;
-      background-position: center;
-      position: relative;
-    }
-
-    .play-badge {
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
+    .yt-thumb { width: 100%; height: 100%; background-size: cover; background-position: center; }
 
     .upload-thumb {
       display: flex;
@@ -748,52 +489,41 @@ export interface Video {
       width: 100%;
       height: 100%;
       flex-direction: column;
-      gap: 4px;
-    }
-
-    .video-icon {
-      font-size: 2rem;
+      gap: var(--space-1);
+      color: var(--color-text-muted);
     }
 
     .file-badge {
-      font-size: 0.7rem;
-      color: #64748b;
-      background: #e2e8f0;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      background: var(--color-surface);
       padding: 2px 6px;
       border-radius: 3px;
     }
 
-    .video-details {
-      flex: 1;
-      min-width: 0;
-    }
+    .video-details { flex: 1; min-width: 0; }
 
     .video-type-badge {
-      margin: 0 0 4px 0;
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 2px 6px;
-      background: #f1f5f9;
-      color: #64748b;
+      margin: 0 0 var(--space-1) 0;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: 1px 6px;
+      background: var(--color-surface);
+      color: var(--color-text-muted);
       border-radius: 3px;
       display: inline-block;
       width: fit-content;
     }
 
-    .video-type-badge.youtube {
-      background: #fef3c7;
-      color: #b45309;
-    }
-
-    .video-type-badge.upload {
-      background: #d1fae5;
-      color: #065f46;
-    }
+    .video-type-badge.youtube { color: #b45309; }
+    .video-type-badge.upload { color: var(--primary); }
 
     .video-url {
       margin: 0;
-      font-size: 0.8rem;
-      color: #64748b;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -803,57 +533,31 @@ export interface Video {
       position: absolute;
       top: 4px;
       right: 4px;
-      width: 28px;
-      height: 28px;
-      background: #ef4444;
-      color: white;
-      border: none;
+      width: 22px;
+      height: 22px;
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
       border-radius: 50%;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
       opacity: 0;
-      transition: all 0.2s;
+      transition: opacity var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 
-    .video-item:hover .btn-delete {
-      opacity: 1;
-    }
-
-    .btn-delete:hover {
-      background: #dc2626;
-      transform: scale(1.1);
-    }
-
-    /* ──── INFO BOX ──── */
-    .info-box {
-      display: flex;
-      gap: 12px;
-      padding: 12px;
-      background: #e0f2fe;
-      border-left: 4px solid #0284c7;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      color: #0c4a6e;
-    }
-
-    .info-icon {
-      font-size: 1.2rem;
-      flex-shrink: 0;
-    }
-
-    .info-box p {
-      margin: 0;
-    }
+    .video-item:hover .btn-delete { opacity: 1; }
+    .btn-delete:hover { color: var(--color-danger); border-color: var(--color-danger); }
   `]
 })
 export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
   @Input() aulaId?: number;
   @Input() videosIniciais: Video[] = [];
+  @Input() garantirAulaSalva?: () => Promise<number>;
   @Output() videosAdicionados = new EventEmitter<Video[]>();
   @Output() videoRemovido = new EventEmitter<void>();
+  @Output() aulaIdResolvido = new EventEmitter<number>();
 
   @ViewChild('youtubeInput') youtubeInput?: ElementRef<HTMLInputElement>;
 
@@ -1043,8 +747,27 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
     this.progressoUpload = 0;
   }
 
-  enviarArquivo(): void {
-    if (!this.arquivoSelecionado || !this.aulaId) return;
+  async enviarArquivo(): Promise<void> {
+    if (!this.arquivoSelecionado) return;
+
+    let aulaId = this.aulaId;
+    if (!aulaId) {
+      if (!this.garantirAulaSalva) return;
+      this.carregando = true;
+      this.uploadError = '';
+      this.progressoTexto = 'Salvando aula...';
+      try {
+        aulaId = await this.garantirAulaSalva();
+        this.aulaId = aulaId;
+        // Não emite aulaIdResolvido aqui: navegar agora destruiria este componente
+        // (rota diferente) e cancelaria o upload que está prestes a começar.
+      } catch (e) {
+        this.carregando = false;
+        this.progressoTexto = '';
+        this.uploadError = e instanceof Error ? e.message : 'Erro ao salvar a aula antes do envio.';
+        return;
+      }
+    }
 
     this.carregando = true;
     this.uploadError = '';
@@ -1054,7 +777,7 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
     const formData = new FormData();
     formData.append('file', this.arquivoSelecionado);
 
-    this.http.post<any>(`${this.API}/aulas/${this.aulaId}/upload-video`, formData, {
+    this.http.post<any>(`${this.API}/aulas/${aulaId}/upload-video`, formData, {
       reportProgress: true,
       observe: 'events',
     })
@@ -1085,6 +808,9 @@ export class VideoUploadComponent implements OnInit, OnChanges, OnDestroy {
             this.arquivoSelecionado = null;
             this.progressoUpload = 0;
             this.progressoTexto = '';
+
+            // Upload concluído: agora é seguro atualizar a URL para /editar.
+            this.aulaIdResolvido.emit(aulaId as number);
           }
         },
         error: (error) => {

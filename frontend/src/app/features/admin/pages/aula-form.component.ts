@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -103,7 +103,7 @@ function parseBlocos(titulo: string, descricao: string): BlocoEditavel[] {
                     <app-rich-text-editor [content]="b.conteudo" placeholder="Digite um parágrafo..." (contentChange)="atualizar(b.id, $event)" class="bloco-content" />
                   }
                   @if (b.tipo === 'video') {
-                    <app-bloco-video-moderno [conteudo]="b.conteudo" [aulaId]="aulaId" (conteudoChange)="atualizar(b.id, $event)" class="bloco-content" />
+                    <app-bloco-video-moderno [conteudo]="b.conteudo" [aulaId]="aulaId" [garantirAulaSalva]="garantirAulaSalva" (conteudoChange)="atualizar(b.id, $event)" (aulaIdResolvido)="onAulaIdResolvido($event)" class="bloco-content" />
                   }
 
                   <button class="btn-remover" title="Remover bloco" (click)="remover(b.id)" [disabled]="isTituloUnico(b)">
@@ -274,6 +274,7 @@ export class AdminAulaFormComponent implements OnInit {
     private router: Router,
     private http: HttpClient,
     private authService: AuthService,
+    private location: Location,
   ) {}
 
   ngOnInit(): void {
@@ -391,28 +392,39 @@ export class AdminAulaFormComponent implements OnInit {
           };
         });
 
-        // Injeta vídeos no bloco de vídeo existente (ou cria um novo)
-        if (videosUpload.length > 0) {
-          const videoBlocoIdx = this.blocos.findIndex(b => b.tipo === 'video');
-          if (videoBlocoIdx >= 0) {
-            // Preserva vídeos YouTube já existentes no bloco, adiciona uploads
-            let videosYt: Video[] = [];
-            try {
-              const parsed = JSON.parse(this.blocos[videoBlocoIdx].conteudo);
-              if (Array.isArray(parsed)) videosYt = parsed.filter((v: any) => v.tipo === 'youtube');
-            } catch {
-              const url = this.blocos[videoBlocoIdx].conteudo?.trim();
-              if (url) videosYt = [{ id: `yt_old`, tipo: 'youtube', url }];
+        // Cada bloco 'video' já carrega seus próprios vídeos no JSON salvo em `descricao` —
+        // preserva a posição/intercalação. `aula.videos` só serve para adotar uploads órfãos
+        // (arquivos enviados mas nunca refletidos em nenhum bloco).
+        const idsReferenciados = new Set<string>();
+        for (const b of this.blocos) {
+          if (b.tipo !== 'video') continue;
+          try {
+            const parsed = JSON.parse(b.conteudo);
+            if (Array.isArray(parsed)) {
+              for (const v of parsed) if (v?.id) idsReferenciados.add(v.id);
             }
-            const combinados = [...videosUpload, ...videosYt];
+          } catch { /* conteúdo antigo (URL crua) não referencia por id */ }
+        }
+
+        const orfaos = videosUpload.filter(v => !idsReferenciados.has(v.id ?? ''));
+        if (orfaos.length > 0) {
+          const ultimoVideoIdx = [...this.blocos].reverse().findIndex(b => b.tipo === 'video');
+          if (ultimoVideoIdx >= 0) {
+            const idx = this.blocos.length - 1 - ultimoVideoIdx;
+            let existentes: Video[] = [];
+            try {
+              const parsed = JSON.parse(this.blocos[idx].conteudo);
+              if (Array.isArray(parsed)) existentes = parsed;
+            } catch { /* ignora conteúdo antigo */ }
+            const combinados = [...existentes, ...orfaos];
             this.blocos = this.blocos.map((b, i) =>
-              i === videoBlocoIdx ? { ...b, conteudo: JSON.stringify(combinados) } : b
+              i === idx ? { ...b, conteudo: JSON.stringify(combinados) } : b
             );
           } else {
             this.blocos = [...this.blocos, {
               id: this.proximoId++,
               tipo: 'video',
-              conteudo: JSON.stringify(videosUpload),
+              conteudo: JSON.stringify(orfaos),
             }];
           }
         }
@@ -424,14 +436,11 @@ export class AdminAulaFormComponent implements OnInit {
     });
   }
 
-  salvar(): void {
-    this.erro = '';
-    this.sucesso = '';
-
+  private montarPayload(): Record<string, unknown> | null {
     const titulo = this.tituloAtual;
-    if (!titulo) { this.erro = 'Adicione um bloco de título com conteúdo.'; return; }
-    if (!this.meta.curso_id) { this.erro = 'Selecione um curso.'; return; }
-    if (!this.meta.data_aula) { this.erro = 'Informe a data da aula.'; return; }
+    if (!titulo) { this.erro = 'Adicione um bloco de título com conteúdo.'; return null; }
+    if (!this.meta.curso_id) { this.erro = 'Selecione um curso.'; return null; }
+    if (!this.meta.data_aula) { this.erro = 'Informe a data da aula.'; return null; }
 
     const payload: Record<string, unknown> = {
       titulo,
@@ -440,8 +449,16 @@ export class AdminAulaFormComponent implements OnInit {
       duracao_minutos: this.meta.duracao_minutos ?? undefined,
       curso_id: this.meta.curso_id,
     };
-
     if (this.aulaId) payload['ativo'] = this.meta.ativo;
+    return payload;
+  }
+
+  salvar(): void {
+    this.erro = '';
+    this.sucesso = '';
+
+    const payload = this.montarPayload();
+    if (!payload) return;
 
     this.salvando = true;
     const req$ = this.aulaId
@@ -464,6 +481,43 @@ export class AdminAulaFormComponent implements OnInit {
         this.erro = err?.error?.detail ?? 'Erro ao salvar. Tente novamente.';
       },
     });
+  }
+
+  /**
+   * Cria a aula em segundo plano quando o usuário tenta enviar um vídeo por PC
+   * antes de clicar em "Salvar". Não navega — só devolve o id para o upload seguir.
+   */
+  garantirAulaSalva = (): Promise<number> => {
+    if (this.aulaId) return Promise.resolve(this.aulaId);
+
+    this.erro = '';
+    const payload = this.montarPayload();
+    if (!payload) {
+      return Promise.reject(new Error(this.erro || 'Preencha curso, data e título antes de enviar um vídeo.'));
+    }
+
+    return new Promise<number>((resolve, reject) => {
+      this.http.post<any>(`${API}/aulas/`, payload, { headers: this.headers() }).subscribe({
+        next: (aula) => {
+          this.aulaId = aula.id;
+          this.sucesso = 'Aula criada! Continue editando.';
+          setTimeout(() => { this.sucesso = ''; }, 3000);
+          resolve(aula.id);
+        },
+        error: (err) => {
+          const msg = err?.error?.detail ?? 'Erro ao criar a aula. Tente novamente.';
+          this.erro = msg;
+          reject(new Error(msg));
+        },
+      });
+    });
+  };
+
+  onAulaIdResolvido(id: number): void {
+    // Só troca a URL na barra de endereço (sem navegação do Router): navegar de
+    // verdade recriaria este componente e derrubaria estado não salvo (outros
+    // blocos em edição, uploads em andamento em outros blocos de vídeo).
+    this.location.replaceState(`/admin/aulas/${id}/editar`);
   }
 
   voltar(): void {
