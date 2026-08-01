@@ -89,6 +89,27 @@ def get_current_super_admin(
     return current_user
 
 
+def get_current_gestor_faculdade(
+    current_user: Usuario = Depends(get_current_admin)
+) -> Usuario:
+    """
+    Dependency que exige um cargo de gestão da instituição: ``super_admin``,
+    ``admin_faculdade`` ou o admin legado (``admin_role`` NULL).
+
+    Recusa o instrutor, cujo escopo é conteúdo (cursos, aulas, provas). Use em
+    rotas que administram a faculdade — alunos, administradores, solicitações de
+    cadastro, tema — sempre junto do ``TenantContext``, que é quem garante que a
+    faculdade administrada é a do usuário.
+    """
+    from app.services.admin_course_access import pode_gerenciar_faculdade
+    if not pode_gerenciar_faculdade(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas Super Admin ou Admin da Faculdade podem realizar esta operação",
+        )
+    return current_user
+
+
 def get_current_faculdade_id(
     current_user: Usuario = Depends(get_current_user),
 ) -> Optional[int]:
@@ -266,12 +287,15 @@ def admin_registro(
                 detail="Acesso restrito a administradores"
             )
 
-        criador_super  = current_user.admin_role == ModelAdminRoleEnum.super_admin
-        criador_legado = current_user.admin_role is None
-        if not (criador_super or criador_legado):
+        # Quem gerencia a instituição cadastra administradores dela: super
+        # admin, admin da faculdade e o legado. O instrutor não — seu escopo é
+        # conteúdo, e antes desta trava ele podia criar um par com mais poder
+        # do que ele mesmo.
+        from app.services.admin_course_access import pode_gerenciar_faculdade
+        if not pode_gerenciar_faculdade(current_user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Apenas Super Admin pode cadastrar administradores",
+                detail="Apenas Super Admin ou Admin da Faculdade podem cadastrar administradores",
             )
 
         if usuario_data.admin_role == AdminRoleEnum.super_admin:
@@ -321,11 +345,16 @@ def admin_registro(
     )
 
     # Política de acesso por role:
-    # - super_admin → irrestrito (não precisa de registros em admin_cursos)
+    # - super_admin / admin_faculdade → irrestrito dentro do próprio escopo
+    #   (não precisam de registros em admin_cursos)
     # - instrutor → sem cursos inicialmente; acesso auto-concedido ao criar cursos
-    # - Cursos manuais via curso_ids só são aplicados se a role não for super_admin
+    # - Cursos manuais via curso_ids só valem para quem tem acesso restrito
     role_criada = user.admin_role
-    nao_restrito = (role_criada is None or role_criada == ModelAdminRoleEnum.super_admin)
+    nao_restrito = role_criada in (
+        None,
+        ModelAdminRoleEnum.super_admin,
+        ModelAdminRoleEnum.admin_faculdade,
+    )
 
     if not nao_restrito and usuario_data.curso_ids:
         cursos_existentes = (
@@ -351,15 +380,16 @@ def listar_admins(
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(get_current_gestor_faculdade),
     tc: TenantContext = Depends(tenant_context),
 ):
-    """Lista administradores com filtros, busca e paginação."""
-    if current_user.role != RoleEnum.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito a administradores"
-        )
+    """
+    Lista administradores com filtros, busca e paginação.
+
+    Restrita a quem gerencia a instituição — o instrutor não administra o
+    quadro de admins e a listagem devolve dados pessoais (telefone, CPF,
+    endereço) de todos eles.
+    """
 
     # Sem o filtro de tenant esta rota devolvia todos os admins de todas as
     # faculdades, com telefone, CPF e endereço.
@@ -453,22 +483,25 @@ def editar_admin(
 ):
     """
     Edita dados de um administrador.
-    Apenas Super Admin ou Admin Legado (admin_role == None) podem editar.
+
+    Super Admin, Admin da Faculdade e Admin Legado podem editar; o instrutor
+    não. Quem não é super admin fica preso à própria faculdade e não consegue
+    promover ninguém a super admin.
     """
-    # Verificar permissão: apenas super_admin ou admin legado
+    from app.services.admin_course_access import pode_gerenciar_faculdade
+
     if current_user.role != RoleEnum.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a administradores"
         )
-    
-    is_super_admin = current_user.admin_role == ModelAdminRoleEnum.super_admin
-    is_legacy_admin = current_user.admin_role is None
 
-    if not (is_super_admin or is_legacy_admin):
+    is_super_admin = current_user.admin_role == ModelAdminRoleEnum.super_admin
+
+    if not pode_gerenciar_faculdade(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas Super Admin e Admin Legado podem editar administradores"
+            detail="Apenas Super Admin ou Admin da Faculdade podem editar administradores"
         )
 
     # Buscar admin a editar
@@ -486,22 +519,35 @@ def editar_admin(
             detail="Acesso negado: administrador pertence a outra faculdade",
         )
 
+    # Conta de super admin só é gerenciada por super admin (menu Sistema). Sem
+    # isto, um super admin que por acaso tivesse vínculo com a faculdade viraria
+    # alvo do admin dela.
+    if not is_super_admin and admin.admin_role == ModelAdminRoleEnum.super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Contas de Super Admin só podem ser editadas por um Super Admin",
+        )
+
     # Mudança de privilégio é restrita — e nunca sobre si mesmo.
     #
     # Antes, qualquer admin legado (admin_role NULL) podia se promover a
-    # super_admin com um PUT no próprio id. Duas travas:
-    #   1. só super_admin altera admin_role;
-    #   2. ninguém altera o próprio admin_role, nem super_admin.
+    # super_admin com um PUT no próprio id. Três travas:
+    #   1. ninguém altera o próprio admin_role, nem super_admin;
+    #   2. só super_admin concede super_admin (o resto é escalada de privilégio);
+    #   3. o admin da faculdade só movimenta cargos dentro dela.
     if dados.admin_role is not None and dados.admin_role != admin.admin_role:
-        if not is_super_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Apenas Super Admin pode alterar o perfil de um administrador",
-            )
         if admin.id == current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Você não pode alterar o seu próprio perfil de administrador",
+            )
+        if not is_super_admin and dados.admin_role == AdminRoleEnum.super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Apenas Super Admin pode promover alguém a Super Admin — "
+                    "contas de plataforma são criadas no painel de Sistema"
+                ),
             )
 
     # Validar que nenhum outro admin tem o novo email
@@ -564,11 +610,14 @@ def editar_admin(
 def excluir_admin(
     admin_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_super_admin),
+    current_user: Usuario = Depends(get_current_gestor_faculdade),
 ):
     """
     Remove permanentemente um administrador.
-    Apenas Super Admin pode executar. Não é possível excluir a si mesmo.
+
+    Super Admin e Admin da Faculdade podem executar; o segundo apenas dentro da
+    própria faculdade e nunca sobre uma conta de Super Admin. Não é possível
+    excluir a si mesmo.
     """
     if current_user.id == admin_id:
         raise HTTPException(
@@ -582,6 +631,18 @@ def excluir_admin(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Administrador não encontrado"
         )
+
+    if current_user.admin_role != ModelAdminRoleEnum.super_admin:
+        if admin.faculdade_id != current_user.faculdade_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso negado: administrador pertence a outra faculdade",
+            )
+        if admin.admin_role == ModelAdminRoleEnum.super_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Contas de Super Admin só podem ser excluídas por um Super Admin",
+            )
 
     db.query(AdminCurso).filter(AdminCurso.admin_id == admin_id).delete()
     db.delete(admin)

@@ -423,6 +423,28 @@ def _assert_tema_owner(tema: FaculdadeTema, faculdade_id: int) -> None:
         raise HTTPException(status_code=403, detail="Acesso negado: tema pertence a outra faculdade")
 
 
+def _exige_gestor_do_tema(user: Usuario) -> None:
+    """
+    Quem pode escrever no tema da instituição: a conta ``role='instituicao'``, o
+    super admin e o admin da faculdade.
+
+    O instrutor fica de fora — a identidade visual é decisão da instituição, não
+    de quem publica conteúdo. Antes, metade destas rotas checava apenas
+    ``get_current_user``: qualquer usuário autenticado, aluno inclusive, trocava
+    o tema da faculdade em gestão.
+    """
+    from app.models import RoleEnum as ModelRoleEnum
+    from app.services.admin_course_access import pode_gerenciar_faculdade
+
+    if user.role == ModelRoleEnum.instituicao or pode_gerenciar_faculdade(user):
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Apenas a instituição, o Super Admin ou o Admin da Faculdade podem alterar o tema",
+    )
+
+
 # ---------------------------------------------------------------------------
 # White-label: endpoints do tema ativo (compat. 1:1 anterior)
 # ---------------------------------------------------------------------------
@@ -479,13 +501,7 @@ def atualizar_meu_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    from app.models import AdminRoleEnum as ModelAdminRoleEnum, RoleEnum as ModelRoleEnum
-    is_admin = (
-        current_user.admin_role == ModelAdminRoleEnum.super_admin
-        or current_user.role in (ModelRoleEnum.admin, ModelRoleEnum.instituicao)
-    )
-    if not is_admin:
-        raise HTTPException(status_code=403, detail="Apenas administradores podem alterar o tema")
+    _exige_gestor_do_tema(current_user)
 
     from app.services.color_palette import generate_palette, validate_contrast
 
@@ -591,10 +607,7 @@ def criar_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    from app.models import RoleEnum as ModelRoleEnum
-    if current_user.role not in (ModelRoleEnum.admin, ModelRoleEnum.instituicao) \
-            and not current_user.admin_role:
-        raise HTTPException(status_code=403, detail="Sem permissão")
+    _exige_gestor_do_tema(current_user)
 
     from app.services.color_palette import generate_palette
 
@@ -657,6 +670,7 @@ def atualizar_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _exige_gestor_do_tema(current_user)
     f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
@@ -715,6 +729,7 @@ def ativar_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _exige_gestor_do_tema(current_user)
     f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:
@@ -737,6 +752,7 @@ def excluir_tema(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    _exige_gestor_do_tema(current_user)
     f = _faculdade_do_painel(request, current_user, db)
     tema = db.query(FaculdadeTema).filter(FaculdadeTema.id == tema_id).first()
     if not tema:

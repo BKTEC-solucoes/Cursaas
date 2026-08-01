@@ -146,10 +146,12 @@ const icons = {
                 <span class="nav-label">Administradores</span>
               </a>
             }
-            <a routerLink="/admin/cadastros" routerLinkActive="active" [title]="isCollapsed() ? 'Cadastros' : ''">
-              <span class="icon" [innerHTML]="icons.cadastros"></span>
-              <span class="nav-label">Cadastros</span>
-            </a>
+            @if (p.can('alunos:write')) {
+              <a routerLink="/admin/cadastros" routerLinkActive="active" [title]="isCollapsed() ? 'Cadastros' : ''">
+                <span class="icon" [innerHTML]="icons.cadastros"></span>
+                <span class="nav-label">Cadastros</span>
+              </a>
+            }
             <a routerLink="/admin/solicitacoes" routerLinkActive="active" [title]="isCollapsed() ? 'Solicitações' : ''">
               <span class="icon" [innerHTML]="icons.solicit"></span>
               <span class="nav-label">Solicitações</span>

@@ -20,6 +20,8 @@ verdade — com um tenant só, um vazamento entre tenants não aparece.
 Usuários (senha de todos: Teste@123):
 
     super@cursaas.dev              admin / super_admin      sem tenant (vê tudo)
+    admin.alfa@cursaas.dev         admin / admin_faculdade  Alfa
+    admin.beta@cursaas.dev         admin / admin_faculdade  Beta
     instrutor.alfa@cursaas.dev     admin / instrutor        Alfa
     instrutor.beta@cursaas.dev     admin / instrutor        Beta
     instituicao.alfa@cursaas.dev   instituicao              Alfa
@@ -202,6 +204,17 @@ def semear() -> None:
             RoleEnum.admin, AdminRoleEnum.super_admin, faculdade_id=None,
         )
 
+        # Os três cargos lado a lado: o admin da faculdade enxerga todo o
+        # catálogo do próprio tenant, o instrutor só os cursos dele.
+        _criar_usuario(
+            db, "admin.alfa@cursaas.dev", "Admin Faculdade Alfa",
+            RoleEnum.admin, AdminRoleEnum.admin_faculdade, faculdade_id=alfa.id,
+        )
+        _criar_usuario(
+            db, "admin.beta@cursaas.dev", "Admin Faculdade Beta",
+            RoleEnum.admin, AdminRoleEnum.admin_faculdade, faculdade_id=beta.id,
+        )
+
         instrutor_alfa = _criar_usuario(
             db, "instrutor.alfa@cursaas.dev", "Instrutor Alfa",
             RoleEnum.admin, AdminRoleEnum.instrutor, faculdade_id=alfa.id,
@@ -264,8 +277,10 @@ def main() -> None:
     # setas e acentos quando a saída não é redirecionada.
     print("\nBanco recriado. Senha de todos os usuarios: " + SENHA_PADRAO)
     print("  super@cursaas.dev            -> /admin       (super admin, ve os 2 tenants)")
-    print("  instrutor.alfa@cursaas.dev   -> /admin       (so Alfa)")
-    print("  instrutor.beta@cursaas.dev   -> /admin       (so Beta)")
+    print("  admin.alfa@cursaas.dev       -> /admin       (admin da faculdade Alfa)")
+    print("  admin.beta@cursaas.dev       -> /admin       (admin da faculdade Beta)")
+    print("  instrutor.alfa@cursaas.dev   -> /admin       (so Alfa, so os cursos dele)")
+    print("  instrutor.beta@cursaas.dev   -> /admin       (so Beta, so os cursos dele)")
     print("  instituicao.alfa@cursaas.dev -> /instituicao (Alfa)")
     print("  instituicao.beta@cursaas.dev -> /instituicao (Beta)")
     print("  aluno.alfa@cursaas.dev       -> /aluno       (Alfa, vinculo ativo)")

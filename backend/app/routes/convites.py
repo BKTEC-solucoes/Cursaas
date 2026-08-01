@@ -23,6 +23,7 @@ from app.schemas import (
     UsuarioResponse,
     AdminRoleEnum,
 )
+from app.services.admin_course_access import pode_gerenciar_faculdade
 from app.services.auth_service import AuthService
 from app.services.email_service import enviar_convite
 from app.routes.auth import get_current_user
@@ -31,8 +32,9 @@ from app.security.tenant import ler_escopo_faculdade
 router = APIRouter()
 
 _ROLE_LABELS: dict[str, str] = {
-    "super_admin": "Super Admin",
-    "instrutor":   "Instrutor",
+    "super_admin":     "Super Admin",
+    "admin_faculdade": "Admin da Faculdade",
+    "instrutor":       "Instrutor",
 }
 
 
@@ -45,10 +47,14 @@ def _resolver_faculdade_do_convite(
     """
     Decide em que faculdade o admin convidado vai nascer.
 
-    Prioridade: ``faculdade_id`` do payload → instituição que o super admin está
-    gerenciando no painel (``X-Faculdade-Id``) → vínculo do próprio convidante
-    (caso do admin legado). Sem nenhuma das três o convite cria uma conta órfã,
-    que loga mas não enxerga nada — por isso o instrutor exige faculdade.
+    Para o super admin a prioridade é ``faculdade_id`` do payload → instituição
+    que ele está gerenciando no painel (``X-Faculdade-Id``). Sem nenhuma das duas
+    o convite criaria uma conta órfã, que loga mas não enxerga nada — por isso
+    admin da faculdade e instrutor exigem faculdade.
+
+    Para os demais cargos de gestão a faculdade é sempre a do próprio convidante:
+    tanto o payload quanto o cabeçalho vêm do cliente, e aceitá-los deixaria o
+    admin de uma instituição criar administradores em outra.
 
     Convite de super admin é a exceção: ele administra a plataforma, não uma
     instituição, então nasce global. Sem esta regra o cabeçalho de escopo (que o
@@ -57,10 +63,24 @@ def _resolver_faculdade_do_convite(
     if dados.admin_role == AdminRoleEnum.super_admin and dados.faculdade_id is None:
         return None
 
-    faculdade_id = dados.faculdade_id or ler_escopo_faculdade(request) or current_user.faculdade_id
+    if current_user.admin_role != ModelAdminRoleEnum.super_admin:
+        if current_user.faculdade_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Sua conta não está vinculada a nenhuma instituição",
+            )
+        if dados.faculdade_id is not None and dados.faculdade_id != current_user.faculdade_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só pode convidar administradores para a sua instituição",
+            )
+        faculdade_id: int | None = current_user.faculdade_id
+    else:
+        faculdade_id = dados.faculdade_id or ler_escopo_faculdade(request)
 
     if faculdade_id is None:
-        # Super admin é global por definição; instrutor sem tenant é conta morta.
+        # Super admin é global por definição; os outros cargos sem tenant são
+        # conta morta.
         if dados.admin_role == AdminRoleEnum.super_admin:
             return None
         raise HTTPException(
@@ -81,15 +101,22 @@ def _resolver_faculdade_do_convite(
     return faculdade_id
 
 
-def _exige_super_admin(current_user: Usuario) -> None:
+def _exige_gestor(current_user: Usuario) -> None:
+    """Convidar administrador é ato de gestão da instituição — instrutor não."""
     if current_user.role != RoleEnum.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
-    is_super = current_user.admin_role == ModelAdminRoleEnum.super_admin
-    is_legacy = current_user.admin_role is None
-    if not (is_super or is_legacy):
+    if not pode_gerenciar_faculdade(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas Super Admin pode enviar convites",
+            detail="Apenas Super Admin ou Admin da Faculdade podem enviar convites",
+        )
+
+
+def _exige_super_admin(current_user: Usuario) -> None:
+    if current_user.admin_role != ModelAdminRoleEnum.super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas Super Admin pode gerenciar convites de plataforma",
         )
 
 
@@ -102,7 +129,11 @@ def enviar_convite_admin(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _exige_super_admin(current_user)
+    _exige_gestor(current_user)
+
+    # Convite de super admin é conta de plataforma: só outro super admin cria.
+    if dados.admin_role == AdminRoleEnum.super_admin:
+        _exige_super_admin(current_user)
 
     faculdade_id = _resolver_faculdade_do_convite(request, dados, current_user, db)
 
@@ -181,14 +212,15 @@ def listar_convites(
 ):
     """
     Lista convites. ``escopo=sistema`` devolve os convites de super admin (visão
-    global do painel de Sistema); o padrão é a visão da instituição, que mostra
-    apenas convites de admin da faculdade em gestão.
+    global do painel de Sistema, só para super admin); o padrão é a visão da
+    instituição, que mostra apenas convites de admin da faculdade em gestão.
     """
-    _exige_super_admin(current_user)
+    _exige_gestor(current_user)
 
     query = db.query(ConviteAdmin)
 
     if escopo == "sistema":
+        _exige_super_admin(current_user)
         query = query.filter(ConviteAdmin.admin_role == ModelAdminRoleEnum.super_admin)
     else:
         # Convite de super admin é assunto do painel de Sistema — some daqui
@@ -196,8 +228,14 @@ def listar_convites(
         query = query.filter(ConviteAdmin.admin_role != ModelAdminRoleEnum.super_admin)
 
         # Gerenciando uma instituição: mostra só os convites dela. Sem escopo, a
-        # lista continua global (visão do super admin).
-        faculdade = ler_escopo_faculdade(request) or current_user.faculdade_id
+        # lista continua global — e isso vale apenas para o super admin, que é
+        # quem pode navegar entre instituições.
+        if current_user.admin_role == ModelAdminRoleEnum.super_admin:
+            faculdade = ler_escopo_faculdade(request)
+        else:
+            faculdade = current_user.faculdade_id
+            if faculdade is None:
+                return []
         if faculdade is not None:
             query = query.filter(ConviteAdmin.faculdade_id == faculdade)
 
@@ -264,10 +302,22 @@ def revogar_convite(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    _exige_super_admin(current_user)
+    _exige_gestor(current_user)
     convite = db.query(ConviteAdmin).filter(ConviteAdmin.id == convite_id).first()
     if not convite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado")
+
+    # Convite de outra instituição — ou de plataforma — não é do admin daqui.
+    if current_user.admin_role != ModelAdminRoleEnum.super_admin:
+        if (
+            convite.admin_role == ModelAdminRoleEnum.super_admin
+            or convite.faculdade_id != current_user.faculdade_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este convite não pertence à sua instituição",
+            )
+
     if convite.usado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Convite já foi utilizado")
     db.delete(convite)

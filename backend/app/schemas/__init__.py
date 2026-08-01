@@ -579,8 +579,10 @@ class VinculoResponse(BaseModel):
         from_attributes = True
 
 class AdminRoleEnum(str, PyEnum):
-    super_admin = "super_admin"
-    instrutor   = "instrutor"
+    """Espelha ``app.models.AdminRoleEnum`` — mantenha os dois em sincronia."""
+    super_admin     = "super_admin"
+    admin_faculdade = "admin_faculdade"
+    instrutor       = "instrutor"
 
 class CourseRequestStatusEnum(str, PyEnum):
     pending = "pending"

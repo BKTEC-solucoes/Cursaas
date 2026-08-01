@@ -8,7 +8,7 @@ from app.schemas import CursoDetailResponse, UsuarioResponse, UsuarioDetailRespo
 from app.routes.auth import get_current_user
 from app.security.tenant import TenantContext, tenant_context
 from app.services.auth_service import AuthService
-from app.services.admin_course_access import get_allowed_course_ids, is_super_or_legacy_admin
+from app.services.admin_course_access import get_allowed_course_ids, pode_gerenciar_faculdade
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +22,19 @@ def _require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario
 
 
 def _require_alunos_write(current_user: Usuario = Depends(_require_admin)) -> Usuario:
-    # Cadastro/edição/exclusão aqui é direto, sem vínculo a curso — só super
-    # admin e admin legado podem (mesma regra de frontend/src/app/core/permissions.ts,
-    # token alunos:write). Um instrutor que criasse um aluno por aqui nunca o
-    # veria depois: list_alunos restringe instrutor aos alunos matriculados
-    # nos cursos que leciona (get_allowed_course_ids), e este endpoint não
-    # matricula ninguém em curso nenhum.
-    if not is_super_or_legacy_admin(current_user):
+    # Cadastro/edição/exclusão aqui é direto, sem vínculo a curso — só quem
+    # gerencia a instituição pode (mesma regra de
+    # frontend/src/app/core/permissions.ts, token alunos:write). Um instrutor
+    # que criasse um aluno por aqui nunca o veria depois: list_alunos restringe
+    # instrutor aos alunos matriculados nos cursos que leciona
+    # (get_allowed_course_ids), e este endpoint não matricula ninguém em curso
+    # nenhum.
+    if not pode_gerenciar_faculdade(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas super admins podem cadastrar, editar ou excluir alunos diretamente. "
-                   "Instrutores devem matricular alunos aprovando solicitações de curso.",
+            detail="Apenas Super Admin ou Admin da Faculdade podem cadastrar, editar ou excluir "
+                   "alunos diretamente. Instrutores devem matricular alunos aprovando "
+                   "solicitações de curso.",
         )
     return current_user
 

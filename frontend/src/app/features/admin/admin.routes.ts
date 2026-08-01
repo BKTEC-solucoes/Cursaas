@@ -112,7 +112,10 @@ export const ADMIN_ROUTES: Routes = [
       {
         path: 'cadastros',
         component: AdminCadastrosComponent,
-        canActivate: [faculdadeAtivaGuard]
+        // Aprovar aluno é gestão da instituição: `/api/cadastro/admin/*`
+        // responde 403 ao instrutor, então a tela abria vazia e com erro.
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
+        data: { permissions: ['alunos:write'] }
       },
       // Gestão das instituições e do sistema: escopo global, fora de qualquer
       // faculdade — por isso sem `faculdadeAtivaGuard`, que existe para fixar a

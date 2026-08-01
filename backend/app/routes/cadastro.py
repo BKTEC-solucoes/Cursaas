@@ -7,8 +7,16 @@ import secrets
 import string
 
 from app.database import get_db
-from app.models import SolicitacaoCadastro, SolicitacaoStatusEnum, Faculdade, Usuario, VinculoAlunoFaculdade, RoleEnum
-from app.routes.auth import get_current_super_admin
+from app.models import (
+    SolicitacaoCadastro,
+    SolicitacaoStatusEnum,
+    Faculdade,
+    Usuario,
+    VinculoAlunoFaculdade,
+    RoleEnum,
+    AdminRoleEnum as ModelAdminRoleEnum,
+)
+from app.routes.auth import get_current_gestor_faculdade
 from app.security.tenant import ler_escopo_faculdade
 from app.services.auth_service import AuthService
 from app.schemas import (
@@ -105,7 +113,7 @@ def solicitar_cadastro(
 
 
 # =============================================================================
-# Endpoints de Admin (apenas super_admin)
+# Endpoints de Admin (super_admin e admin da faculdade)
 # =============================================================================
 
 def _enrich(s: SolicitacaoCadastro) -> SolicitacaoCadastroAdminResponse:
@@ -116,17 +124,65 @@ def _enrich(s: SolicitacaoCadastro) -> SolicitacaoCadastroAdminResponse:
     return data
 
 
+def _escopo_do_gestor(
+    request: Request,
+    gestor: Usuario,
+    faculdade_id: Optional[int] = None,
+) -> Optional[int]:
+    """
+    Faculdade cujas solicitações o gestor está vendo.
+
+    Estas rotas não usam ``TenantContext`` (nasceram super-admin-only), então o
+    recorte de tenant é feito aqui:
+
+    * super admin — o escopo do painel (``X-Faculdade-Id``) entra como filtro
+      padrão e ``?faculdade_id=`` tem prioridade; sem nenhum dos dois a visão é
+      global, como sempre foi;
+    * admin da faculdade e legado — sempre o próprio vínculo. Cabeçalho e query
+      vêm do cliente e não podem ampliar nada; pedir outra faculdade é 403.
+    """
+    if gestor.admin_role == ModelAdminRoleEnum.super_admin:
+        return faculdade_id if faculdade_id is not None else ler_escopo_faculdade(request)
+
+    if gestor.faculdade_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sua conta não está vinculada a nenhuma instituição",
+        )
+    if faculdade_id is not None and faculdade_id != gestor.faculdade_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você só pode ver solicitações da sua instituição",
+        )
+    return gestor.faculdade_id
+
+
+def _assert_solicitacao_no_escopo(s: SolicitacaoCadastro, gestor: Usuario) -> None:
+    """Bloqueia gestor de faculdade agindo sobre solicitação de outra."""
+    if gestor.admin_role == ModelAdminRoleEnum.super_admin:
+        return
+    if s.faculdade_id != gestor.faculdade_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta solicitação pertence a outra instituição",
+        )
+
+
 @router.get(
     "/admin/pendentes",
     response_model=list[SolicitacaoCadastroAdminResponse],
     summary="Listar solicitações pendentes",
-    description="Retorna todas as solicitações com status **pendente**, ordenadas da mais antiga para a mais nova. Requer super_admin.",
+    description=(
+        "Retorna todas as solicitações com status **pendente**, ordenadas da mais antiga "
+        "para a mais nova. Requer super_admin ou admin da faculdade — o segundo vê apenas "
+        "as solicitações da própria instituição."
+    ),
 )
 def listar_pendentes(
     request: Request,
     faculdade_id: Optional[int] = Query(None, description="Filtrar por faculdade específica"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_super_admin),
+    gestor: Usuario = Depends(get_current_gestor_faculdade),
 ):
     """
     **Response `200`:**
@@ -157,12 +213,7 @@ def listar_pendentes(
         .order_by(SolicitacaoCadastro.criado_em.asc())  # mais antigas primeiro
     )
 
-    # Esta rota não usa TenantContext (é super_admin puro), então o escopo do
-    # painel entra como filtro padrão: quem está gerenciando uma instituição vê
-    # as solicitações dela. `?faculdade_id=` explícito continua tendo prioridade.
-    if faculdade_id is None:
-        faculdade_id = ler_escopo_faculdade(request)
-
+    faculdade_id = _escopo_do_gestor(request, gestor, faculdade_id)
     if faculdade_id is not None:
         query = query.filter(SolicitacaoCadastro.faculdade_id == faculdade_id)
 
@@ -174,14 +225,18 @@ def listar_pendentes(
     "/admin/todas",
     response_model=list[SolicitacaoCadastroAdminResponse],
     summary="Listar todas as solicitações",
-    description="Retorna todas as solicitações independente do status. Suporta filtro por `status` e `faculdade_id`. Requer super_admin.",
+    description=(
+        "Retorna todas as solicitações independente do status. Suporta filtro por `status` e "
+        "`faculdade_id`. Requer super_admin ou admin da faculdade — o segundo vê apenas as "
+        "solicitações da própria instituição."
+    ),
 )
 def listar_todas(
     request: Request,
     status_filtro: Optional[str] = Query(None, alias="status", description="pendente | aprovada | recusada"),
     faculdade_id:  Optional[int] = Query(None, description="Filtrar por faculdade"),
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_super_admin),
+    gestor: Usuario = Depends(get_current_gestor_faculdade),
 ):
     query = (
         db.query(SolicitacaoCadastro)
@@ -198,9 +253,7 @@ def listar_todas(
             )
         query = query.filter(SolicitacaoCadastro.status == status_enum)
 
-    if faculdade_id is None:
-        faculdade_id = ler_escopo_faculdade(request)
-
+    faculdade_id = _escopo_do_gestor(request, gestor, faculdade_id)
     if faculdade_id is not None:
         query = query.filter(SolicitacaoCadastro.faculdade_id == faculdade_id)
 
@@ -215,11 +268,12 @@ def listar_todas(
 def detalhe_solicitacao(
     solicitacao_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_super_admin),
+    gestor: Usuario = Depends(get_current_gestor_faculdade),
 ):
     s = db.query(SolicitacaoCadastro).filter(SolicitacaoCadastro.id == solicitacao_id).first()
     if not s:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitação não encontrada")
+    _assert_solicitacao_no_escopo(s, gestor)
     return _enrich(s)
 
 
@@ -283,13 +337,13 @@ def _get_solicitacao_pendente(solicitacao_id: int, db: Session) -> SolicitacaoCa
         "Aprova a solicitação pendente. "
         "Cria o aluno em `usuarios`, gera matrícula e senha temporária, "
         "cria vínculo em `vinculos_aluno_faculdade` e marca a solicitação como **aprovada**. "
-        "Requer super_admin."
+        "Requer super_admin ou admin da faculdade a que a solicitação pertence."
     ),
 )
 def aprovar_solicitacao(
     solicitacao_id: int,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_current_super_admin),
+    admin: Usuario = Depends(get_current_gestor_faculdade),
 ):
     """
     **Response `200`** — solicitação aprovada com `usuario_id` preenchido:
@@ -310,6 +364,7 @@ def aprovar_solicitacao(
     - `409` — e-mail já cadastrado em `usuarios`
     """
     s = _get_solicitacao_pendente(solicitacao_id, db)
+    _assert_solicitacao_no_escopo(s, admin)
 
     # — Caso A: usuário criado diretamente via POST /auth/registro —
     #   O usuario_id já está preenchido na solicitação. Basta criar o vínculo.
@@ -409,13 +464,16 @@ def aprovar_solicitacao(
     "/admin/{solicitacao_id}/recusar",
     response_model=SolicitacaoCadastroAdminResponse,
     summary="Recusar solicitação",
-    description="Recusa a solicitação pendente com um motivo obrigatório. Requer super_admin.",
+    description=(
+        "Recusa a solicitação pendente com um motivo obrigatório. Requer super_admin ou "
+        "admin da faculdade a que a solicitação pertence."
+    ),
 )
 def recusar_solicitacao(
     solicitacao_id: int,
     motivo: str = Query(..., min_length=5, max_length=500, description="Motivo da recusa — obrigatório"),
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_current_super_admin),
+    admin: Usuario = Depends(get_current_gestor_faculdade),
 ):
     """
     **Exemplo:**
@@ -424,6 +482,7 @@ def recusar_solicitacao(
     ```
     """
     s = _get_solicitacao_pendente(solicitacao_id, db)
+    _assert_solicitacao_no_escopo(s, admin)
 
     s.status          = SolicitacaoStatusEnum.recusada
     s.motivo_recusa   = motivo.strip()

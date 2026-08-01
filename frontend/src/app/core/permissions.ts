@@ -2,17 +2,32 @@
 // RBAC — Mapa central de papéis e permissões do painel administrativo
 // =====================================================================
 
-export type AdminRole = 'super_admin' | 'instrutor';
+/**
+ * Cargos administrativos, do mais amplo ao mais estreito:
+ *
+ *   super_admin ...... a plataforma: todas as instituições, o menu Sistema e o
+ *                      cadastro de outros super admins.
+ *   admin_faculdade .. uma instituição: acadêmico, alunos, tema e os
+ *                      administradores dela. Não cria instituição nem super admin.
+ *   instrutor ........ conteúdo: cursos, aulas e provas (mais notas e presença
+ *                      das turmas que leciona), restrito aos cursos que criou ou
+ *                      que lhe foram vinculados.
+ *
+ * O backend tem a mesma escada em `AdminRoleEnum` — mude os dois juntos.
+ */
+export type AdminRole = 'super_admin' | 'admin_faculdade' | 'instrutor';
 
 /** Rótulos para exibição nos selects / tabelas */
 export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
-  super_admin: 'Super Admin',
-  instrutor:   'Instrutor',
+  super_admin:     'Super Admin',
+  admin_faculdade: 'Admin da Faculdade',
+  instrutor:       'Instrutor',
 };
 
 export const ADMIN_ROLE_OPTIONS: { value: AdminRole; label: string }[] = [
-  { value: 'super_admin', label: 'Super Admin' },
-  { value: 'instrutor',   label: 'Instrutor' },
+  { value: 'super_admin',     label: 'Super Admin' },
+  { value: 'admin_faculdade', label: 'Admin da Faculdade' },
+  { value: 'instrutor',       label: 'Instrutor' },
 ];
 
 /**
@@ -56,27 +71,32 @@ export type Permission =
  * Matriz de permissões por papel.
  * Altere aqui para ajustar o que cada tipo de admin pode fazer.
  *
- * | Permissão              | super_admin | instrutor |
- * |------------------------|:-----------:|:---------:|
- * | cursos:read            |      ✔      |     ✔     |
- * | cursos:write           |      ✔      |     ✔     |
- * | aulas:read             |      ✔      |     ✔     |
- * | aulas:write            |      ✔      |     ✔     |
- * | provas:read            |      ✔      |     ✔     |
- * | provas:write           |      ✔      |     ✔     |
- * | notas:read             |      ✔      |     ✔     |
- * | notas:write            |      ✔      |     ✔     |
- * | presenca:read          |      ✔      |     ✔     |
- * | presenca:write         |      ✔      |     ✔     |
- * | alunos:read            |      ✔      |     ✔     |
- * | alunos:write           |      ✔      |           |
- * | relatorios:read        |      ✔      |           |
- * | administradores:read   |      ✔      |           |
- * | administradores:write  |      ✔      |           |
- * | instituicoes:read      |      ✔      |           |
- * | instituicoes:write     |      ✔      |           |
- * | sistema:read           |      ✔      |           |
- * | sistema:write          |      ✔      |           |
+ * A diferença entre as duas primeiras colunas é o alcance: o admin da faculdade
+ * faz tudo o que o super admin faz *dentro de uma instituição*, e nada fora
+ * dela — não cadastra instituições (`instituicoes:*`, que o backend exige super
+ * admin em `/api/faculdades`) nem cria contas de plataforma (`sistema:*`).
+ *
+ * | Permissão              | super_admin | admin_faculdade | instrutor |
+ * |------------------------|:-----------:|:---------------:|:---------:|
+ * | cursos:read            |      ✔      |        ✔        |     ✔     |
+ * | cursos:write           |      ✔      |        ✔        |     ✔     |
+ * | aulas:read             |      ✔      |        ✔        |     ✔     |
+ * | aulas:write            |      ✔      |        ✔        |     ✔     |
+ * | provas:read            |      ✔      |        ✔        |     ✔     |
+ * | provas:write           |      ✔      |        ✔        |     ✔     |
+ * | notas:read             |      ✔      |        ✔        |     ✔     |
+ * | notas:write            |      ✔      |        ✔        |     ✔     |
+ * | presenca:read          |      ✔      |        ✔        |     ✔     |
+ * | presenca:write         |      ✔      |        ✔        |     ✔     |
+ * | alunos:read            |      ✔      |        ✔        |     ✔     |
+ * | alunos:write           |      ✔      |        ✔        |           |
+ * | relatorios:read        |      ✔      |        ✔        |           |
+ * | administradores:read   |      ✔      |        ✔        |           |
+ * | administradores:write  |      ✔      |        ✔        |           |
+ * | instituicoes:read      |      ✔      |                 |           |
+ * | instituicoes:write     |      ✔      |                 |           |
+ * | sistema:read           |      ✔      |                 |           |
+ * | sistema:write          |      ✔      |                 |           |
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   super_admin: [
@@ -90,6 +110,16 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'administradores:read', 'administradores:write',
     'instituicoes:read',    'instituicoes:write',
     'sistema:read',         'sistema:write',
+  ],
+  admin_faculdade: [
+    'cursos:read',   'cursos:write',
+    'aulas:read',    'aulas:write',
+    'provas:read',   'provas:write',
+    'notas:read',    'notas:write',
+    'presenca:read', 'presenca:write',
+    'alunos:read',   'alunos:write',
+    'relatorios:read',
+    'administradores:read', 'administradores:write',
   ],
   instrutor: [
     'cursos:read',   'cursos:write',

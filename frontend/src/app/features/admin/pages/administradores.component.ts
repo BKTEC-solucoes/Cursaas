@@ -165,7 +165,7 @@ interface ConviteItem {
             <!-- Tipo de admin — fixo no escopo da instituição -->
             <div class="field span2">
               <label class="field-label">Tipo de Administrador</label>
-              @if (roleOptions.length > 1 && !editandoAdminId) {
+              @if (podeEscolherPapel) {
                 <select class="field-input" [(ngModel)]="adminForm.admin_role" name="admin_role" required>
                   @for (opt of roleOptions; track opt.value) {
                     <option [value]="opt.value">{{ opt.label }}</option>
@@ -401,6 +401,7 @@ interface ConviteItem {
           <select class="field-input filter-select" [(ngModel)]="filtroAdminRole" (ngModelChange)="onFiltroSelectChange()" name="filtro_role">
             <option value="">Todos os tipos</option>
             <option value="super_admin">Super Admin</option>
+            <option value="admin_faculdade">Admin da Faculdade</option>
             <option value="instrutor">Instrutor</option>
             <option value="legacy">Legado</option>
           </select>
@@ -664,14 +665,26 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Só papéis de instituição: super admin é global e sai do menu Sistema.
-   * Com uma única opção o `<select>` vira um rótulo — ver o template.
+   * Só papéis de instituição — Admin da Faculdade e Instrutor. Super admin é
+   * global e sai do menu Sistema.
    */
   readonly roleOptions = ADMIN_ROLE_OPTIONS_INSTITUICAO;
 
+  /**
+   * O `<select>` de papel aparece ao criar, e ao editar apenas quando o papel
+   * atual é um dos da instituição: super admin (plataforma) e conta legada
+   * (`admin_role` null) viram rótulo fixo, porque promover ou rebaixar essas
+   * duas é decisão do menu Sistema, e o backend recusa de todo jeito.
+   */
+  get podeEscolherPapel(): boolean {
+    if (!this.editandoAdminId) return true;
+    return this.roleOptions.some(o => o.value === this.adminForm.admin_role);
+  }
+
   private readonly ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
-    super_admin: 'Acesso total e irrestrito à plataforma e a todas as instituições.',
-    instrutor:   'Gerencia cursos, aulas, provas, notas e presença desta instituição. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
+    super_admin:     'Acesso total e irrestrito à plataforma e a todas as instituições.',
+    admin_faculdade: 'Administra esta instituição por inteiro: todos os cursos, aulas, provas, notas, presença, alunos, o tema e os demais administradores. Não cadastra instituições nem super admins.',
+    instrutor:       'Gerencia cursos, aulas, provas, notas e presença desta instituição. Recebe acesso automático apenas aos cursos que criar. Acesso adicional pode ser concedido manualmente.',
   };
 
   private readonly adminApiUrl  = `${environment.apiUrl}/auth/admin-registro`;
@@ -1057,8 +1070,9 @@ export class AdminAdministradoresComponent implements OnInit, OnDestroy {
       confirmarEmail: admin.email,
       senha: '',
       confirmarSenha: '',
-      // Preserva o papel atual: esta tela não promove ninguém — nem a
-      // super admin (menu Sistema), nem tira o "legado" de uma conta antiga.
+      // Parte do papel atual. Entre os cargos da instituição a troca é
+      // permitida (Admin da Faculdade ⇄ Instrutor); super admin e conta legada
+      // ficam como estão — ver `podeEscolherPapel`.
       admin_role: admin.admin_role,
       foto_perfil: admin.foto_perfil,
       curso_ids: admin.curso_ids ?? [],
