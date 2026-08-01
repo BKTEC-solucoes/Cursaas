@@ -84,9 +84,10 @@ print("== login ==")
 t_super = login("super@cursaas.dev")
 t_alfa = login("instrutor.alfa@cursaas.dev")
 t_beta = login("instrutor.beta@cursaas.dev")
+t_admin_alfa = login("admin.alfa@cursaas.dev")
 t_aluno_alfa = login("aluno.alfa@cursaas.dev")
 t_pendente = login("aluno.pendente@cursaas.dev")
-print("  4 tokens obtidos")
+print("  6 tokens obtidos")
 
 print()
 print("== #2 TenantContext: conta sem vinculo nao e super admin ==")
@@ -101,10 +102,13 @@ check("aluno Alfa ve so cursos do tenant 1",
 
 print()
 print("== #5 isolamento de tenant nas rotas admin ==")
-st, admins_alfa = req("GET", "/auth/admins", token=t_alfa)
+st, admins_alfa = req("GET", "/auth/admins", token=t_admin_alfa)
 emails = [a["email"] for a in admins_alfa["items"]] if st == 200 else []
 check("listar_admins nao vaza admin de outro tenant",
       st == 200 and "instrutor.beta@cursaas.dev" not in emails, (st, emails))
+
+st, body = req("GET", "/auth/admins", token=t_alfa)
+check("instrutor NAO lista administradores (403)", st == 403, (st, body))
 
 st, cursos_alfa = req("GET", "/admin/cursos", token=t_alfa)
 ids_alfa = {c["id"] for c in cursos_alfa} if st == 200 else set()
@@ -173,16 +177,37 @@ check("instrutor do tenant lista alunos (200)", st == 200, (st, body))
 
 print()
 print("== #7 escalonamento via editar_admin ==")
-st, eu = req("GET", "/auth/admins", token=t_alfa)
-meu_id = next((a["id"] for a in eu["items"] if a["email"] == "instrutor.alfa@cursaas.dev"), None)
-st, body = req("PUT", f"/auth/admins/{meu_id}", token=t_alfa,
+st, eu = req("GET", "/auth/admins", token=t_admin_alfa)
+itens_alfa = eu["items"] if st == 200 else []
+id_instrutor_alfa = next((a["id"] for a in itens_alfa
+                          if a["email"] == "instrutor.alfa@cursaas.dev"), None)
+id_admin_alfa = next((a["id"] for a in itens_alfa
+                      if a["email"] == "admin.alfa@cursaas.dev"), None)
+
+st, body = req("PUT", f"/auth/admins/{id_instrutor_alfa}", token=t_alfa,
                corpo={"admin_role": "super_admin"})
-check("instrutor NAO se promove a super_admin (403)", st == 403, (st, body))
+check("instrutor NAO edita administrador (403)", st == 403, (st, body))
+
+st, body = req("PUT", f"/auth/admins/{id_instrutor_alfa}", token=t_admin_alfa,
+               corpo={"admin_role": "super_admin"})
+check("admin da faculdade NAO promove a super_admin (403)", st == 403, (st, body))
+
+st, body = req("PUT", f"/auth/admins/{id_admin_alfa}", token=t_admin_alfa,
+               corpo={"admin_role": "instrutor"})
+check("admin da faculdade NAO altera o proprio perfil (403)", st == 403, (st, body))
+
+st, body = req("PUT", f"/auth/admins/{id_instrutor_alfa}", token=t_admin_alfa,
+               corpo={"admin_role": "admin_faculdade"})
+check("admin da faculdade promove instrutor a admin_faculdade (200)", st == 200, (st, body))
+# Devolve o instrutor ao cargo original: o script pode rodar mais de uma vez
+# contra o mesmo banco.
+req("PUT", f"/auth/admins/{id_instrutor_alfa}", token=t_admin_alfa,
+    corpo={"admin_role": "instrutor"})
 
 st, admins_todos = req("GET", "/auth/admins", token=t_super)
 id_beta = next((a["id"] for a in admins_todos["items"]
                 if a["email"] == "instrutor.beta@cursaas.dev"), None)
-st, body = req("PUT", f"/auth/admins/{id_beta}", token=t_alfa, corpo={"nome": "Invadido"})
+st, body = req("PUT", f"/auth/admins/{id_beta}", token=t_admin_alfa, corpo={"nome": "Invadido"})
 check("admin do Alfa NAO edita admin do Beta (403)", st == 403, (st, body))
 
 id_super = next((a["id"] for a in admins_todos["items"]
@@ -268,7 +293,7 @@ from app.models import Usuario as _U, RoleEnum as _R, AdminRoleEnum as _AR
 with _S(engine) as _db:
     _db.add(_U(nome="Admin Orfao", email="orfao@cursaas.dev",
                senha=_AS.hash_password(SENHA), role=_R.admin,
-               admin_role=_AR.instrutor, faculdade_id=None, ativo=True))
+               admin_role=_AR.admin_faculdade, faculdade_id=None, ativo=True))
     _db.commit()
 
 t_orfao = login("orfao@cursaas.dev")

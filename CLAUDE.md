@@ -45,7 +45,7 @@ pytest                                  # suíte unitária: sem banco, sem servi
 python seed_ambiente_teste.py --confirmar --banco cursaas   # DESTRUTIVO: recria o banco
 python verificacao_multitenant.py       # smoke de tenant/authz; exige servidor no ar
 ```
-`backend/tests/` cobre `TenantContext`, `AuthService`, schemas de curso e a allowlist do middleware — tudo lógica pura, roda em segundos. `pytest.ini` limita a coleta a `tests/`, porque os antigos `test_*.py` disparam rede no import.
+`backend/tests/` cobre `TenantContext`, `AuthService`, schemas de curso, a allowlist do middleware e os três cargos administrativos (`test_cargos_admin.py`, `test_convite_escopo.py`) — tudo lógica pura, roda em segundos. `pytest.ini` limita a coleta a `tests/`, porque os antigos `test_*.py` disparam rede no import.
 
 Os ~50 scripts operacionais herdados vivem em `backend/tools/{smoke,migracoes,manutencao,launchers}/` — **nenhum é mantido**, vários executam ao serem importados e alguns são destrutivos sem confirmação. Ver `backend/tools/README.md`.
 
@@ -77,16 +77,20 @@ O terceiro estado é real: admin criado por convite, aluno não aprovado, conta 
 
 **Instituição vs. Sistema — as duas metades do painel.** O menu de `/admin` separa o que tem tenant do que não tem, porque as duas coisas se confundiam na mesma tela:
 
-- **Instituição** (Visão Geral, Acadêmico, Gestão da Instituição): tudo passa pelo `TenantContext` e pelo `X-Faculdade-Id`. `Gestão › Administradores` (`administradores.component.ts`) cria **instrutores da faculdade em gestão** — a lista já vinha filtrada por tenant, então um super admin global (`faculdade_id NULL`) nunca aparecia ali.
+- **Instituição** (Visão Geral, Acadêmico, Gestão da Instituição): tudo passa pelo `TenantContext` e pelo `X-Faculdade-Id`. `Gestão › Administradores` (`administradores.component.ts`) cria **admins da faculdade e instrutores da faculdade em gestão** — a lista já vinha filtrada por tenant, então um super admin global (`faculdade_id NULL`) nunca aparecia ali. O `<select>` de cargo também aparece na edição, mas só quando o cargo atual é um dos dois da instituição: super admin e conta legada viram rótulo fixo.
 - **Sistema** (`/admin/sistema/super-admins` → `pages/sistema/super-admins.component.ts`): global, sem tenant, atende `/api/sistema/super-admins` (`routes/sistema.py`, todo `Depends(get_current_super_admin)`). É a **única** porta para criar super admin; a rota recusa desativar/excluir a própria conta e o último super admin ativo.
 
-Duas travas acompanham a separação: `/api/auth/admin-registro` responde 400 para `admin_role=super_admin` (só o bootstrap, com o banco sem nenhum admin, ainda cria um) e passou a exigir super admin ou admin legado — antes **qualquer** admin, inclusive um instrutor, podia se criar um par com acesso a todos os tenants por ali. No front, `ADMIN_ROLE_OPTIONS_INSTITUICAO` (sem `super_admin`) alimenta os formulários da instituição, e `PermissionsService.can` deixa de dar `sistema:*` / `instituicoes:*` ao admin legado, que o backend recusaria de todo jeito.
+Duas travas acompanham a separação: `/api/auth/admin-registro` responde 400 para `admin_role=super_admin` (só o bootstrap, com o banco sem nenhum admin, ainda cria um) e exige um cargo de gestão (`pode_gerenciar_faculdade`) — antes **qualquer** admin, inclusive um instrutor, podia se criar um par com acesso a todos os tenants por ali. `PUT /api/auth/admins/{id}` segue a mesma escada: ninguém altera o próprio `admin_role`, só super admin concede `super_admin`, e quem não é super admin fica preso ao próprio `faculdade_id` e não toca em conta de super admin. No front, `ADMIN_ROLE_OPTIONS_INSTITUICAO` (sem `super_admin`) alimenta os formulários da instituição, e `PermissionsService.can` deixa de dar `sistema:*` / `instituicoes:*` ao admin legado, que o backend recusaria de todo jeito.
 
-Convite de super admin é global por definição: `_resolver_faculdade_do_convite` ignora o `X-Faculdade-Id` quando `admin_role=super_admin` (senão o convidado nasceria preso à faculdade aberta na tela), e `GET /api/convites?escopo=sistema` lista só esses — a listagem padrão, da instituição, agora os exclui.
+Convite de super admin é global por definição: `_resolver_faculdade_do_convite` ignora o `X-Faculdade-Id` quando `admin_role=super_admin` (senão o convidado nasceria preso à faculdade aberta na tela), e `GET /api/convites?escopo=sistema` lista só esses — a listagem padrão, da instituição, agora os exclui. Convidar super admin exige super admin; o admin da faculdade convida só para a própria instituição, e nem o `faculdade_id` do payload nem o cabeçalho de escopo o tiram de lá.
+
+As rotas de tema (`/api/faculdades/minha/tema*`) agora exigem `role='instituicao'` ou um cargo de gestão. Metade delas checava apenas `get_current_user`: qualquer usuário autenticado — aluno inclusive — trocava a identidade visual da faculdade em gestão.
 
 `ConviteAdmin` ganhou `faculdade_id` (`database/migration_convite_faculdade.sql`, **precisa ser aplicada à mão em bancos existentes**): o admin convidado nasce vinculado à instituição que estava em gestão quando o convite foi enviado. Sem isso ele caía no estado "sem tenant" — logava e não via nada.
 
 `faculdade_temas.logo_url_override` e `.favicon_url` passaram de `VARCHAR(500)` para `TEXT` (`database/migration_tema_urls_text.sql`, **também manual**): as colunas agora recebem data URIs base64 do upload de logo/favicon, e qualquer PNG estoura 500 caracteres.
+
+O cargo `admin_faculdade` entrou nos ENUMs de `usuarios.admin_role` e `convites_admin.admin_role` (`database/migration_admin_faculdade.sql`, **manual como as demais**). Sem aplicá-la, criar ou promover um admin da faculdade falha no INSERT/UPDATE — `create_all()` não altera tabela existente.
 
 For entities without a direct `faculdade_id` (e.g. `Aula`, `CourseRequest`), join through `Curso` and filter on `Curso.faculdade_id`. The middleware logs a `TENANT_AUDIT` warning when a 2xx response came from a non-super-admin with no tenant — that's the signal an endpoint forgot `TenantContext`.
 
@@ -96,9 +100,21 @@ For entities without a direct `faculdade_id` (e.g. `Aula`, `CourseRequest`), joi
 
 Two independent columns on `usuarios`:
 - `role` (`RoleEnum`): `admin` | `aluno` | `instituicao` — drives the Angular route areas (`/admin`, `/aluno`, `/instituicao`).
-- `admin_role` (`AdminRoleEnum`, nullable): `super_admin` | `instrutor` — sub-role within `role='admin'`. **`NULL` is a meaningful third state**: legacy admins, handled explicitly in `routes/auth.py` (e.g. `is_legacy_admin = current_user.admin_role is None`) and filterable via `?admin_role=legacy`.
+- `admin_role` (`AdminRoleEnum`, nullable): `super_admin` | `admin_faculdade` | `instrutor` — sub-role within `role='admin'`. **`NULL` is a meaningful fourth state**: legacy admins, filterable via `?admin_role=legacy` and tratados como admin da faculdade.
 
-Frontend RBAC is a separate, duplicated matrix in `frontend/src/app/core/permissions.ts` (`ROLE_PERMISSIONS` maps `super_admin`/`instrutor` to tokens like `cursos:write`; `sistema:*` e `instituicoes:*` são só do super admin), consumed by `permissionGuard` and `PermissionsService`. Changing what a role can do usually means editing **both** the backend dependency and that table.
+**Os três cargos administrativos**, do mais amplo ao mais estreito:
+
+| Cargo | Alcance | Faz | Não faz |
+|---|---|---|---|
+| `super_admin` | a plataforma | tudo, em todos os tenants; cadastra instituições (`/api/faculdades`) e outros super admins (`/api/sistema/super-admins`) | — |
+| `admin_faculdade` | uma instituição | todo o acadêmico do tenant, alunos, tema e os administradores dela (criar, editar, excluir, convidar); aprova/recusa solicitações de cadastro | criar instituição, criar ou promover super admin, sair do próprio `faculdade_id` |
+| `instrutor` | conteúdo | cursos, aulas, provas — e notas/presença — restrito aos cursos que criou ou que lhe foram vinculados (`admin_cursos`) | alunos, administradores, tema, solicitações de cadastro, convites |
+
+A fronteira entre os dois primeiros e o instrutor é `pode_gerenciar_faculdade` (`services/admin_course_access.py`), exposta como dependency em `get_current_gestor_faculdade` (`routes/auth.py`). Use-a — junto do `TenantContext`, que continua sendo quem garante *qual* faculdade — em vez de repetir comparações com `AdminRoleEnum`. `get_allowed_course_ids` devolve `None` (sem restrição por autoria) para super admin, admin da faculdade e legado, e o conjunto de cursos próprios para o instrutor.
+
+Rotas que ainda não usam `TenantContext` (as solicitações de cadastro em `routes/cadastro.py`) fazem o recorte à mão em `_escopo_do_gestor`: para o super admin o `X-Faculdade-Id` é filtro padrão, para os demais o vínculo real é imposto e pedir outra faculdade é 403.
+
+Frontend RBAC is a separate, duplicated matrix in `frontend/src/app/core/permissions.ts` (`ROLE_PERMISSIONS` maps os três cargos a tokens como `cursos:write`; `sistema:*` e `instituicoes:*` são só do super admin), consumed by `permissionGuard` and `PermissionsService`. Changing what a role can do usually means editing **both** the backend dependency and that table.
 
 JWT claims: `sub` (email), `role`, `admin_role`, `user_id`, `nome`, `faculdade_id`.
 
@@ -163,7 +179,7 @@ Admin onboarding goes through `/api/convites`: a super admin issues a token-base
 
 `database/schema.sql` is the baseline; `database/migration_*.sql` are incremental and **not** run by any migration tool. Because `main.py` calls `Base.metadata.create_all()` no startup, *new* tables appear automatically on boot but existing tables are never altered — so any column addition needs a hand-applied migration file, and the model and the SQL must be changed together.
 
-Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_teste.py` (dropa e recria o schema, semeia 2 tenants e 8 usuários). Ele faz `DROP DATABASE`, e não `drop_all()`, de propósito: o banco de dev pode conter tabelas fora dos modelos.
+Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_teste.py` (dropa e recria o schema, semeia 2 tenants e 10 usuários, um por cargo em cada faculdade). Ele faz `DROP DATABASE`, e não `drop_all()`, de propósito: o banco de dev pode conter tabelas fora dos modelos.
 
 ```bash
 docker exec -i cursaas-db-1 mysql -u root -p cursaas < database/migration_xyz.sql
