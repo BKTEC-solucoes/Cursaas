@@ -666,7 +666,6 @@ class UsuarioCreate(UsuarioBase):
     endereco: str
     cep: str
     telefone: str
-    nome_responsavel: str
     numero_matricula: str
     turma: str
     historico_escolar: str

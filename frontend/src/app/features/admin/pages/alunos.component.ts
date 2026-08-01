@@ -144,13 +144,18 @@ function formVazio(): AlunoForm {
               }
             </div>
 
-            <div class="section-title">Responsável</div>
-            <div class="form-grid">
-              <div class="form-row span2">
-                <label>Nome do Pai / Mãe / Responsável *</label>
-                <input type="text" [(ngModel)]="form.nome_responsavel" name="nome_responsavel" required placeholder="Nome completo do responsável" />
+            <button type="button" class="section-toggle" (click)="mostrarResponsavel = !mostrarResponsavel">
+              <span>Responsável (opcional)</span>
+              <span class="section-toggle-icon" [class.open]="mostrarResponsavel">▾</span>
+            </button>
+            @if (mostrarResponsavel) {
+              <div class="form-grid">
+                <div class="form-row span2">
+                  <label>Nome do Pai / Mãe / Responsável</label>
+                  <input type="text" [(ngModel)]="form.nome_responsavel" name="nome_responsavel" placeholder="Nome completo do responsável" />
+                </div>
               </div>
-            </div>
+            }
 
             <div class="section-title">Dados Escolares</div>
             <div class="form-grid">
@@ -277,6 +282,10 @@ function formVazio(): AlunoForm {
 
     .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border); }
 
+    .section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; border-bottom: 1px solid var(--color-border); cursor: pointer; padding: 0 0 6px; margin: 20px 0 10px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+    .section-toggle-icon { transition: transform 0.15s; }
+    .section-toggle-icon.open { transform: rotate(180deg); }
+
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
     .form-row { display: flex; flex-direction: column; gap: 5px; }
     .form-row.span2 { grid-column: span 2; }
@@ -338,6 +347,7 @@ export class AdminAlunosComponent implements OnInit {
   carregando = false;
   formAberto = false;
   mostrarSenha = false;
+  mostrarResponsavel = false;
   editandoId: number | null = null;
   salvando = false;
   formErro = '';
@@ -362,10 +372,10 @@ export class AdminAlunosComponent implements OnInit {
     });
   }
   abrirFormulario(): void {
-    this.editandoId = null; this.form = formVazio(); this.formErro = ''; this.mostrarSenha = false; this.formAberto = true;
+    this.editandoId = null; this.form = formVazio(); this.formErro = ''; this.mostrarSenha = false; this.mostrarResponsavel = false; this.formAberto = true;
   }
   cancelarFormulario(): void {
-    this.formAberto = false; this.formErro = ''; this.form = formVazio(); this.editandoId = null;
+    this.formAberto = false; this.formErro = ''; this.form = formVazio(); this.editandoId = null; this.mostrarResponsavel = false;
   }
   salvarAluno(): void {
     if (this.salvando) return;
@@ -381,7 +391,7 @@ export class AdminAlunosComponent implements OnInit {
   editarAluno(aluno: Aluno): void {
     this.editandoId = aluno.id;
     this.form = { email: aluno.email, senha: '', ativo: aluno.ativo, nome: aluno.nome, data_nascimento: aluno.data_nascimento || '', sexo: aluno.sexo || '', cpf_rg: aluno.cpf_rg || '', endereco: aluno.endereco || '', cep: aluno.cep || '', telefone: aluno.telefone || '', nome_responsavel: aluno.nome_responsavel || '', numero_matricula: aluno.numero_matricula || '', turma: aluno.turma || '', historico_escolar: aluno.historico_escolar || '' };
-    this.formErro = ''; this.mostrarSenha = false; this.formAberto = true;
+    this.formErro = ''; this.mostrarSenha = false; this.mostrarResponsavel = !!aluno.nome_responsavel; this.formAberto = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   abrirDelecao(aluno: Aluno): void { this.alunoParaDeletar = aluno; this.deleteErro = ''; }
