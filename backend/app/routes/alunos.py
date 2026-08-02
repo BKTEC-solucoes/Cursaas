@@ -3,7 +3,15 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models import InscricaoCurso, Usuario, Curso, Aula, Prova, RoleEnum
+from app.models import (
+    InscricaoCurso,
+    Usuario,
+    Curso,
+    Aula,
+    Prova,
+    RoleEnum,
+    VinculoAlunoFaculdade,
+)
 from app.schemas import CursoDetailResponse, UsuarioResponse, UsuarioDetailResponse, UsuarioCreate, UsuarioUpdate
 from app.routes.auth import get_current_user
 from app.security.tenant import TenantContext, tenant_context
@@ -95,6 +103,22 @@ def create_aluno(
         historico_escolar=usuario_data.historico_escolar,
         faculdade_id=tc.faculdade_id,
     )
+
+    # O vínculo é o que marca o aluno como "aprovado" na faculdade: sem ele
+    # GET /api/cursos/ devolve lista vazia e a tela do aluno fica presa no
+    # estado "Cadastro em análise", mesmo com faculdade_id preenchido e
+    # inscrições em cursos. Os outros caminhos de criação de aluno
+    # (POST /api/instituicoes/minha/alunos, POST /api/faculdades/{id}/alunos,
+    # aprovação de solicitação) já criavam o vínculo — só este não criava.
+    db.add(
+        VinculoAlunoFaculdade(
+            usuario_id=novo.id,
+            faculdade_id=tc.faculdade_id,
+            matricula=usuario_data.numero_matricula,
+        )
+    )
+    db.commit()
+    db.refresh(novo)
     return novo
 
 
