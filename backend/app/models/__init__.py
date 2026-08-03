@@ -201,8 +201,23 @@ class RoleEnum(str, enum.Enum):
     instituicao = "instituicao"
 
 class AdminRoleEnum(str, enum.Enum):
-    super_admin  = "super_admin"
-    instrutor    = "instrutor"
+    """
+    Sub-papel de ``role='admin'``. Três cargos, do mais amplo ao mais estreito:
+
+        super_admin ...... a plataforma inteira: todas as instituições, o menu
+                           Sistema e o cadastro de outros super admins.
+        admin_faculdade .. uma instituição: cursos, aulas, provas, notas,
+                           presença, alunos, tema e os administradores dela.
+                           Não cria instituição nem super admin.
+        instrutor ........ conteúdo: cursos, aulas e provas, restrito aos
+                           cursos que criou ou que lhe foram vinculados.
+
+    ``NULL`` é um quarto estado, legado — admin anterior à coluna, tratado
+    como admin da faculdade (ver ``services/admin_course_access.py``).
+    """
+    super_admin     = "super_admin"
+    admin_faculdade = "admin_faculdade"
+    instrutor       = "instrutor"
 
 class StatusVideoEnum(str, enum.Enum):
     processando = "processando"

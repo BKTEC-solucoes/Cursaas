@@ -16,7 +16,7 @@ from app.schemas import CursoDetailResponse, UsuarioResponse, UsuarioDetailRespo
 from app.routes.auth import get_current_user
 from app.security.tenant import TenantContext, tenant_context
 from app.services.auth_service import AuthService
-from app.services.admin_course_access import get_allowed_course_ids
+from app.services.admin_course_access import get_allowed_course_ids, pode_gerenciar_faculdade
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,24 @@ router = APIRouter()
 def _require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
     if current_user.role != RoleEnum.admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
+    return current_user
+
+
+def _require_alunos_write(current_user: Usuario = Depends(_require_admin)) -> Usuario:
+    # Cadastro/edição/exclusão aqui é direto, sem vínculo a curso — só quem
+    # gerencia a instituição pode (mesma regra de
+    # frontend/src/app/core/permissions.ts, token alunos:write). Um instrutor
+    # que criasse um aluno por aqui nunca o veria depois: list_alunos restringe
+    # instrutor aos alunos matriculados nos cursos que leciona
+    # (get_allowed_course_ids), e este endpoint não matricula ninguém em curso
+    # nenhum.
+    if not pode_gerenciar_faculdade(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas Super Admin ou Admin da Faculdade podem cadastrar, editar ou excluir "
+                   "alunos diretamente. Instrutores devem matricular alunos aprovando "
+                   "solicitações de curso.",
+        )
     return current_user
 
 
@@ -56,7 +74,7 @@ def list_alunos(
 def create_aluno(
     usuario_data: UsuarioCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(_require_admin),
+    _: Usuario = Depends(_require_alunos_write),
     tc: TenantContext = Depends(tenant_context),
 ):
     """Cria um novo aluno (admin)"""
@@ -157,7 +175,7 @@ def update_aluno(
     aluno_id: int,
     dados: UsuarioUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(_require_admin),
+    _: Usuario = Depends(_require_alunos_write),
     tc: TenantContext = Depends(tenant_context),
 ):
     """Atualiza informações de um aluno (admin)"""
@@ -212,7 +230,7 @@ def update_aluno(
 def delete_aluno(
     aluno_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(_require_admin),
+    _: Usuario = Depends(_require_alunos_write),
     tc: TenantContext = Depends(tenant_context),
 ):
     """Deleta um aluno (admin)"""

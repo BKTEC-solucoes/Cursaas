@@ -61,14 +61,16 @@ class InstituicaoService:
                 detail="Instituição já está aprovada.",
             )
 
-        # Converter usuários da instituição em admin instrutor
+        # Quem cadastrou a instituição passa a administrá-la. Antes virava
+        # `instrutor`, que só enxerga os próprios cursos: a conta que pediu o
+        # cadastro entrava aprovada e sem poder gerir a própria instituição.
         usuarios = db.query(Usuario).filter(
             Usuario.instituicao_id == instituicao_id,
             Usuario.role == RoleEnum.admin
         ).all()
-        
+
         for usuario in usuarios:
-            usuario.admin_role = AdminRoleEnum.instrutor
+            usuario.admin_role = AdminRoleEnum.admin_faculdade
             db.add(usuario)
         
         db.flush()

@@ -15,6 +15,21 @@ def is_super_or_legacy_admin(user: Usuario) -> bool:
     return user.admin_role is None or user.admin_role == AdminRoleEnum.super_admin
 
 
+def pode_gerenciar_faculdade(user: Usuario) -> bool:
+    """
+    True para quem administra a instituição inteira: super admin, admin da
+    faculdade e o admin legado (``admin_role`` NULL, anterior à coluna).
+
+    É a fronteira entre "gerencia a faculdade" e "produz conteúdo": o instrutor
+    fica de fora — ele cria curso, aula e prova, mas não mexe em alunos,
+    administradores, tema nem solicitações de cadastro. O recorte de tenant
+    continua sendo do ``TenantContext``; esta função só responde "qual cargo".
+    """
+    if user.role != RoleEnum.admin:
+        return False
+    return user.admin_role in (None, AdminRoleEnum.super_admin, AdminRoleEnum.admin_faculdade)
+
+
 def _tenant_aprovado(db: Session, user: Usuario) -> bool:
     """True se a faculdade (ou a instituição legada) do usuário está aprovada."""
     from app.models import Faculdade, Instituicao
@@ -41,6 +56,7 @@ def get_allowed_course_ids(db: Session, user: Usuario) -> Optional[Set[int]]:
     restrição por autoria/vínculo dentro do tenant.
 
         super_admin ........ None (sem restrição; o tenant já filtra)
+        admin_faculdade .... None (idem — gerencia todos os cursos da faculdade)
         legado (NULL) ...... None (idem)
         instrutor .......... cursos que criou + cursos vinculados em admin_cursos
         demais ............. set() (nenhum)
@@ -60,6 +76,12 @@ def get_allowed_course_ids(db: Session, user: Usuario) -> Optional[Set[int]]:
     # a instituição legada continua valendo para contas anteriores à migração.
     if not _tenant_aprovado(db, user):
         return set()
+
+    # Admin da faculdade enxerga todo o catálogo do próprio tenant — a restrição
+    # por autoria é só do instrutor. O filtro por `faculdade_id` continua sendo
+    # aplicado pelo TenantContext na rota.
+    if user.admin_role == AdminRoleEnum.admin_faculdade:
+        return None
 
     if user.admin_role == AdminRoleEnum.instrutor:
         from app.models import Curso

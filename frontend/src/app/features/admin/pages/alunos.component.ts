@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { PermissionsService } from '../../../core/services/permissions.service';
 
 interface Aluno {
   id: number;
@@ -58,7 +59,9 @@ function formVazio(): AlunoForm {
     <div class="content-page">
       <div class="page-topbar">
         <h1>Gerenciar Alunos</h1>
-        <button class="btn-primary" (click)="abrirFormulario()">+ Novo Aluno</button>
+        @if (p.can('alunos:write')) {
+          <button class="btn-primary" (click)="abrirFormulario()">+ Novo Aluno</button>
+        }
       </div>
 
       @if (alunoParaDeletar) {
@@ -211,7 +214,7 @@ function formVazio(): AlunoForm {
                 <th>E-mail</th>
                 <th>Celular</th>
                 <th>Status</th>
-                <th>Ações</th>
+                @if (p.can('alunos:write')) { <th>Ações</th> }
               </tr>
             </thead>
             <tbody>
@@ -228,14 +231,16 @@ function formVazio(): AlunoForm {
                       {{ aluno.ativo ? 'Ativo' : 'Inativo' }}
                     </span>
                   </td>
-                  <td class="cell-actions">
-                    <button class="btn-icon btn-icon--edit" title="Editar" (click)="editarAluno(aluno)">
-                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button class="btn-icon btn-icon--delete" title="Deletar" (click)="abrirDelecao(aluno)">
-                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    </button>
-                  </td>
+                  @if (p.can('alunos:write')) {
+                    <td class="cell-actions">
+                      <button class="btn-icon btn-icon--edit" title="Editar" (click)="editarAluno(aluno)">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button class="btn-icon btn-icon--delete" title="Deletar" (click)="abrirDelecao(aluno)">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -358,7 +363,8 @@ export class AdminAlunosComponent implements OnInit {
 
   private readonly apiUrl = `${environment.apiUrl}/alunos`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, public permissionsService: PermissionsService) {}
+  get p(): PermissionsService { return this.permissionsService; }
   ngOnInit() { this.carregarAlunos(); }
   private getHeaders(): HttpHeaders {
     const token = localStorage.getItem('access_token');
@@ -378,7 +384,7 @@ export class AdminAlunosComponent implements OnInit {
     this.formAberto = false; this.formErro = ''; this.form = formVazio(); this.editandoId = null; this.mostrarResponsavel = false;
   }
   salvarAluno(): void {
-    if (this.salvando) return;
+    if (this.salvando || !this.p.can('alunos:write')) return;
     this.salvando = true; this.formErro = '';
     const req = this.editandoId
       ? this.http.put(`${this.apiUrl}/${this.editandoId}`, this.form, { headers: this.getHeaders() })
@@ -397,7 +403,7 @@ export class AdminAlunosComponent implements OnInit {
   abrirDelecao(aluno: Aluno): void { this.alunoParaDeletar = aluno; this.deleteErro = ''; }
   cancelarDelecao(): void { this.alunoParaDeletar = null; this.deleteErro = ''; }
   confirmarDelecao(): void {
-    if (!this.alunoParaDeletar || this.deletando) return;
+    if (!this.alunoParaDeletar || this.deletando || !this.p.can('alunos:write')) return;
     this.deletando = true; this.deleteErro = '';
     this.http.delete(`${this.apiUrl}/${this.alunoParaDeletar.id}`, { headers: this.getHeaders() }).subscribe({
       next: () => { this.deletando = false; this.alunos = this.alunos.filter(a => a.id !== this.alunoParaDeletar!.id); this.alunoParaDeletar = null; },
