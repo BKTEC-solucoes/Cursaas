@@ -15,6 +15,7 @@ from app.database import Base, engine
 # create_all. As rotas importam models de forma transitiva, mas depender disso
 # faria uma tabela sumir do schema ao se reorganizar imports.
 from app import models  # noqa: F401
+from app.migracoes import aplicar_pendentes
 from app.security.middleware import TenantMiddleware
 from app.routes import admin, alunos, aulas, auth, cursos, notas, presenca, provas, requests, convites, instituicao, faculdades, cadastro, sistema
 
@@ -31,12 +32,21 @@ async def lifespan(_app: FastAPI):
     qualquer teste unitário exigia MySQL no ar, e o processo nem subia se o
     banco estivesse fora. Movido para o lifespan, o módulo importa sem I/O.
 
-    Atenção ao limite: `create_all` cria tabelas NOVAS, mas nunca altera as
-    existentes. Adição de coluna continua exigindo migração aplicada à mão em
-    database/migration_*.sql.
+    `create_all` cria tabelas NOVAS, mas nunca altera as existentes — quem cuida
+    de ALTER/backfill é `app.migracoes`, logo em seguida. A ordem importa: num
+    banco vazio as migrações rodam sobre as tabelas que o create_all acabou de
+    criar.
+
+    Uma migração que falha derruba o boot de propósito. Seguir com o schema a
+    meio caminho troca um erro localizado e legível por 500 em rota aleatória.
     """
     Base.metadata.create_all(bind=engine)
     logger.info("Schema verificado (create_all).")
+
+    aplicadas = aplicar_pendentes(engine)
+    if aplicadas:
+        logger.info("Migrações aplicadas neste boot: %s", ", ".join(aplicadas))
+
     yield
 
 

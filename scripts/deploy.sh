@@ -45,40 +45,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Migracoes
-# ---------------------------------------------------------------------------
-# O projeto nao usa ferramenta de migracao: `Base.metadata.create_all()` cria
-# tabelas novas no boot, mas nunca altera as existentes. Uma coluna adicionada
-# so existe se alguem rodar o .sql a mao.
-#
-# Aplicar automaticamente seria pior do que parar: um ALTER em tabela grande
-# trava o banco, e alguns arquivos aqui nao sao reversiveis. Entao o deploy
-# ABORTA quando chega migracao nova, antes de trocar qualquer container - o
-# site continua rodando a versao antiga, que e consistente com o banco antigo.
-if [ "$ANTES" != "$DEPOIS" ]; then
-  NOVAS=$(git diff --name-only --diff-filter=A "$ANTES" "$DEPOIS" -- 'database/migration_*.sql' || true)
-  if [ -n "$NOVAS" ] && [ "${IGNORAR_MIGRACOES:-}" != "1" ]; then
-    log "ABORTADO: migracoes novas neste intervalo, aplique-as antes de seguir:"
-    echo "$NOVAS" | sed 's/^/  /'
-    cat <<'AJUDA'
-
-  Na VPS:
-    cd /opt/cursaas
-    set -a; . ./.env; set +a
-    docker exec -i cursaas-db-1 mysql -u root -p"$DB_ROOT_PASSWORD" "$DB_NAME" < database/<arquivo>.sql
-
-  Depois rode o deploy de novo. Se a migracao ja estiver aplicada (ou nao for
-  necessaria agora), pule esta checagem com IGNORAR_MIGRACOES=1.
-AJUDA
-    # Volta o diretorio para o commit que esta de fato rodando, senao a proxima
-    # execucao ve "sem commits novos" e deixa passar a migracao pendente.
-    git reset --hard "$ANTES" --quiet
-    exit 1
-  fi
-fi
-
-# ---------------------------------------------------------------------------
-# 3. Backup
+# 2. Backup
 # ---------------------------------------------------------------------------
 set -a; . ./.env; set +a
 mkdir -p "$DIR_BACKUP"
@@ -91,10 +58,38 @@ log "backup: $ARQ_BACKUP ($(du -h "$ARQ_BACKUP" | cut -f1))"
 ls -1t "$DIR_BACKUP"/pre-deploy-*.sql.gz 2>/dev/null | tail -n +15 | xargs -r rm --
 
 # ---------------------------------------------------------------------------
-# 4. Build (site ainda no ar)
+# 3. Build (site ainda no ar)
 # ---------------------------------------------------------------------------
 log "construindo imagens..."
 "${COMPOSE[@]}" build
+
+# ---------------------------------------------------------------------------
+# 4. Migracoes
+# ---------------------------------------------------------------------------
+# `backend/migracoes/*.sql` sao aplicados por `app.migracoes`, que registra o
+# que ja rodou em `schema_migracoes` - reexecutar e no-op. O backend tambem
+# aplica no proprio startup; rodar aqui, num container efemero da imagem NOVA e
+# com os containers antigos ainda no ar, e o que garante a ordem certa:
+#
+#   - migracao quebrada aborta o deploy ANTES da troca, com o site rodando a
+#     versao antiga e o backup desta execucao ja feito;
+#   - quando o backend novo sobe, o schema ja esta atualizado, entao nao existe
+#     janela em que o codigo novo fala com o banco velho.
+#
+# --no-deps: o db ja esta no ar; nao queremos que o `run` recrie servico algum.
+if [ "${PULAR_MIGRACOES:-}" = "1" ]; then
+  log "migracoes puladas (PULAR_MIGRACOES=1)"
+else
+  log "aplicando migracoes..."
+  if ! "${COMPOSE[@]}" run --rm --no-deps -T backend python -m app.migracoes; then
+    log "ABORTADO: falha ao aplicar migracoes - containers nao foram trocados"
+    log "backup desta execucao: $ARQ_BACKUP"
+    # Volta o diretorio para o commit que esta de fato rodando, senao a proxima
+    # execucao ve "sem commits novos" e passa direto pela migracao quebrada.
+    git reset --hard "$ANTES" --quiet
+    exit 1
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Troca dos containers

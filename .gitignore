@@ -5,6 +5,8 @@ backend/*.pyc
 backend/**/*.pyc
 backend/.pytest_cache/
 backend/venv/
+# O venv de dev desta maquina fica na raiz (o backend roda com PYTHONPATH=backend).
+venv/
 backend/.env
 backend/.env.local
 backend-node/.env

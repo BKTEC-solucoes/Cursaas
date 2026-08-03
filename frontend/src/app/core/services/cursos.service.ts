@@ -40,6 +40,23 @@ export interface Aula {
   videos: Video[];
 }
 
+export interface Prova {
+  id: number;
+  titulo: string;
+  descricao: string | null;
+  data_inicio: string;
+  data_fim: string;
+  tentativas_permitidas: number;
+  total_questoes: number;
+  ativo: boolean;
+}
+
+/** Curso em que o aluno está matriculado — vem com aulas e provas embutidas. */
+export interface CursoInscrito extends Curso {
+  aulas: Aula[];
+  provas: Prova[];
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -92,5 +109,19 @@ export class CursosService {
    */
   getAulas(cursoId: number): Observable<Aula[]> {
     return this.http.get<Aula[]>(`${this.api}/cursos/${cursoId}/aulas`);
+  }
+
+  /**
+   * Lista os cursos em que o aluno está efetivamente **inscrito**, já com
+   * `aulas` e `provas` embutidas.
+   *
+   * Difere de `getCursos()`, que devolve o catálogo inteiro da faculdade —
+   * usar aquele em "Meus Cursos" mostrava cursos sem matrícula e, pior,
+   * devolvia lista vazia para aluno sem vínculo ativo.
+   *
+   * GET /alunos/{alunoId}/cursos
+   */
+  getCursosDoAluno(alunoId: number): Observable<CursoInscrito[]> {
+    return this.http.get<CursoInscrito[]>(`${this.api}/alunos/${alunoId}/cursos`);
   }
 }

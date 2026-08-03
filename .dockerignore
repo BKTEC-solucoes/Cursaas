@@ -24,6 +24,7 @@ backend/.env.local
 backend-node/.env
 
 # --- Dependencias instaladas no host ---------------------------------------
+venv
 backend/venv
 backend/.venv
 **/node_modules

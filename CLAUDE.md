@@ -177,15 +177,25 @@ Admin onboarding goes through `/api/convites`: a super admin issues a token-base
 
 ## Database
 
-`database/schema.sql` is the baseline; `database/migration_*.sql` are incremental and **not** run by any migration tool. Because `main.py` calls `Base.metadata.create_all()` no startup, *new* tables appear automatically on boot but existing tables are never altered — so any column addition needs a hand-applied migration file, and the model and the SQL must be changed together.
+`create_all()` cria tabelas NOVAS no boot, mas **nunca altera as existentes** — `ALTER`/backfill é trabalho de migração.
 
+**Migrações são automáticas** desde `app/migracoes.py`: os `.sql` de `backend/migracoes/` são aplicados uma única vez, em ordem alfabética do nome, com o que já rodou registrado na tabela `schema_migracoes` (arquivo + checksum + data). Rodam no startup do FastAPI (depois do `create_all`, porque num banco vazio elas dependem das tabelas recém-criadas) e no `scripts/deploy.sh`. Uma migração que falha **derruba o boot de propósito**: schema a meio caminho vira 500 em rota aleatória, bem pior de diagnosticar.
+
+- Nome: `AAAAMMDD_HHMM_descricao.sql` — a ordem alfabética É a ordem de aplicação.
+- Ficam em `backend/`, não em `database/`, porque precisam viajar dentro da imagem (`COPY backend/ /app/`).
+- Escreva idempotente. MySQL faz commit implícito em DDL, então um arquivo que falha no meio deixa os statements anteriores aplicados e o conserto é rodar de novo.
+- Editar migração já aplicada não reaplica: o checksum diverge, o runner avisa no log e segue. Correção é arquivo novo.
+- O split de statements ignora `;` dentro de aspas/crases/comentários e entende `DELIMITER` — `migration_tema_urls_text.sql` tem um `COMMENT 'Override de logo; se NULL...'` que quebraria um split ingênuo. Coberto por `tests/test_migracoes.py`.
+
+`database/schema.sql` é o baseline e `database/migration_*.sql` é **registro histórico**: aplicados à mão antes do runner existir, já presentes em dev e produção. O runner não olha para aquele diretório — reaplicar aqueles `ALTER` quebraria banco existente e não faz falta em banco novo. Migração nova vai em `backend/migracoes/`.
 Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_teste.py` (dropa e recria o schema, semeia 2 tenants e 10 usuários, um por cargo em cada faculdade). Ele faz `DROP DATABASE`, e não `drop_all()`, de propósito: o banco de dev pode conter tabelas fora dos modelos.
 
 ```bash
-docker exec -i cursaas-db-1 mysql -u root -p cursaas < database/migration_xyz.sql
+docker compose run --rm --no-deps -T backend python -m app.migracoes --listar   # estado, sem alterar
+docker compose run --rm --no-deps -T backend python -m app.migracoes            # aplica as pendentes
 ```
 
-(Container name follows the compose project name; confirm with `docker ps`.)
+Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_teste.py` (dropa e recria o schema, semeia 2 tenants e 8 usuários). Ele faz `DROP DATABASE`, e não `drop_all()`, de propósito: o banco de dev pode conter tabelas fora dos modelos.
 
 ## Infra
 
@@ -206,7 +216,7 @@ Produção é **bktec.dev.br**, uma VPS Ubuntu 24.04 com **1 vCPU / 3.9 GB**, st
 Três coisas que a forma do script codifica:
 
 - **Constrói antes de trocar os containers.** Em 1 vCPU o build do Angular leva minutos; fazer `up -d --build` deixaria o site fora do ar esse tempo todo. Com `build` separado, a indisponibilidade é só o restart.
-- **Aborta quando chega migração nova.** `git diff --diff-filter=A` sobre `database/migration_*.sql` no intervalo de commits. Como não há ferramenta de migração, deployar código que espera uma coluna inexistente é 500 garantido — o script para *antes* de trocar qualquer container, e dá `git reset --hard` de volta para o commit que está rodando (senão a execução seguinte veria "sem commits novos" e deixaria a migração passar). `IGNORAR_MIGRACOES=1` pula a checagem.
+- **Aplica as migrações entre o build e a troca dos containers.** `docker compose run --rm --no-deps backend python -m app.migracoes`, num container efêmero da imagem *nova*, com os antigos ainda no ar. Assim uma migração quebrada aborta o deploy com o site rodando a versão antiga (e o backup desta execução já feito), e quando o backend novo sobe o schema já está atualizado — não existe janela em que o código novo fala com o banco velho. O backend reaplica no startup, mas aí é no-op. Em caso de falha o script dá `git reset --hard` de volta para o commit que está rodando (senão a execução seguinte veria "sem commits novos" e passaria direto pela migração quebrada). `PULAR_MIGRACOES=1` pula o passo.
 - **`git merge --ff-only`.** Edição em arquivo versionado feita no servidor faz o deploy falhar em vez de gerar conflito no meio do processo. Os `.env` não são versionados, então a configuração local nunca é tocada.
 
 Backup do banco (`mysqldump`) vai para `/opt/cursaas-backups` a cada deploy, com retenção de 15.

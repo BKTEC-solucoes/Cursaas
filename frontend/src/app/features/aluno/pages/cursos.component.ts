@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CursosService } from '../../../core/services/cursos.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface Aula {
   id: number;
@@ -82,9 +83,9 @@ interface Curso {
           <div class="pending-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
-          <h3>Cadastro em análise</h3>
-          <p>Sua solicitação de acesso foi enviada e está aguardando aprovação do administrador.</p>
-          <p>Após a aprovação, seus cursos aparecerão aqui automaticamente.</p>
+          <h3>Nenhum curso por aqui ainda</h3>
+          <p>Você ainda não está matriculado em nenhum curso — ou sua solicitação de acesso segue aguardando aprovação do administrador.</p>
+          <p>Assim que a matrícula for confirmada, seus cursos aparecerão aqui automaticamente.</p>
           <a class="btn-catalogo-inline" routerLink="/aluno/catalogo">Explorar Catálogo</a>
         </div>
       }
@@ -756,25 +757,37 @@ export class AlunoCursosComponent implements OnInit {
   erro = '';
   expandido: Record<number, boolean> = {};
 
-  constructor(private cursosService: CursosService) {}
+  constructor(
+    private cursosService: CursosService,
+    private auth: AuthService,
+  ) {}
 
   ngOnInit(): void {
     this.carregarCursos();
   }
 
   carregarCursos(): void {
+    const usuario = this.auth.getCurrentUser();
+    if (!usuario) {
+      this.erro = 'Usuário não autenticado.';
+      this.carregando = false;
+      return;
+    }
+
     this.carregando = true;
     this.erro = '';
 
-    // O backend filtra automaticamente pelo faculdade_id do JWT.
-    // Nenhum ID de usuário ou faculdade é passado manualmente.
-    this.cursosService.getCursos().subscribe({
+    // Matrículas reais do aluno (InscricaoCurso), não o catálogo da faculdade.
+    // Antes esta tela chamava GET /cursos/, que devolve todos os cursos do
+    // tenant — listava curso sem matrícula e devolvia vazio para quem não
+    // tivesse vínculo ativo, apesar de estar inscrito.
+    this.cursosService.getCursosDoAluno(usuario.id).subscribe({
       next: (cursos) => {
         this.cursos = cursos.map((curso) => ({
           ...curso,
           descricao: curso.descricao ?? null,
-          aulas: [],
-          provas: [],
+          aulas: curso.aulas ?? [],
+          provas: curso.provas ?? [],
         })) as Curso[];
         this.carregando = false;
       },
