@@ -11,6 +11,7 @@ import { AdminNotasComponent } from './pages/notas.component';
 import { AdminPresencaComponent } from './pages/presenca.component';
 import { AdminAlunosComponent } from './pages/alunos.component';
 import { AdminAdministradoresComponent } from './pages/administradores.component';
+import { InstituicaoTemaComponent } from '../instituicao/pages/tema.component';
 import { permissionGuard } from '../../core/guards/permission.guard';
 import { faculdadeAtivaGuard } from '../../core/guards/faculdade-ativa.guard';
 import { AdminSolicitacoesComponent } from './pages/solicitacoes.component';
@@ -103,6 +104,12 @@ export const ADMIN_ROUTES: Routes = [
         component: AdminAdministradoresComponent,
         canActivate: [faculdadeAtivaGuard, permissionGuard],
         data: { permissions: ['administradores:read'] }
+      },
+      {
+        path: 'tema',
+        component: InstituicaoTemaComponent,
+        canActivate: [faculdadeAtivaGuard, permissionGuard],
+        data: { permissions: ['tema:read'] }
       },
       {
         path: 'solicitacoes',
