@@ -58,6 +58,10 @@ export type Permission =
   | 'relatorios:read'
   | 'administradores:read'
   | 'administradores:write'
+  // Tema/layout da instituição em gestão — só quem administra a faculdade
+  // (não o instrutor, restrito a conteúdo).
+  | 'tema:read'
+  | 'tema:write'
   // Plataforma: cadastro e aprovação das instituições (fora do escopo de uma
   // faculdade — o backend exige super admin em /api/faculdades).
   | 'instituicoes:read'
@@ -93,6 +97,8 @@ export type Permission =
  * | relatorios:read        |      ✔      |        ✔        |           |
  * | administradores:read   |      ✔      |        ✔        |           |
  * | administradores:write  |      ✔      |        ✔        |           |
+ * | tema:read              |      ✔      |        ✔        |           |
+ * | tema:write             |      ✔      |        ✔        |           |
  * | instituicoes:read      |      ✔      |                 |           |
  * | instituicoes:write     |      ✔      |                 |           |
  * | sistema:read           |      ✔      |                 |           |
@@ -108,6 +114,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'alunos:read',   'alunos:write',
     'relatorios:read',
     'administradores:read', 'administradores:write',
+    'tema:read',            'tema:write',
     'instituicoes:read',    'instituicoes:write',
     'sistema:read',         'sistema:write',
   ],
@@ -120,6 +127,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'alunos:read',   'alunos:write',
     'relatorios:read',
     'administradores:read', 'administradores:write',
+    'tema:read',            'tema:write',
   ],
   instrutor: [
     'cursos:read',   'cursos:write',
