@@ -3,8 +3,10 @@
 #   docker compose -f compose.yml -f compose.tls.yml up -d
 #
 # Mantido separado do compose.yml porque exige um pre-requisito que o Compose
-# nao consegue garantir: o registro A de bktec.dev.br precisa apontar para este
-# servidor ANTES de qualquer emissao. O desafio HTTP-01 do Let's Encrypt resolve
+# nao consegue garantir: os registros A de cursaas.bktec.dev.br (canonico) e de
+# bktec.dev.br / www.bktec.dev.br (que redirecionam para ele, e por isso tambem
+# entram no certificado) precisam apontar para este servidor ANTES de qualquer
+# emissao. O desafio HTTP-01 do Let's Encrypt resolve
 # o dominio pela internet publica e busca o token em http://<dominio>/.well-known
 # — se o DNS levar a outro host, a emissao falha e consome cota de erro.
 #

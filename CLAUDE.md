@@ -209,7 +209,9 @@ Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_test
 
 ### Deploy (produção)
 
-Produção é **bktec.dev.br**, uma VPS Ubuntu 24.04 com **1 vCPU / 3.9 GB**, stack em `/opt/cursaas`, rodando com o overlay de TLS (`compose.yml` + `compose.tls.yml`). O certificado Let's Encrypt já foi emitido e o serviço `certbot` renova sozinho.
+Produção é **cursaas.bktec.dev.br**, uma VPS Ubuntu 24.04 com **1 vCPU / 3.9 GB**, stack em `/opt/cursaas`, rodando com o overlay de TLS (`compose.yml` + `compose.tls.yml`). O certificado Let's Encrypt já foi emitido e o serviço `certbot` renova sozinho.
+
+O apex `bktec.dev.br` e o `www` continuam atendidos, mas **só redirecionam 301** para o subdomínio (`docker/nginx/default.tls.conf`). Eles precisam seguir no DNS e **dentro do mesmo certificado**: o handshake TLS acontece antes do redirect, então um nome fora do certificado mostra aviso de segurança em vez de redirecionar. A linhagem do certbot continua nomeada `bktec.dev.br` de propósito — é o diretório que já existe em `/etc/letsencrypt/live/` e está compilado nas duas linhas `ssl_certificate` do nginx; `scripts/emitir-certificado.sh` usa `--cert-name`/`--expand` para acrescentar o subdomínio a ela em vez de criar uma linhagem nova, que o nginx não encontraria (e sem o arquivo ele não inicia, derrubando o site). Rode esse script **antes** do deploy que troca o domínio.
 
 `scripts/deploy.sh` é o **único** caminho de deploy: `.github/workflows/deploy.yml` só faz SSH e o executa, então rodar à mão no servidor é idêntico ao pipeline. Push na `main` → `ci.yml` (pytest + build do Angular + `docker compose build`) → deploy. O CI é chamado por `workflow_call`; não tem gatilho `push` próprio, senão rodaria duas vezes por push.
 

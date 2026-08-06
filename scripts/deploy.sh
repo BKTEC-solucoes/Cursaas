@@ -106,7 +106,7 @@ docker image prune -f >/dev/null 2>&1 || true
 # ---------------------------------------------------------------------------
 log "aguardando a API responder..."
 for tentativa in $(seq 1 30); do
-  if curl -fsS --max-time 5 https://bktec.dev.br/api/health >/dev/null 2>&1; then
+  if curl -fsS --max-time 5 https://cursaas.bktec.dev.br/api/health >/dev/null 2>&1; then
     log "API OK apos ${tentativa}x"
     break
   fi
@@ -121,7 +121,7 @@ done
 
 # O SPA e servido pelo nginx a partir da imagem do frontend; se o build do
 # Angular saiu vazio, a raiz responde 404 e so isso pega.
-curl -fsS --max-time 10 -o /dev/null https://bktec.dev.br/ \
+curl -fsS --max-time 10 -o /dev/null https://cursaas.bktec.dev.br/ \
   || { log "FALHOU: o SPA nao esta sendo servido em /"; exit 1; }
 
 # Nao aborta o deploy: o side-car so afeta o login com Google, e o resto do
