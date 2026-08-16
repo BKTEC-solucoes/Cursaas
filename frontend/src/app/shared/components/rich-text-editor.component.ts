@@ -17,6 +17,7 @@ import { CommonModule } from '@angular/common';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { IconComponent } from './icon.component';
 
 /**
  * Editor rich text standalone baseado em TipTap.
@@ -32,7 +33,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 @Component({
   selector: 'app-rich-text-editor',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -87,7 +88,7 @@ import Placeholder from '@tiptap/extension-placeholder';
         <button type="button" class="rte-btn rte-list" [class.active]="activeMarks['bulletList']"
           title="Lista de itens"
           (mousedown)="$event.preventDefault()" (click)="cmd('bullet')">
-          ☰
+          <app-icon name="list" />
         </button>
 
         <button type="button" class="rte-btn" [class.active]="activeMarks['orderedList']"

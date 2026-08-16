@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
+import { IconComponent } from '../shared/components/icon.component';
 interface Loja {
   id: number;
   nome: string;
@@ -12,7 +13,7 @@ interface Loja {
 @Component({
   selector: 'app-lojas',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './lojas.component.html',
   styleUrls: ['./lojas.component.css']
 })

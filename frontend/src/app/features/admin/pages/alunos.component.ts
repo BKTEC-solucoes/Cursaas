@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { PermissionsService } from '../../../core/services/permissions.service';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 interface Aluno {
   id: number;
   nome: string;
@@ -54,7 +55,7 @@ function formVazio(): AlunoForm {
 @Component({
   selector: 'app-admin-alunos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="content-page">
       <div class="page-topbar">
@@ -149,7 +150,7 @@ function formVazio(): AlunoForm {
 
             <button type="button" class="section-toggle" (click)="mostrarResponsavel = !mostrarResponsavel">
               <span>Responsável (opcional)</span>
-              <span class="section-toggle-icon" [class.open]="mostrarResponsavel">▾</span>
+              <span class="section-toggle-icon" [class.open]="mostrarResponsavel"><app-icon name="chevron-down" /></span>
             </button>
             @if (mostrarResponsavel) {
               <div class="form-grid">

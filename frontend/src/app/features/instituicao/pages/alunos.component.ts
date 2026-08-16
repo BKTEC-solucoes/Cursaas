@@ -191,7 +191,7 @@ function formVazio(): AlunoForm {
 
       @if (!carregando && alunos.length > 0) {
         <div class="alunos-table">
-          <table class="table-zebra">
+          <table class="table table-zebra">
             <thead>
               <tr>
                 <th>Matrícula</th>
@@ -299,7 +299,13 @@ function formVazio(): AlunoForm {
     .col-matricula { font-family: monospace; color: var(--primary); font-weight: 600; }
     .col-nome { font-weight: 500; color: var(--color-text); }
     .row-inactive td { opacity: .55; }
-    .col-actions { display: flex; gap: var(--space-2); align-items: center; }
+    .col-actions { white-space: nowrap; }
+    /* NÃO use display:flex aqui: num <td> isso anula o table-cell e a célula
+       sai do row box — o fundo e a borda da linha param antes da coluna de
+       ações. Os botões são inline-flex, então margem + vertical-align dão o
+       mesmo resultado visual sem quebrar a tabela. */
+    .col-actions > * { vertical-align: middle; }
+    .col-actions > * + * { margin-left: var(--space-2); }
 
     .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 600; }
     .badge--success { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }

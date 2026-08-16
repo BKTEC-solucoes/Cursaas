@@ -68,7 +68,7 @@ const QUICK_ACTIONS: QuickAction[] = [
       <div class="hero-card">
         <div class="hero-left">
           <p class="hero-eyebrow">Portal do Aluno</p>
-          <h1 class="hero-title">Olá, {{ primeiroNome() }}! 👋</h1>
+          <h1 class="hero-title">Olá, {{ primeiroNome() }}!</h1>
           <p class="hero-sub">Continue de onde parou. Você está indo bem!</p>
         </div>
         <div class="hero-right" aria-hidden="true">
@@ -273,9 +273,9 @@ export class AlunoDashboardComponent implements OnInit {
   });
   readonly presencaDeltaLabel = computed(() => {
     const v = this.minhaPresenca();
-    if (v >= 75) return '✓ Regular';
-    if (v >= 50) return '⚠ Atenção';
-    return '✗ Baixa';
+    if (v >= 75) return 'Regular';
+    if (v >= 50) return 'Atenção';
+    return 'Baixa';
   });
 
   private _nome = '';

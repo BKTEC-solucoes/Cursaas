@@ -176,6 +176,84 @@ export function bestTextOn(bgHex: string): '#ffffff' | '#000000' {
     : '#000000';
 }
 
+// ─── Manipulação pontual de cor ──────────────────────────────────────────────
+
+/**
+ * Clareia (delta > 0) ou escurece (delta < 0) um hex em OKLCH, preservando
+ * matiz e croma. Ao contrário de misturar com branco/preto, não desbota a cor.
+ */
+export function shiftLightness(hex: string, delta: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const [L, C, H] = rgbToOklch(r, g, b);
+  const target = Math.max(0, Math.min(1, L + delta));
+  const [cL, cC, cH] = clipToGamut(target, C, H);
+  return rgbToHex(...oklchToRgb(cL, cC, cH));
+}
+
+/** Mistura dois hex em sRGB. `ratioA` = fração de `hexA` (0…1). */
+export function mixHex(hexA: string, hexB: string, ratioA: number): string {
+  const [r1, g1, b1] = hexToRgb(hexA);
+  const [r2, g2, b2] = hexToRgb(hexB);
+  const t = Math.max(0, Math.min(1, ratioA));
+  return rgbToHex(
+    r1 * t + r2 * (1 - t),
+    g1 * t + g2 * (1 - t),
+    b1 * t + b2 * (1 - t),
+  );
+}
+
+// ─── Tokens interativos do modo escuro ───────────────────────────────────────
+
+export interface DarkInteractiveTokens {
+  interactive:         string;
+  interactiveHover:    string;
+  interactiveActive:   string;
+  interactiveDisabled: string;
+  onInteractive:       string;
+  navIndicator:        string;
+  focusRing:           string;
+  brandTint:           string;
+}
+
+/**
+ * Deriva os tokens interativos do modo escuro a partir do par
+ * (dark_primary_color, dark_background_color) escolhido pela instituição.
+ *
+ * Duas decisões importantes:
+ *
+ *  - **O interativo é a própria cor escolhida**, não um stop recalculado. Passar
+ *    o dark primary por `generatePalette()` e pegar o stop-500 devolvia uma cor
+ *    bem mais escura que a do color picker — o botão saía diferente do que o
+ *    admin acabara de selecionar, e num fundo escuro ainda por cima.
+ *  - **Disabled e tint são misturados com o FUNDO ESCURO**, não com branco. A
+ *    fórmula do modo claro (`mix(primary 35%, white)`) produz um cinza quase
+ *    branco — que sobre fundo escuro vira o elemento mais brilhante da tela.
+ */
+export function darkInteractiveTokens(
+  darkPrimaryHex:    string,
+  darkBackgroundHex: string,
+): DarkInteractiveTokens {
+  const base = rgbToHex(...hexToRgb(darkPrimaryHex));
+
+  // Garante legibilidade mínima do interativo contra o fundo: se o admin
+  // escolher um dark primary escuro demais, clareia até passar de 3:1.
+  let interactive = base;
+  for (let i = 0; i < 6 && contrastRatio(interactive, darkBackgroundHex) < 3.0; i++) {
+    interactive = shiftLightness(interactive, 0.06);
+  }
+
+  return {
+    interactive,
+    interactiveHover:    shiftLightness(interactive,  0.07),
+    interactiveActive:   shiftLightness(interactive, -0.07),
+    interactiveDisabled: mixHex(interactive, darkBackgroundHex, 0.30),
+    onInteractive:       bestTextOn(interactive),
+    navIndicator:        shiftLightness(interactive,  0.12),
+    focusRing:           interactive,
+    brandTint:           mixHex(interactive, darkBackgroundHex, 0.14),
+  };
+}
+
 // ─── Geração de escala ───────────────────────────────────────────────────────
 
 function generateScale(
@@ -304,36 +382,82 @@ export function applyPaletteToRoot(
 }
 
 /**
- * Sobrescreve os tokens dark semânticos a partir de uma paleta gerada com o
- * dark_primary_color explícito da instituição.
+ * Sobrescreve os tokens dark semânticos a partir do par
+ * (dark_primary_color, dark_background_color) explícito da instituição.
  *
  * Chamado por ThemeService._applyTokens() após applyPaletteToRoot().
  * Garante que temas com um dark_primary_color de hue diferente do primary
- * claro tenham tokens interativos corretos e OKLCH-derivados em dark mode.
+ * claro tenham tokens interativos corretos em dark mode.
  *
- * Usa os stops LIGHT da paleta do dark primary:
- *   stop-500 ≈ a própria cor escolhida (main interactive em dark)
- *   stop-400 ≈ mais claro → ótimo para hover em fundos escuros
- *
- * @param root    Elemento raiz — normalmente document.documentElement
- * @param palette Resultado de generatePalette(dark_primary_color)
+ * @param root              Elemento raiz — normalmente document.documentElement
+ * @param darkPrimaryHex    dark_primary_color do tema
+ * @param darkBackgroundHex dark_background_color do tema
  */
 export function applyDarkOverrideToRoot(
-  root:    HTMLElement,
-  palette: GeneratedPalette,
-): void {
-  const { stops } = palette.scale;
-  const { tokens } = palette;
+  root:              HTMLElement,
+  darkPrimaryHex:    string,
+  darkBackgroundHex: string,
+): DarkInteractiveTokens {
+  const t = darkInteractiveTokens(darkPrimaryHex, darkBackgroundHex);
 
   // Escala brand-dark-* recalculada a partir do hue do dark primary
+  const { stops } = generatePalette(darkPrimaryHex).scale;
   for (const [stop, hex] of Object.entries(stops)) {
     root.style.setProperty(`--brand-dark-${stop}`, hex);
   }
 
-  // Tokens semânticos dark — usa stops light do dark primary (vivid/readable on dark bg)
-  root.style.setProperty('--color-interactive-dark',        tokens.interactiveDefault);
-  root.style.setProperty('--color-interactive-hover-dark',  tokens.interactiveHover);
-  root.style.setProperty('--color-interactive-active-dark', tokens.interactiveActive);
-  root.style.setProperty('--color-on-interactive-dark',     tokens.onInteractive);
-  root.style.setProperty('--color-nav-indicator-dark',      tokens.navIndicator);
+  root.style.setProperty('--color-interactive-dark',          t.interactive);
+  root.style.setProperty('--color-interactive-hover-dark',    t.interactiveHover);
+  root.style.setProperty('--color-interactive-active-dark',   t.interactiveActive);
+  root.style.setProperty('--color-interactive-disabled-dark', t.interactiveDisabled);
+  root.style.setProperty('--color-on-interactive-dark',       t.onInteractive);
+  root.style.setProperty('--color-nav-indicator-dark',        t.navIndicator);
+  root.style.setProperty('--color-focus-ring-dark',           t.focusRing);
+  root.style.setProperty('--color-brand-tint-dark',           t.brandTint);
+
+  return t;
+}
+
+/**
+ * Escreve os tokens interativos **efetivos** (os nomes sem sufixo) conforme o
+ * modo ativo.
+ *
+ * Por que isto existe: `applyPaletteToRoot()` grava `--color-interactive` &
+ * cia. como estilo *inline* no `<html>`, e estilo inline vence qualquer regra
+ * de folha de estilo — inclusive `:root[data-theme="dark"] { --color-interactive:
+ * var(--color-interactive-dark) }`. Sem esta função, o modo escuro continuava
+ * pintando botões, links e focus rings com a cor do modo claro sobre o fundo
+ * escuro.
+ */
+export function applyEffectiveInteractive(
+  root:   HTMLElement,
+  light:  GeneratedPalette | null,
+  dark:   DarkInteractiveTokens | null,
+  isDark: boolean,
+): void {
+  const set = (k: string, v: string) => root.style.setProperty(k, v);
+
+  if (isDark && dark) {
+    set('--color-interactive',          dark.interactive);
+    set('--color-interactive-hover',    dark.interactiveHover);
+    set('--color-interactive-active',   dark.interactiveActive);
+    set('--color-interactive-disabled', dark.interactiveDisabled);
+    set('--color-on-interactive',       dark.onInteractive);
+    set('--color-nav-indicator',        dark.navIndicator);
+    set('--color-focus-ring',           dark.focusRing);
+    set('--color-brand-tint',           dark.brandTint);
+    return;
+  }
+
+  if (!isDark && light) {
+    const { tokens } = light;
+    set('--color-interactive',          tokens.interactiveDefault);
+    set('--color-interactive-hover',    tokens.interactiveHover);
+    set('--color-interactive-active',   tokens.interactiveActive);
+    set('--color-interactive-disabled', tokens.interactiveDisabled);
+    set('--color-on-interactive',       tokens.onInteractive);
+    set('--color-nav-indicator',        tokens.navIndicator);
+    set('--color-focus-ring',           tokens.focusRing);
+    set('--color-brand-tint',           tokens.backgroundTint);
+  }
 }

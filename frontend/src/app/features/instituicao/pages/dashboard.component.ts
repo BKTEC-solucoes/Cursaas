@@ -6,6 +6,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
+import { IconComponent } from '../../../shared/components/icon.component';
 
 interface InstituicaoInfo {
   id: number;
@@ -23,7 +24,7 @@ interface InstituicaoInfo {
 @Component({
   selector: 'app-instituicao-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, IconComponent],
   template: `
     <div class="dashboard">
       <div class="header-greet">
@@ -35,55 +36,62 @@ interface InstituicaoInfo {
       <div class="erro" *ngIf="erro && !carregando">{{ erro }}</div>
 
       <!-- Status banner -->
-      <div class="status-banner" *ngIf="instituicao && !carregando">
-        <div class="status-item" [class.ok]="instituicao.aprovada" [class.pendente]="!instituicao.aprovada">
-          <span>{{ instituicao.aprovada ? '✅ Cadastro aprovado' : '⏳ Aguardando aprovação do Super Admin' }}</span>
-        </div>
-        <div class="status-item" [class.ok]="instituicao.ativa" [class.inativo]="!instituicao.ativa">
-          <span>{{ instituicao.ativa ? '🟢 Instituição ativa' : '🔴 Instituição inativa' }}</span>
-        </div>
-        <div class="status-item" *ngIf="instituicao.plano">
-          <span>📦 Plano: <strong>{{ instituicao.plano | titlecase }}</strong></span>
-        </div>
+      <div class="chips-row" *ngIf="instituicao && !carregando">
+        <span class="chip" [class.chip-ok]="instituicao.aprovada" [class.chip-warn]="!instituicao.aprovada">
+          <app-icon [name]="instituicao.aprovada ? 'check-circle' : 'clock'" />
+          {{ instituicao.aprovada ? 'Cadastro aprovado' : 'Aguardando aprovação do Super Admin' }}
+        </span>
+        <span class="chip" [class.chip-ok]="instituicao.ativa" [class.chip-danger]="!instituicao.ativa">
+          <app-icon name="circle-dot" />
+          {{ instituicao.ativa ? 'Instituição ativa' : 'Instituição inativa' }}
+        </span>
+        <span class="chip chip-info" *ngIf="instituicao.plano">
+          <app-icon name="package" />
+          Plano: <strong>{{ instituicao.plano | titlecase }}</strong>
+        </span>
       </div>
 
       <!-- Stats -->
-      <div class="stats-section" *ngIf="!carregando">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">👨‍🎓</div>
-            <div class="stat-value">{{ totalAlunos }}</div>
-            <div class="stat-label">Alunos Vinculados</div>
+      <div class="stats-grid" *ngIf="!carregando">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--primary"><app-icon name="graduation-cap" [size]="22" /></div>
+          <div class="stat-body">
+            <span class="stat-value">{{ totalAlunos }}</span>
+            <span class="stat-label">Alunos vinculados</span>
           </div>
-          <div class="stat-card highlight">
-            <div class="stat-icon">📋</div>
-            <div class="stat-value">{{ solicitacoesPendentes }}</div>
-            <div class="stat-label">Solicitações Pendentes</div>
+        </div>
+        <div class="stat-card stat-card--highlight">
+          <div class="stat-icon stat-icon--warning"><app-icon name="clipboard" [size]="22" /></div>
+          <div class="stat-body">
+            <span class="stat-value">{{ solicitacoesPendentes }}</span>
+            <span class="stat-label">Solicitações pendentes</span>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon">✅</div>
-            <div class="stat-value">{{ solicitacoesAprovadas }}</div>
-            <div class="stat-label">Alunos Aprovados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--success"><app-icon name="check-circle" [size]="22" /></div>
+          <div class="stat-body">
+            <span class="stat-value">{{ solicitacoesAprovadas }}</span>
+            <span class="stat-label">Alunos aprovados</span>
           </div>
         </div>
       </div>
 
       <!-- Quick actions -->
-      <div class="quick-actions" *ngIf="!carregando">
-        <h2>Ações Rápidas</h2>
+      <div *ngIf="!carregando">
+        <h2 class="section-title">Ações rápidas</h2>
         <div class="actions-grid">
           <a routerLink="/instituicao/perfil" class="action-btn">
-            <div class="action-icon">🏛️</div>
-            <div class="action-title">Meu Perfil</div>
+            <div class="action-icon"><app-icon name="building" [size]="24" /></div>
+            <div class="action-title">Meu perfil</div>
             <div class="action-desc">Ver e editar dados da instituição</div>
           </a>
           <a routerLink="/instituicao/alunos" class="action-btn">
-            <div class="action-icon">👨‍🎓</div>
+            <div class="action-icon"><app-icon name="graduation-cap" [size]="24" /></div>
             <div class="action-title">Alunos</div>
             <div class="action-desc">Ver alunos vinculados</div>
           </a>
           <a routerLink="/instituicao/solicitacoes" class="action-btn">
-            <div class="action-icon">📋</div>
+            <div class="action-icon"><app-icon name="clipboard" [size]="24" /></div>
             <div class="action-title">Solicitações</div>
             <div class="action-desc">Acompanhar cadastros pendentes</div>
             <div class="action-badge" *ngIf="solicitacoesPendentes > 0">{{ solicitacoesPendentes }}</div>
@@ -108,6 +116,12 @@ interface InstituicaoInfo {
     .chip-info { background: color-mix(in srgb, var(--primary) 8%, transparent); border-color: color-mix(in srgb, var(--primary) 25%, transparent); color: var(--primary); }
 
     .stat-card--highlight { border: 2px solid var(--color-warning) !important; }
+
+    /* .chips-row e .stats-grid não existem no styles.css global — o template
+       referenciava .status-banner/.status-item, que também não existiam, e por
+       isso os chips e os cards de estatística vinham sem layout nenhum. */
+    .chips-row  { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-5); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
 
     .section-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text); margin: var(--space-6) 0 var(--space-4); font-family: var(--font-display); }
 

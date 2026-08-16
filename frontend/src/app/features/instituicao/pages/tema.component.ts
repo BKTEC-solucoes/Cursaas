@@ -9,6 +9,7 @@ import { ThemeService, ThemePreset, ThemeListItem, PageOverride } from '../../..
 import { PagePreviewComponent, PreviewPage, PreviewTheme } from './previews/page-preview.component';
 import { environment } from '../../../../environments/environment';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 interface TemaValues {
   primary_color: string;
   secondary_color: string;
@@ -69,7 +70,7 @@ const DEFAULT_VALUES: TemaValues = {
   dark_mode:             false,
   dark_primary_color:    '#34d399',
   dark_secondary_color:  '#10b981',
-  dark_background_color: '#0f172a',
+  dark_background_color: '#0d1a14',
   border_radius:         '8px',
   layout_type:           'topbar',
   gradient_enabled:      false,
@@ -83,7 +84,7 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 @Component({
   selector: 'app-instituicao-tema',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PagePreviewComponent],
+  imports: [CommonModule, ReactiveFormsModule, PagePreviewComponent, IconComponent],
   templateUrl: './tema.component.html',
   styleUrls: ['./tema.component.css'],
 })
@@ -129,13 +130,13 @@ export class InstituicaoTemaComponent implements OnInit, OnDestroy {
   pageForm: FormGroup;
 
   readonly PAGE_TABS: { key: 'global' | PreviewPage; label: string; icon: string }[] = [
-    { key: 'global',    label: 'Global',     icon: '🌐' },
-    { key: 'dashboard', label: 'Dashboard',  icon: '🏠' },
-    { key: 'alunos',    label: 'Alunos',     icon: '👨‍🎓' },
-    { key: 'cursos',    label: 'Cursos',     icon: '📚' },
-    { key: 'aulas',     label: 'Aulas',      icon: '🎬' },
-    { key: 'notas',     label: 'Notas',      icon: '📊' },
-    { key: 'perfil',    label: 'Perfil',     icon: '🏛️' },
+    { key: 'global',    label: 'Global',     icon: 'globe' },
+    { key: 'dashboard', label: 'Dashboard',  icon: 'home' },
+    { key: 'alunos',    label: 'Alunos',     icon: 'graduation-cap' },
+    { key: 'cursos',    label: 'Cursos',     icon: 'book' },
+    { key: 'aulas',     label: 'Aulas',      icon: 'film' },
+    { key: 'notas',     label: 'Notas',      icon: 'chart' },
+    { key: 'perfil',    label: 'Perfil',     icon: 'building' },
   ];
 
   /** Tema efetivo para o preview (global + override da página selecionada) */

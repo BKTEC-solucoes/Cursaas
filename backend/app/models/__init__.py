@@ -112,7 +112,7 @@ class FaculdadeTema(Base):
     dark_mode             = Column(Boolean, nullable=False, default=False)
     dark_primary_color    = Column(String(20), nullable=False, default="#34d399")
     dark_secondary_color  = Column(String(20), nullable=False, default="#10b981")
-    dark_background_color = Column(String(20), nullable=False, default="#0f172a")
+    dark_background_color = Column(String(20), nullable=False, default="#0d1a14")
 
     # ── Favicon ───────────────────────────────────────────────────────────────
     favicon_url      = Column(Text, nullable=True)
@@ -173,7 +173,7 @@ class TemaPreset(Base):
     font_family           = Column(String(150), nullable=False, default="Inter, system-ui, sans-serif")
     dark_primary_color    = Column(String(20),  nullable=False, default="#34d399")
     dark_secondary_color  = Column(String(20),  nullable=False, default="#10b981")
-    dark_background_color = Column(String(20),  nullable=False, default="#0f172a")
+    dark_background_color = Column(String(20),  nullable=False, default="#0d1a14")
 
 
 class VinculoAlunoFaculdade(Base):

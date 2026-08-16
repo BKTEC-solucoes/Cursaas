@@ -8,6 +8,7 @@ import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiService, CourseRequest, CourseRequestStatus, CursoResumo } from '../../../shared/services/api.service';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 type Curso = CursoResumo;
 
 const GRADIENTS = [
@@ -24,7 +25,7 @@ const GRADIENTS = [
 @Component({
   selector: 'app-aluno-catalogo',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, IconComponent],
   template: `
     <div class="content-page catalogo-wrapper">
       <div class="hero-banner">
@@ -41,7 +42,7 @@ const GRADIENTS = [
               class="search-input"
             />
             @if (termoBusca) {
-              <button class="btn-limpar" (click)="limparBusca()">✕</button>
+              <button class="btn-limpar" (click)="limparBusca()"><app-icon name="x" /></button>
             }
           </div>
         </div>

@@ -8,6 +8,7 @@ import { ApiService } from '../../../shared/services/api.service';
 import { VideoService } from '../../../core/services/video.service';
 import { environment } from '../../../../environments/environment';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 interface AulaItem {
   id: number;
   titulo: string;
@@ -39,7 +40,7 @@ interface CursoItem {
 @Component({
   selector: 'app-instituicao-aulas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="content-page">
       <div class="page-header">
@@ -124,7 +125,7 @@ interface CursoItem {
         <div class="modal-content modal-lg" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Detalhes da Aula</h3>
-            <button class="btn-close" (click)="fecharVer()">✕</button>
+            <button class="btn-close" (click)="fecharVer()"><app-icon name="x" /></button>
           </div>
           @if (aulaDetalhe) {
             <div class="modal-body">
@@ -177,7 +178,7 @@ interface CursoItem {
         <div class="modal-content" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Nova Aula</h3>
-            <button class="btn-close" (click)="fecharNovaAula()">✕</button>
+            <button class="btn-close" (click)="fecharNovaAula()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body">
             <form (ngSubmit)="salvarNovaAula()">
@@ -208,7 +209,7 @@ interface CursoItem {
         <div class="modal-content" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Editar Aula</h3>
-            <button class="btn-close" (click)="fecharEditar()">✕</button>
+            <button class="btn-close" (click)="fecharEditar()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body">
             @if (aulaEmEdicao && aulaEmEdicao.videos && aulaEmEdicao.videos.length > 0) {
@@ -257,7 +258,7 @@ interface CursoItem {
         <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Confirmar Exclusão</h3>
-            <button class="btn-close" (click)="cancelarDelecao()">✕</button>
+            <button class="btn-close" (click)="cancelarDelecao()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body">
             <p>Tem certeza que deseja excluir a aula <strong>{{ aulaParaDeletar.titulo }}</strong>?</p>
@@ -278,7 +279,7 @@ interface CursoItem {
         <div class="modal-content" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Upload de Vídeo</h3>
-            <button class="btn-close" (click)="fecharUpload()">✕</button>
+            <button class="btn-close" (click)="fecharUpload()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body">
             @if (aulaParaUpload) { <p class="aula-nome-label"><strong>Aula:</strong> {{ aulaParaUpload.titulo }}</p> }
@@ -338,7 +339,13 @@ interface CursoItem {
 
     .col-titulo { font-weight: 600; color: var(--color-text); }
     .col-curso { color: var(--color-text-muted); font-size: var(--font-size-sm); }
-    .col-actions { display: flex; gap: var(--space-1); align-items: center; }
+    .col-actions { white-space: nowrap; }
+    /* NÃO use display:flex aqui: num <td> isso anula o table-cell e a célula
+       sai do row box — o fundo e a borda da linha param antes da coluna de
+       ações. Os botões são inline-flex, então margem + vertical-align dão o
+       mesmo resultado visual sem quebrar a tabela. */
+    .col-actions > * { vertical-align: middle; }
+    .col-actions > * + * { margin-left: var(--space-1); }
 
     .badge { display: inline-block; padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; }
     .badge--success { background: color-mix(in srgb, var(--color-success) 12%, transparent); color: var(--color-success); }
@@ -422,7 +429,7 @@ interface CursoItem {
     .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width .3s; }
     .progresso p { margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
-    @media (max-width: 900px) { .table-card { overflow-x: auto; } .col-actions { flex-wrap: wrap; } }
+    @media (max-width: 900px) { .table-card { overflow-x: auto; } }
   `]
 })
 export class InstituicaoAulasComponent implements OnInit, OnDestroy {

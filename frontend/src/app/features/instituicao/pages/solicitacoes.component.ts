@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 interface Solicitacao {
   id: number;
   nome: string;
@@ -21,11 +22,11 @@ interface Solicitacao {
 @Component({
   selector: 'app-instituicao-solicitacoes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="solicitacoes-page">
       <div class="page-header">
-        <h1>📋 Solicitações de Cadastro</h1>
+        <h1>Solicitações de Cadastro</h1>
         <span class="badge-count badge-pending" *ngIf="pendentesCount > 0">{{ pendentesCount }} pendentes</span>
       </div>
 
@@ -47,7 +48,7 @@ interface Solicitacao {
 
         <!-- Empty state -->
         <div class="empty" *ngIf="solicitacoesFiltradas.length === 0">
-          <div class="empty-icon">📭</div>
+          <div class="empty-icon"><app-icon name="inbox" [size]="32" /></div>
           <p>Nenhuma solicitação {{ filtroAtual !== 'todos' ? 'com status "' + filtroAtual + '"' : '' }} encontrada.</p>
         </div>
 
@@ -70,7 +71,7 @@ interface Solicitacao {
                 </span>
                 <span class="sol-data">{{ s.criado_em | date:'dd/MM/yyyy' }}</span>
               </div>
-              <span class="expand-icon">{{ expandido === s.id ? '▲' : '▼' }}</span>
+              <span class="expand-icon"><app-icon [name]="expandido === s.id ? 'chevron-up' : 'chevron-down'" /></span>
             </div>
 
             <!-- Detalhes expandidos -->
@@ -101,10 +102,10 @@ interface Solicitacao {
               <!-- Ações: apenas para pendentes -->
               <div class="acoes-row" *ngIf="s.status === 'pendente'">
                 <button class="btn-aprovar" (click)="aprovar(s)" [disabled]="processando[s.id]">
-                  {{ processando[s.id] === 'aprovando' ? 'Aprovando...' : '✓ Aprovar' }}
+                  {{ processando[s.id] === 'aprovando' ? 'Aprovando...' : 'Aprovar' }}
                 </button>
                 <button class="btn-recusar" (click)="abrirRecusa(s)" [disabled]="processando[s.id]">
-                  ✗ Recusar
+                  Recusar
                 </button>
               </div>
             </div>

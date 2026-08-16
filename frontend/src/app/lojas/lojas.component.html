@@ -7,7 +7,7 @@
 
   <div class="lojas-grid">
     <div *ngFor="let loja of lojas" class="loja-card" (click)="abrirLoja(loja)">
-      <div class="loja-icon">🏫</div>
+      <div class="loja-icon"><app-icon name="building" [size]="28" /></div>
       <h3>{{ loja.nome }}</h3>
       <p class="loja-cidade">{{ loja.cidade }}</p>
       <p class="loja-email">{{ loja.email }}</p>

@@ -170,7 +170,7 @@ def obter_tema_instituicao(
         dark_mode             = tema.dark_mode             if tema else False,
         dark_primary_color    = tema.dark_primary_color    if tema else "#34d399",
         dark_secondary_color  = tema.dark_secondary_color  if tema else "#10b981",
-        dark_background_color = tema.dark_background_color if tema else "#0f172a",
+        dark_background_color = tema.dark_background_color if tema else "#0d1a14",
         favicon_url       = tema.favicon_url if tema else None,
     )
 

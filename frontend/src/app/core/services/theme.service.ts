@@ -2,7 +2,10 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { tap, catchError, map, distinctUntilChanged, finalize, shareReplay } from 'rxjs/operators';
-import { generatePalette, applyPaletteToRoot, applyDarkOverrideToRoot } from './color-palette';
+import {
+  generatePalette, applyPaletteToRoot, applyDarkOverrideToRoot, applyEffectiveInteractive,
+  type GeneratedPalette, type DarkInteractiveTokens,
+} from './color-palette';
 import { environment } from '../../../environments/environment';
 
 export interface PageOverride {
@@ -96,7 +99,7 @@ const DEFAULT_THEME = {
   font_family:           'Inter, system-ui, sans-serif',
   dark_primary_color:    '#34d399',
   dark_secondary_color:  '#10b981',
-  dark_background_color: '#0f172a',
+  dark_background_color: '#0d1a14',
   border_radius:         '8px',
   spacing:               'comfortable' as const,
   shadow_level:          'soft'        as const,
@@ -328,27 +331,7 @@ export class ThemeService {
     // Prioridade: preferência explícita do usuário > OS (se 'system') > campo do tema
     const isDark = this._resolveDark(theme.dark_mode);
 
-    // ── 2. Gerar paleta via OKLCH a partir do primary_color ──
-    // Aplica a escala brand-50…brand-950 e todos os tokens semânticos
-    // derivados (hover, active, disabled, nav-indicator, focus-ring, etc.)
-    // ANTES de aplicar os valores concretos de --primary / --secondary.
-    const rawPrimary = theme.primary_color ?? DEFAULT_THEME.primary_color;
-    try {
-      const palette = generatePalette(rawPrimary);
-      applyPaletteToRoot(root, palette);
-    } catch {
-      // Hex inválido — ignora silenciosamente e prossegue com os valores brutos
-    }
-    // Dark primary override: regenera tokens dark a partir do dark_primary_color
-    // explícito (que pode ter hue diferente do primary claro).
-    try {
-      applyDarkOverrideToRoot(
-        root,
-        generatePalette(theme.dark_primary_color ?? DEFAULT_THEME.dark_primary_color),
-      );
-    } catch { /* hex inválido */ }
-
-    // ── 3. Resolver paleta (light / dark) ────────────────────
+    // ── 2. Resolver paleta (light / dark) ────────────────────
     const lightP  = theme.primary_color         ?? DEFAULT_THEME.primary_color;
     const lightS  = theme.secondary_color       ?? DEFAULT_THEME.secondary_color;
     const lightBg = theme.background_color      ?? DEFAULT_THEME.background_color;
@@ -356,6 +339,30 @@ export class ThemeService {
     const darkS   = theme.dark_secondary_color  ?? DEFAULT_THEME.dark_secondary_color;
     const darkBg  = theme.dark_background_color ?? DEFAULT_THEME.dark_background_color;
     const ff      = theme.font_family           ?? DEFAULT_THEME.font_family;
+
+    // ── 2b. Gerar paleta via OKLCH ───────────────────────────
+    // Aplica a escala brand-50…brand-950 e todos os tokens semânticos
+    // derivados (hover, active, disabled, nav-indicator, focus-ring, etc.)
+    // ANTES de aplicar os valores concretos de --primary / --secondary.
+    let lightPalette: GeneratedPalette | null = null;
+    let darkTokens:   DarkInteractiveTokens | null = null;
+    try {
+      lightPalette = generatePalette(lightP);
+      applyPaletteToRoot(root, lightPalette);
+    } catch {
+      // Hex inválido — ignora silenciosamente e prossegue com os valores brutos
+    }
+    // Dark override: tokens derivados do par (dark_primary, dark_background)
+    // explícito, que pode ter hue diferente do primary claro.
+    try {
+      darkTokens = applyDarkOverrideToRoot(root, darkP, darkBg);
+    } catch { /* hex inválido */ }
+
+    // Tokens efetivos do modo ativo. Obrigatório: applyPaletteToRoot grava
+    // --color-interactive & cia. inline, e inline vence o bloco
+    // :root[data-theme="dark"] do CSS — sem isto o modo escuro herdava as
+    // cores interativas do modo claro.
+    applyEffectiveInteractive(root, lightPalette, darkTokens, isDark);
 
     // --primary sempre reflete o modo atual (light ou dark)
     const p  = isDark ? darkP  : lightP;
@@ -370,27 +377,12 @@ export class ThemeService {
     root.style.setProperty('--background-color', bg);  // alias legado
     root.style.setProperty('--font-family',      ff);
 
-    // ── data-app-theme: deriva "verde" | "azul" a partir do primary_color ────
-    // Converte o hex para HSL e classifica pelo ângulo de hue:
-    //   Verde: 80°–180°  |  Azul: 180°–270°  |  Demais → fallback "verde"
-    try {
-      const hex = lightP.replace('#', '');
-      const r = parseInt(hex.slice(0, 2), 16) / 255;
-      const g = parseInt(hex.slice(2, 4), 16) / 255;
-      const b = parseInt(hex.slice(4, 6), 16) / 255;
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      let h = 0;
-      if (max !== min) {
-        const d = max - min;
-        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-        else if (max === g) h = ((b - r) / d + 2) * 60;
-        else h = ((r - g) / d + 4) * 60;
-      }
-      const appTheme = (h >= 180 && h < 270) ? 'azul' : 'verde';
-      root.setAttribute('data-app-theme', appTheme);
-    } catch {
-      root.setAttribute('data-app-theme', 'verde');
-    }
+    // data-app-theme foi removido: classificava o matiz do primary em apenas
+    // "verde" | "azul" (com verde de fallback) para escolher entre dois blocos
+    // de paleta fixos no styles.css. Toda marca fora de 180°–270° caía no verde
+    // e recebia superfícies e sidebar esverdeadas. Superfície, borda, texto e
+    // sidebar agora derivam de --primary direto no CSS — sem balde de hue.
+    root.removeAttribute('data-app-theme');
 
     // Preserva as variantes para que CSS puro possa trocar via [data-theme]
     root.style.setProperty('--light-primary',         lightP);

@@ -119,7 +119,7 @@ type CursoFormValue = number | string | null;
 
       @if (cursos.length > 0) {
         <div class="table-card">
-          <table class="table-zebra">
+          <table class="table table-zebra">
             <thead>
               <tr>
                 <th>Curso</th>
@@ -220,7 +220,13 @@ type CursoFormValue = number | string | null;
     .btn-icon--edit:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); border-color: var(--primary); }
     .btn-icon--delete { color: var(--color-danger); }
     .btn-icon--delete:hover { background: color-mix(in srgb, var(--color-danger) 10%, transparent); border-color: var(--color-danger); }
-    .col-actions { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+    .col-actions { white-space: nowrap; }
+    /* NÃO use display:flex aqui: num <td> isso anula o table-cell e a célula
+       sai do row box — o fundo e a borda da linha param antes da coluna de
+       ações. Os botões são inline-flex, então margem + vertical-align dão o
+       mesmo resultado visual sem quebrar a tabela. */
+    .col-actions > * { vertical-align: middle; }
+    .col-actions > * + * { margin-left: var(--space-2); }
 
     .form-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-5); box-shadow: var(--shadow-sm); }
     .form-card-title { margin: 0 0 var(--space-5); font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }
