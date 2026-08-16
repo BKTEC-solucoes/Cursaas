@@ -10,13 +10,13 @@ import { IconComponent } from '../../../shared/components/icon.component';
 const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
 
 const NAV_ITEMS = [
-  { path: '/aluno/dashboard', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`, label: 'Dashboard' },
-  { path: '/aluno/cursos',    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`, label: 'Cursos'    },
-  { path: '/aluno/aulas',     icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`, label: 'Aulas'     },
-  { path: '/aluno/provas',    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`, label: 'Provas'    },
-  { path: '/aluno/notas',     icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`, label: 'Notas'     },
-  { path: '/aluno/presenca',  icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`, label: 'Presença'  },
-  { path: '/aluno/catalogo',  icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`, label: 'Catálogo'  },
+  { path: '/aluno/dashboard', icon: 'grid', label: 'Dashboard' },
+  { path: '/aluno/cursos',    icon: 'book', label: 'Cursos'    },
+  { path: '/aluno/aulas',     icon: 'video', label: 'Aulas'     },
+  { path: '/aluno/provas',    icon: 'file-text', label: 'Provas'    },
+  { path: '/aluno/notas',     icon: 'chart', label: 'Notas'     },
+  { path: '/aluno/presenca',  icon: 'calendar', label: 'Presença'  },
+  { path: '/aluno/catalogo',  icon: 'search', label: 'Catálogo'  },
 ] as const;
 
 @Component({
@@ -40,7 +40,7 @@ const NAV_ITEMS = [
             <nav class="topbar-nav">
               @for (item of navItems; track item.path) {
                 <a [routerLink]="item.path" routerLinkActive="active">
-                  <span class="icon" [innerHTML]="item.icon"></span>{{ item.label }}
+                  <app-icon class="icon" [name]="item.icon" [size]="18" />{{ item.label }}
                 </a>
               }
             </nav>
@@ -98,7 +98,7 @@ const NAV_ITEMS = [
                  (click)="closeSidebar()"
                  [attr.aria-label]="item.label"
                  [title]="isCollapsed() ? item.label : ''">
-                <span class="icon" [innerHTML]="item.icon"></span>
+                <app-icon class="icon" [name]="item.icon" [size]="18" />
                 <span class="nav-label">{{ item.label }}</span>
               </a>
             }

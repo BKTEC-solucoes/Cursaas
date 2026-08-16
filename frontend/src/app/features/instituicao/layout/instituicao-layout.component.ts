@@ -9,14 +9,14 @@ import { ThemeService, DarkPref } from '../../../core/services/theme.service';
 import { IconComponent } from '../../../shared/components/icon.component';
 /** Links de navegação compartilhados entre topbar e sidebar */
 const NAV_ITEMS = [
-  { path: '/instituicao/dashboard',    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`, label: 'Dashboard'     },
-  { path: '/instituicao/perfil',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`, label: 'Perfil'        },
-  { path: '/instituicao/alunos',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, label: 'Alunos'        },
-  { path: '/instituicao/solicitacoes', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`, label: 'Solicitações'  },
-  { path: '/instituicao/cursos',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`, label: 'Cursos'        },
-  { path: '/instituicao/aulas',        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`, label: 'Aulas'         },
-  { path: '/instituicao/notas',        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`, label: 'Notas'         },
-  { path: '/instituicao/tema',         icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>`, label: 'Tema'          },
+  { path: '/instituicao/dashboard',    icon: 'grid', label: 'Dashboard'     },
+  { path: '/instituicao/perfil',       icon: 'home', label: 'Perfil'        },
+  { path: '/instituicao/alunos',       icon: 'users', label: 'Alunos'        },
+  { path: '/instituicao/solicitacoes', icon: 'file-plus', label: 'Solicitações'  },
+  { path: '/instituicao/cursos',       icon: 'book', label: 'Cursos'        },
+  { path: '/instituicao/aulas',        icon: 'video', label: 'Aulas'         },
+  { path: '/instituicao/notas',        icon: 'chart', label: 'Notas'         },
+  { path: '/instituicao/tema',         icon: 'palette', label: 'Tema'          },
 ] as const;
 
 const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
@@ -43,7 +43,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
             <nav class="topbar-nav">
               @for (item of navItems; track item.path) {
                 <a [routerLink]="item.path" routerLinkActive="active">
-                  <span class="icon" [innerHTML]="item.icon"></span>{{ item.label }}
+                  <app-icon class="icon" [name]="item.icon" [size]="18" />{{ item.label }}
                 </a>
               }
             </nav>
@@ -104,7 +104,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
                  (click)="closeSidebar()"
                  [attr.aria-label]="item.label"
                  [title]="isCollapsed() ? item.label : ''">
-                <span class="icon" [innerHTML]="item.icon"></span>
+                <app-icon class="icon" [name]="item.icon" [size]="18" />
                 <span class="nav-label">{{ item.label }}</span>
               </a>
             }
