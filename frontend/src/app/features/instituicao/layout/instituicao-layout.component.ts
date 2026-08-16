@@ -333,6 +333,17 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
     }
     .btn-dark-toggle:hover { background: rgba(255,255,255,.22); }
 
+    /* O branco translúcido acima pressupõe fundo escuro — vale na topbar do
+       layout topbar, que é pintada com o primary. Na .sidebar-topbar o botão
+       fica sobre --color-surface (branco no modo claro) e o ícone, também
+       branco, sumia. Aqui ele veste os tokens da superfície onde está. */
+    .sidebar-topbar .btn-dark-toggle {
+      background: var(--color-surface-2);
+      border-color: var(--color-border);
+      color: var(--color-text);
+    }
+    .sidebar-topbar .btn-dark-toggle:hover { background: var(--color-brand-tint); }
+
     .btn-collapse {
       display: inline-flex; align-items: center; justify-content: center;
       width: 28px; height: 28px; padding: 0;
