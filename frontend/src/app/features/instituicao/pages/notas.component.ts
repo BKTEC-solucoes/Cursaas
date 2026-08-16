@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../shared/services/api.service';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 interface Nota {
   id: number;
   usuario_id: number;
@@ -31,7 +32,7 @@ interface QuestaoResposta {
 @Component({
   selector: 'app-instituicao-notas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="content-page">
       <div class="page-header">
@@ -109,7 +110,7 @@ interface QuestaoResposta {
         <div class="modal" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3 class="modal-title">Editar Nota</h3>
-            <button class="modal-close" (click)="fecharEdicao()">✕</button>
+            <button class="modal-close" (click)="fecharEdicao()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body">
             <div class="info-aluno">
@@ -144,7 +145,7 @@ interface QuestaoResposta {
               <h3 class="modal-title">Respostas do Aluno</h3>
               <p class="modal-subtitle">{{ notaRespostas.usuario_nome }} — {{ notaRespostas.prova_titulo }}</p>
             </div>
-            <button class="modal-close" (click)="fecharRespostas()">✕</button>
+            <button class="modal-close" (click)="fecharRespostas()"><app-icon name="x" /></button>
           </div>
           <div class="modal-body modal-body-scroll">
             @if (carregandoRespostas) {
@@ -175,9 +176,9 @@ interface QuestaoResposta {
                       @for (op of q.opcoes; track op.id) {
                         <div class="opcao-linha" [class.selecionada]="op.id === q.opcao_selecionada" [class.gabarito]="op.correta">
                           <span class="opcao-marcador">
-                            @if (op.id === q.opcao_selecionada && op.correta)  { ✅ }
-                            @if (op.id === q.opcao_selecionada && !op.correta) { ❌ }
-                            @if (op.id !== q.opcao_selecionada && op.correta)  { ✓ }
+                            @if (op.id === q.opcao_selecionada && op.correta)  { <app-icon name="check-circle" /> }
+                            @if (op.id === q.opcao_selecionada && !op.correta) { <app-icon name="x-circle" /> }
+                            @if (op.id !== q.opcao_selecionada && op.correta)  { <app-icon name="check" /> }
                             @if (op.id !== q.opcao_selecionada && !op.correta) { &nbsp; }
                           </span>
                           <span>{{ op.texto }}</span>
@@ -233,7 +234,13 @@ interface QuestaoResposta {
     .col-nota { font-weight: 700; font-size: var(--font-size-base); }
     .col-tentativa { text-align: center; }
     .col-data { color: var(--color-text-muted); font-size: var(--font-size-xs); }
-    .col-actions { white-space: nowrap; display: flex; gap: var(--space-2); align-items: center; }
+    .col-actions { white-space: nowrap; }
+    /* NÃO use display:flex aqui: num <td> isso anula o table-cell e a célula
+       sai do row box — o fundo e a borda da linha param antes da coluna de
+       ações. Os botões são inline-flex, então margem + vertical-align dão o
+       mesmo resultado visual sem quebrar a tabela. */
+    .col-actions > * { vertical-align: middle; }
+    .col-actions > * + * { margin-left: var(--space-2); }
 
     .badge { display: inline-block; padding: 2px 10px; border-radius: var(--radius-full); font-size: var(--font-size-xs); font-weight: 700; }
     .badge--warn    { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }

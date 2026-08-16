@@ -392,7 +392,7 @@ def _build_tema_response(f: Faculdade, t: Optional[FaculdadeTema]) -> FaculdadeT
         dark_mode             = t.dark_mode             if t else False,
         dark_primary_color    = t.dark_primary_color    if t else '#34d399',
         dark_secondary_color  = t.dark_secondary_color  if t else '#10b981',
-        dark_background_color = t.dark_background_color if t else '#0f172a',
+        dark_background_color = t.dark_background_color if t else '#0d1a14',
         favicon_url       = t.favicon_url if t else None,
         border_radius     = t.border_radius    if t else '8px',
         spacing           = t.spacing          if t else 'comfortable',
@@ -628,7 +628,7 @@ def criar_tema(
             )
         # Enriquece apenas campos cujo valor ainda é o default (não personalizado)
         defaults = {"secondary_color": "#0f4b2a", "dark_primary_color": "#34d399",
-                    "dark_secondary_color": "#10b981", "dark_background_color": "#0f172a",
+                    "dark_secondary_color": "#10b981", "dark_background_color": "#0d1a14",
                     "background_color": "#f0fdf4"}
         auto_map = {
             "secondary_color":       tokens.secondary_hex,

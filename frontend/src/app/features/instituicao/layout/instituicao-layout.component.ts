@@ -6,16 +6,17 @@ import { filter, map } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { ThemeService, DarkPref } from '../../../core/services/theme.service';
 
+import { IconComponent } from '../../../shared/components/icon.component';
 /** Links de navegação compartilhados entre topbar e sidebar */
 const NAV_ITEMS = [
-  { path: '/instituicao/dashboard',    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`, label: 'Dashboard'     },
-  { path: '/instituicao/perfil',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`, label: 'Perfil'        },
-  { path: '/instituicao/alunos',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, label: 'Alunos'        },
-  { path: '/instituicao/solicitacoes', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`, label: 'Solicitações'  },
-  { path: '/instituicao/cursos',       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`, label: 'Cursos'        },
-  { path: '/instituicao/aulas',        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`, label: 'Aulas'         },
-  { path: '/instituicao/notas',        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`, label: 'Notas'         },
-  { path: '/instituicao/tema',         icon: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="8.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="6.5" cy="12.5" r="0.5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>`, label: 'Tema'          },
+  { path: '/instituicao/dashboard',    icon: 'grid', label: 'Dashboard'     },
+  { path: '/instituicao/perfil',       icon: 'home', label: 'Perfil'        },
+  { path: '/instituicao/alunos',       icon: 'users', label: 'Alunos'        },
+  { path: '/instituicao/solicitacoes', icon: 'file-plus', label: 'Solicitações'  },
+  { path: '/instituicao/cursos',       icon: 'book', label: 'Cursos'        },
+  { path: '/instituicao/aulas',        icon: 'video', label: 'Aulas'         },
+  { path: '/instituicao/notas',        icon: 'chart', label: 'Notas'         },
+  { path: '/instituicao/tema',         icon: 'palette', label: 'Tema'          },
 ] as const;
 
 const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
@@ -23,7 +24,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
 @Component({
   selector: 'app-instituicao-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, IconComponent],
   template: `
     <div [class]="isSidebar() ? 'layout-sidebar' : 'layout-topbar'">
 
@@ -42,14 +43,14 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
             <nav class="topbar-nav">
               @for (item of navItems; track item.path) {
                 <a [routerLink]="item.path" routerLinkActive="active">
-                  <span class="icon" [innerHTML]="item.icon"></span>{{ item.label }}
+                  <app-icon class="icon" [name]="item.icon" [size]="18" />{{ item.label }}
                 </a>
               }
             </nav>
             <div class="topbar-user">
               <span class="user-greeting">{{ usuarioNome }}</span>
               <button class="btn-dark-toggle" (click)="toggleDark()" [title]="darkModeTitle()">
-                <span [innerHTML]="darkModeIconSvg()"></span>
+                <app-icon [name]="darkModeIconName()" />
               </button>
               <button class="btn-logout" (click)="logout()">Sair</button>
             </div>
@@ -103,7 +104,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
                  (click)="closeSidebar()"
                  [attr.aria-label]="item.label"
                  [title]="isCollapsed() ? item.label : ''">
-                <span class="icon" [innerHTML]="item.icon"></span>
+                <app-icon class="icon" [name]="item.icon" [size]="18" />
                 <span class="nav-label">{{ item.label }}</span>
               </a>
             }
@@ -117,7 +118,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
             </div>
             <div class="footer-actions">
               <button class="btn-icon-s" (click)="toggleDark()" [title]="darkModeTitle()">
-                <span [innerHTML]="darkModeIconSvg()"></span>
+                <app-icon [name]="darkModeIconName()" />
               </button>
               <button class="btn-logout-s" (click)="logout()" title="Sair">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -142,7 +143,7 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
               }
             <div class="topbar-user">
               <button class="btn-dark-toggle" (click)="toggleDark()" [title]="darkModeTitle()">
-                <span [innerHTML]="darkModeIconSvg()"></span>
+                <app-icon [name]="darkModeIconName()" />
               </button>
               <div class="s-avatar s-avatar--sm">{{ usuarioNome.charAt(0).toUpperCase() }}</div>
             </div>
@@ -301,9 +302,13 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
     .sidebar--collapsed .footer-actions { flex-direction: column; }
     .sidebar--collapsed .btn-logout-s   { flex: none; width: 34px; height: 34px; padding: 0; justify-content: center; }
 
-    .sidebar-body       { flex: 1; margin-left: var(--sidebar-w, 260px); display: flex; flex-direction: column; min-height: 100vh; }
+    .sidebar-body       { flex: 1; min-width: 0; margin-left: var(--sidebar-w, 260px); display: flex; flex-direction: column; min-height: 100vh; }
+    /* min-width:0 é obrigatório: sem ele o flex item herda min-width:auto e não
+       encolhe abaixo do min-content do conteúdo — uma tabela larga esticava o
+       layout inteiro e a página ganhava scroll horizontal, em vez da tabela
+       rolar dentro do próprio wrapper com overflow-x:auto. */
     .sidebar-body.body--rail { margin-left: var(--sidebar-w-collapsed, 68px); }
-    .sidebar-main       { flex: 1; padding: var(--density-section-gap) var(--space-5); }
+    .sidebar-main       { flex: 1; min-width: 0; padding: var(--density-section-gap) var(--space-5); }
 
     .sidebar-topbar {
       display: flex; align-items: center; gap: var(--space-3);
@@ -327,6 +332,17 @@ const SIDEBAR_COLLAPSED_KEY = 'inst_sidebar_collapsed';
       cursor: pointer; transition: background var(--transition-fast); flex-shrink: 0;
     }
     .btn-dark-toggle:hover { background: rgba(255,255,255,.22); }
+
+    /* O branco translúcido acima pressupõe fundo escuro — vale na topbar do
+       layout topbar, que é pintada com o primary. Na .sidebar-topbar o botão
+       fica sobre --color-surface (branco no modo claro) e o ícone, também
+       branco, sumia. Aqui ele veste os tokens da superfície onde está. */
+    .sidebar-topbar .btn-dark-toggle {
+      background: var(--color-surface-2);
+      border-color: var(--color-border);
+      color: var(--color-text);
+    }
+    .sidebar-topbar .btn-dark-toggle:hover { background: var(--color-brand-tint); }
 
     .btn-collapse {
       display: inline-flex; align-items: center; justify-content: center;
@@ -408,11 +424,9 @@ export class InstituicaoLayoutComponent {
     const lbl = p === 'dark' ? 'Escuro' : p === 'light' ? 'Claro' : 'Automático';
     return `Tema: ${lbl} — clique para alternar`;
   });
-  readonly darkModeIconSvg = computed(() => {
+  readonly darkModeIconName = computed(() => {
     const p = this._darkPref();
-    if (p === 'dark')  return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-    if (p === 'light') return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>`;
+    return p === 'dark' ? 'moon' : p === 'light' ? 'sun' : 'contrast';
   });
 
   private readonly _layoutType = toSignal(

@@ -20,8 +20,11 @@
       <div class="preset-panel" (click)="$event.stopPropagation()">
         <div class="preset-panel-header">
           <h3>Escolher preset</h3>
-          <button class="preset-close" (click)="showPresets = false">✕</button>
+          <button class="preset-close" (click)="showPresets = false"><app-icon name="x" /></button>
         </div>
+        <p class="preset-hint">
+          Cada preset traz as cores do modo claro (linha de cima) e do modo escuro (linha de baixo).
+        </p>
         <div class="preset-grid">
           @for (p of presets; track p.nome) {
             <button class="preset-card" (click)="aplicarPreset(p)" type="button">
@@ -29,6 +32,10 @@
                 <span class="preset-swatch" [style.background]="p.primary_color"></span>
                 <span class="preset-swatch" [style.background]="p.secondary_color"></span>
                 <span class="preset-swatch" [style.background]="p.background_color"></span>
+              </div>
+              <div class="preset-swatches preset-swatches-dark" [style.background]="p.dark_background_color">
+                <span class="preset-swatch preset-swatch-sm" [style.background]="p.dark_primary_color"></span>
+                <span class="preset-swatch preset-swatch-sm" [style.background]="p.dark_secondary_color"></span>
               </div>
               <span class="preset-name">{{ p.nome }}</span>
             </button>
@@ -63,7 +70,7 @@
                 <div class="tema-actions">
                   @if (!t.ativo) {
                     <button class="btn-tema-ativar" (click)="ativarTema(t.id)" title="Ativar este tema">Ativar</button>
-                    <button class="btn-tema-excluir" (click)="excluirTema(t.id)" title="Excluir tema">✕</button>
+                    <button class="btn-tema-excluir" (click)="excluirTema(t.id)" title="Excluir tema"><app-icon name="x" /></button>
                   }
                 </div>
               </li>
@@ -80,7 +87,7 @@
         <div class="logo-dropzone" [class.has-logo]="previewLogo" (click)="triggerLogoInput()" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
           @if (previewLogo) {
             <img [src]="previewLogo" alt="Logo" class="logo-preview-img" />
-            <button class="remove-btn" (click)="removeLogo($event)" title="Remover logo">✕</button>
+            <button class="remove-btn" (click)="removeLogo($event)" title="Remover logo"><app-icon name="x" /></button>
           } @else {
             <div class="dropzone-placeholder">
               <div class="dropzone-icon">
@@ -104,7 +111,7 @@
           <div class="favicon-dropzone" [class.has-favicon]="previewFavicon" (click)="triggerFaviconInput()" title="Clique para fazer upload">
             @if (previewFavicon) {
               <img [src]="previewFavicon" alt="Favicon" class="favicon-preview-img" />
-              <button class="remove-btn remove-btn-sm" (click)="removeFavicon($event)" title="Remover favicon">✕</button>
+              <button class="remove-btn remove-btn-sm" (click)="removeFavicon($event)" title="Remover favicon"><app-icon name="x" /></button>
             } @else {
               <span class="favicon-placeholder-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
@@ -200,7 +207,7 @@
                   <input type="color" [value]="v.dark_background_color" (input)="setColor('dark_background_color', $event)" class="color-picker" />
                   <span class="swatch" [style.background]="v.dark_background_color"></span>
                 </div>
-                <input type="text" formControlName="dark_background_color" class="hex-input" maxlength="7" placeholder="#0f172a" spellcheck="false" />
+                <input type="text" formControlName="dark_background_color" class="hex-input" maxlength="7" placeholder="#0d1a14" spellcheck="false" />
               </div>
             </div>
           </div>
@@ -327,6 +334,7 @@
       <div class="page-tabs">
         @for (tab of PAGE_TABS; track tab.key) {
           <button type="button" class="page-tab" [class.active]="selectedPage() === tab.key" (click)="selectPage(tab.key)">
+            <app-icon [name]="tab.icon" />
             <span class="page-tab-label">{{ tab.label }}</span>
             @if (tab.key !== 'global' && hasOverrideForPage(tab.key)) { <span class="page-tab-dot"></span> }
           </button>

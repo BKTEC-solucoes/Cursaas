@@ -180,7 +180,7 @@ class FaculdadeTemaResponse(BaseModel):
     dark_mode:             bool = False
     dark_primary_color:    str = '#34d399'
     dark_secondary_color:  str = '#10b981'
-    dark_background_color: str = '#0f172a'
+    dark_background_color: str = '#0d1a14'
     # Favicon
     favicon_url: Optional[str] = None
     # Identidade visual avançada
@@ -241,7 +241,7 @@ class FaculdadeTemaCreate(BaseModel):
     dark_mode:             bool = False
     dark_primary_color:    str  = Field('#34d399', max_length=20)
     dark_secondary_color:  str  = Field('#10b981', max_length=20)
-    dark_background_color: str  = Field('#0f172a', max_length=20)
+    dark_background_color: str  = Field('#0d1a14', max_length=20)
     favicon_url: Optional[str] = None
     # Identidade visual avançada
     border_radius:    str             = Field('8px', max_length=10)

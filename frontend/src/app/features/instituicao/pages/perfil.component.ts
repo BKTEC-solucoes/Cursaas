@@ -27,8 +27,10 @@ interface InstituicaoInfo {
   template: `
     <div class="content-page">
       <div class="page-header">
-        <h1 class="page-title">Perfil da Instituição</h1>
-        <p class="page-subtitle">Visualize e edite os dados da sua instituição.</p>
+        <div class="page-header-left">
+          <h1 class="page-title">Perfil da Instituição</h1>
+          <p class="page-subtitle">Visualize e edite os dados da sua instituição.</p>
+        </div>
       </div>
 
       @if (carregando) {
@@ -120,9 +122,9 @@ interface InstituicaoInfo {
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-card { background: color-mix(in srgb, var(--color-danger) 10%, transparent); color: var(--color-danger); padding: var(--space-5); border-radius: var(--radius-lg); border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent); }
 
-    .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-7); box-shadow: var(--shadow-sm); }
-
-    .card-header { display: flex; align-items: center; gap: var(--space-5); margin-bottom: var(--space-7); padding-bottom: var(--space-5); border-bottom: 1px solid var(--color-border); }
+    /* .card vem do design system (styles.css): fundo, borda, raio, padding e
+       sombra são tokens do tema. Aqui só o cabeçalho com avatar é específico. */
+    .card-header { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-5); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
     .inst-avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--font-size-2xl); font-weight: 700; flex-shrink: 0; overflow: hidden; }
     .inst-logo-img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
     .inst-title h2 { margin: 0 0 var(--space-2); font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); font-family: var(--font-display); }

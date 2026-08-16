@@ -258,31 +258,31 @@ export class AlunoProvaResultadoComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       this.provaId = +params['id'];
-      console.log('🔍 ngOnInit - ProvaId:', this.provaId);
-      console.log('🔍 ngOnInit - Resultado já existe?', !!this.resultado);
+      console.log('ngOnInit - ProvaId:', this.provaId);
+      console.log('ngOnInit - Resultado já existe?', !!this.resultado);
       
       // Sempre carregar do backend para garantir dados completos (tentativa, etc)
       // mesmo se resultado veio do state
-      console.log('📥 Carregando resultado do backend para garantir dados completos...');
+      console.log('Carregando resultado do backend para garantir dados completos...');
       this.carregarResultado();
     });
   }
 
   carregarResultado(): void {
     if (!this.provaId) {
-      console.error('❌ ProvaId é inválido:', this.provaId);
+      console.error('ProvaId é inválido:', this.provaId);
       return;
     }
 
     this.carregando = true;
     this.erro = '';
 
-    console.log('🌐 Chamando API.getMeuResultado(' + this.provaId + ')');
+    console.log('Chamando API.getMeuResultado(' + this.provaId + ')');
     
     // Buscar o resultado mais recente dessa prova para o aluno
     this.api.getMeuResultado(this.provaId).subscribe({
       next: (resultado) => {
-        console.log('✅ Resultado recebido do backend:', resultado);
+        console.log('Resultado recebido do backend:', resultado);
         console.log('   - total_acertos:', resultado?.total_acertos, 'tipo:', typeof resultado?.total_acertos);
         console.log('   - total_questoes:', resultado?.total_questoes, 'tipo:', typeof resultado?.total_questoes);
         console.log('   - percentual_acerto:', resultado?.percentual_acerto, 'tipo:', typeof resultado?.percentual_acerto);
@@ -308,7 +308,7 @@ export class AlunoProvaResultadoComponent implements OnInit {
         
         resultado.nota_final = resultado.nota_final != null ? Number(resultado.nota_final) : null;
         
-        console.log('✅ Valores convertidos para Number:');
+        console.log('Valores convertidos para Number:');
         console.log('   - total_acertos:', resultado.total_acertos, typeof resultado.total_acertos);
         console.log('   - total_questoes:', resultado.total_questoes, typeof resultado.total_questoes);
         console.log('   - percentual_acerto:', resultado.percentual_acerto, typeof resultado.percentual_acerto);
@@ -320,7 +320,7 @@ export class AlunoProvaResultadoComponent implements OnInit {
         this.carregando = false;
       },
       error: (error) => {
-        console.error('❌ Erro ao carregar resultado:', error);
+        console.error('Erro ao carregar resultado:', error);
         console.error('   - Status:', error?.status);
         console.error('   - Message:', error?.message);
         this.erro = 'Erro ao carregar resultado da prova: ' + (error?.message || 'Desconhecido');
@@ -332,23 +332,23 @@ export class AlunoProvaResultadoComponent implements OnInit {
   carregarDetalhes(): void {
     if (!this.provaId || !this.resultado) return;
 
-    console.log('📋 Carregando detalhes da prova ' + this.provaId);
+    console.log('Carregando detalhes da prova ' + this.provaId);
     
     // Carregar detalhes da prova para verificar se pode refazer
     this.api.getProva(this.provaId).subscribe({
       next: (prova: any) => {
-        console.log('✅ Detalhes da prova recebidos:', prova);
+        console.log('Detalhes da prova recebidos:', prova);
         console.log('   - tentativas_permitidas:', prova.tentativas_permitidas);
         
         this.tentativasPermitidas = prova.tentativas_permitidas || 1;
         this.podeRefazer = this.resultado!.tentativa < this.tentativasPermitidas;
         
-        console.log('✅ Tentativas carregadas:', this.tentativasPermitidas);
+        console.log('Tentativas carregadas:', this.tentativasPermitidas);
         console.log('   - Tentativa atual:', this.resultado!.tentativa);
         console.log('   - Pode refazer:', this.podeRefazer);
       },
       error: (error) => {
-        console.error('❌ Erro ao carregar detalhes da prova:', error);
+        console.error('Erro ao carregar detalhes da prova:', error);
         // Usar valor padrão se houver erro
         this.tentativasPermitidas = 1;
       }
@@ -386,11 +386,11 @@ export class AlunoProvaResultadoComponent implements OnInit {
   getPerformanceText(): string {
     if (!this.resultado) return '';
     const nota = this.resultado.nota_final;
-    if (nota == null) return 'Aguardando correção do professor ⏳';
-    if (nota >= 9) return 'Excelente desempenho! 🌟';
-    if (nota >= 7) return 'Bom desempenho! 👍';
-    if (nota >= 5) return 'Desempenho regular 📊';
-    return 'Desempenho insuficiente 📉';
+    if (nota == null) return 'Aguardando correção do professor';
+    if (nota >= 9) return 'Excelente desempenho!';
+    if (nota >= 7) return 'Bom desempenho!';
+    if (nota >= 5) return 'Desempenho regular';
+    return 'Desempenho insuficiente';
   }
 
   getPerformanceDescription(): string {
@@ -439,18 +439,18 @@ export class AlunoProvaResultadoComponent implements OnInit {
 
   getTentativa(): number {
     if (!this.resultado) {
-      console.warn('⚠️ getTentativa: resultado é null');
+      console.warn('getTentativa: resultado é null');
       return 1;
     }
     
     const tentativa = Number(this.resultado.tentativa);
-    console.log('📊 getTentativa: tentativa=', this.resultado.tentativa, 'convertido=', tentativa, 'final=', isNaN(tentativa) || tentativa <= 0 ? 1 : tentativa);
+    console.log('getTentativa: tentativa=', this.resultado.tentativa, 'convertido=', tentativa, 'final=', isNaN(tentativa) || tentativa <= 0 ? 1 : tentativa);
     
     return isNaN(tentativa) || tentativa <= 0 ? 1 : tentativa;
   }
 
   getTentativasPermitidas(): number {
-    console.log('📊 getTentativasPermitidas:', this.tentativasPermitidas);
+    console.log('getTentativasPermitidas:', this.tentativasPermitidas);
     return this.tentativasPermitidas > 0 ? this.tentativasPermitidas : 1;
   }
 

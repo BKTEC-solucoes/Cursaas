@@ -102,7 +102,7 @@ export class CriarInstituicaoComponent implements OnInit {
 
     this.instituicaoService.registrarInstituicao(dados).subscribe({
       next: (response) => {
-        this.successMessage = '✅ Instituição criada com sucesso! Redirecionando...';
+        this.successMessage = 'Instituição criada com sucesso! Redirecionando...';
         this.loading = false;
 
         setTimeout(() => {

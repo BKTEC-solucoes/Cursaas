@@ -82,27 +82,27 @@ export type Permission =
  *
  * | Permissão              | super_admin | admin_faculdade | instrutor |
  * |------------------------|:-----------:|:---------------:|:---------:|
- * | cursos:read            |      ✔      |        ✔        |     ✔     |
- * | cursos:write           |      ✔      |        ✔        |     ✔     |
- * | aulas:read             |      ✔      |        ✔        |     ✔     |
- * | aulas:write            |      ✔      |        ✔        |     ✔     |
- * | provas:read            |      ✔      |        ✔        |     ✔     |
- * | provas:write           |      ✔      |        ✔        |     ✔     |
- * | notas:read             |      ✔      |        ✔        |     ✔     |
- * | notas:write            |      ✔      |        ✔        |     ✔     |
- * | presenca:read          |      ✔      |        ✔        |     ✔     |
- * | presenca:write         |      ✔      |        ✔        |     ✔     |
- * | alunos:read            |      ✔      |        ✔        |     ✔     |
- * | alunos:write           |      ✔      |        ✔        |           |
- * | relatorios:read        |      ✔      |        ✔        |           |
- * | administradores:read   |      ✔      |        ✔        |           |
- * | administradores:write  |      ✔      |        ✔        |           |
- * | tema:read              |      ✔      |        ✔        |           |
- * | tema:write             |      ✔      |        ✔        |           |
- * | instituicoes:read      |      ✔      |                 |           |
- * | instituicoes:write     |      ✔      |                 |           |
- * | sistema:read           |      ✔      |                 |           |
- * | sistema:write          |      ✔      |                 |           |
+ * | cursos:read            |     sim     |       sim       |    sim    |
+ * | cursos:write           |     sim     |       sim       |    sim    |
+ * | aulas:read             |     sim     |       sim       |    sim    |
+ * | aulas:write            |     sim     |       sim       |    sim    |
+ * | provas:read            |     sim     |       sim       |    sim    |
+ * | provas:write           |     sim     |       sim       |    sim    |
+ * | notas:read             |     sim     |       sim       |    sim    |
+ * | notas:write            |     sim     |       sim       |    sim    |
+ * | presenca:read          |     sim     |       sim       |    sim    |
+ * | presenca:write         |     sim     |       sim       |    sim    |
+ * | alunos:read            |     sim     |       sim       |    sim    |
+ * | alunos:write           |     sim     |       sim       |           |
+ * | relatorios:read        |     sim     |       sim       |           |
+ * | administradores:read   |     sim     |       sim       |           |
+ * | administradores:write  |     sim     |       sim       |           |
+ * | tema:read              |     sim     |       sim       |           |
+ * | tema:write             |     sim     |       sim       |           |
+ * | instituicoes:read      |     sim     |                 |           |
+ * | instituicoes:write     |     sim     |                 |           |
+ * | sistema:read           |     sim     |                 |           |
+ * | sistema:write          |     sim     |                 |           |
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   super_admin: [

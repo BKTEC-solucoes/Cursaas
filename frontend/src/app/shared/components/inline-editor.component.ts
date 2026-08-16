@@ -16,6 +16,7 @@ import { HttpClient, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { RichTextEditorComponent } from './rich-text-editor.component';
 import { environment } from '../../../environments/environment';
 
+import { IconComponent } from './icon.component';
 export type TipoBloco = 'titulo' | 'texto' | 'video';
 
 export interface BlocoEditavel {
@@ -109,7 +110,7 @@ export class BlocoTextoComponent implements OnChanges {
 @Component({
   selector: 'app-bloco-video',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="video-bloco">
       <!-- Modo visualização -->
@@ -131,11 +132,11 @@ export class BlocoTextoComponent implements OnChanges {
         </div>
         <!-- Placeholder -->
         <div *ngIf="!videoUploadUrl && !safeEmbedUrl" class="video-placeholder" (click)="entrarEdicao()">
-          <span class="video-icon">▶</span>
+          <span class="video-icon"><app-icon name="play" /></span>
           <span>Clique em <strong>Inserir vídeo</strong> para adicionar YouTube ou fazer upload</span>
         </div>
         <div class="video-actions">
-          <button type="button" class="btn-editar-video" (click)="entrarEdicao()">✏️ {{ conteudo || videoUploadUrl ? 'Editar vídeo' : 'Inserir vídeo' }}</button>
+          <button type="button" class="btn-editar-video" (click)="entrarEdicao()">{{ conteudo || videoUploadUrl ? 'Editar vídeo' : 'Inserir vídeo' }}</button>
         </div>
       </ng-container>
 
@@ -152,10 +153,10 @@ export class BlocoTextoComponent implements OnChanges {
           (keydown.escape)="cancelar()"
         />
         <p class="video-hint" *ngIf="urlInvalida">
-          ⚠️ URL não reconhecida. Cole um link do YouTube (watch?v=, youtu.be, shorts).
+          URL não reconhecida. Cole um link do YouTube (watch?v=, youtu.be, shorts).
         </p>
         <p class="video-hint video-hint-ok" *ngIf="!urlInvalida && urlTemp">
-          ✔ YouTube detectado
+          YouTube detectado
         </p>
 
         <!-- Upload do computador -->
@@ -167,7 +168,7 @@ export class BlocoTextoComponent implements OnChanges {
           <div class="upload-preview" *ngIf="videoUploadUrl && uploadProgress === null">
             <video [src]="videoUploadUrl" controls preload="metadata" class="upload-mini-player"></video>
             <button type="button" class="btn-del-video" (click)="removerVideoUpload()" [disabled]="removendoVideo">
-              {{ removendoVideo ? 'Removendo...' : '🗑 Remover vídeo' }}
+              {{ removendoVideo ? 'Removendo...' : 'Remover vídeo' }}
             </button>
           </div>
 
@@ -182,7 +183,7 @@ export class BlocoTextoComponent implements OnChanges {
             (click)="fileInputEl.click()"
           >
             <input #fileInputEl type="file" accept="video/*" style="display:none" (change)="onFileChange($event)"/>
-            <span>🎬</span>
+            <span><app-icon name="film" [size]="18" /></span>
             <p>Arraste ou <strong>clique para selecionar</strong></p>
             <small>MP4, WebM, MOV, AVI…</small>
           </div>
@@ -197,7 +198,7 @@ export class BlocoTextoComponent implements OnChanges {
         </ng-container>
 
         <div class="video-edit-actions">
-          <button type="button" class="btn-salvar" (click)="salvar()" [disabled]="!!urlTemp && urlInvalida">✔ Salvar URL</button>
+          <button type="button" class="btn-salvar" (click)="salvar()" [disabled]="!!urlTemp && urlInvalida">Salvar URL</button>
           <button type="button" class="btn-cancelar" (click)="cancelar()">Fechar</button>
         </div>
       </div>

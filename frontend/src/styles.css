@@ -23,7 +23,7 @@
   /* Paleta dark (src para o dark-mode swap) */
   --dark-primary-color:    #34d399;
   --dark-secondary-color:  #10b981;
-  --dark-background-color: #0f172a;
+  --dark-background-color: #0d1a14;
 
   /* Tipografia */
   --font-family: Inter, system-ui, sans-serif;
@@ -43,7 +43,7 @@
   --radius-full: 9999px;
 
   /* Espaçamento base — spacing="comfortable"
-     Escala 4-pt: 4 8 12 16 24 32 48 64
+     Escala 4-pt: 4 8 12 16 24 32 40 48 64
      O ThemeService sobrescreve --space-unit para compacto/espaçado */
   --space-unit: 1rem;       /* 16px — comfortable */
   --space-1:  calc(var(--space-unit) * 0.25);   /*  4px */
@@ -52,6 +52,7 @@
   --space-4:  var(--space-unit);                /* 16px */
   --space-5:  calc(var(--space-unit) * 1.5);    /* 24px */
   --space-6:  calc(var(--space-unit) * 2);      /* 32px */
+  --space-7:  calc(var(--space-unit) * 2.5);    /* 40px */
   --space-8:  calc(var(--space-unit) * 3);      /* 48px */
   --space-10: calc(var(--space-unit) * 4);      /* 64px */
 
@@ -61,13 +62,25 @@
   --shadow-md: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
   --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.10), 0 10px 10px -5px rgba(0,0,0,.04);
 
-  /* Cores semânticas — derivadas da paleta principal */
-  --color-text:         #1e293b;
-  --color-text-muted:   #64748b;
+  /* ── Cores semânticas do modo claro — derivadas de --primary ──────────────
+     Espelham o que o modo escuro faz a partir de --dark-background-color.
+     Antes eram hex fixos de ardósia, e a "personalidade" da superfície clara
+     vinha de dois blocos [data-app-theme] escritos à mão (verde e azul): o
+     ThemeService classificava o matiz do primary em apenas dois baldes, com
+     verde de fallback, então uma instituição vermelha ou roxa recebia fundo
+     esverdeado e sidebar verde-escura. Agora tudo sai da marca real.
+
+     A âncora é sempre um neutro (branco ou quase-preto) com uma fração pequena
+     de --primary: é o neutro que garante o contraste e o primary que dá o
+     matiz. Por isso a fórmula continua legível mesmo com uma marca clara —
+     âmbar #fbbf24 rende texto ~10:1 sobre branco.
+     ─────────────────────────────────────────────────────────────────────── */
+  --color-text:         color-mix(in srgb, var(--primary) 22%, #16202e);
+  --color-text-muted:   color-mix(in srgb, var(--primary) 18%, #475569);
   --color-text-inverse: #ffffff;
   --color-surface:      #ffffff;
-  --color-surface-2:    #f8fafc;
-  --color-border:       #e2e8f0;
+  --color-surface-2:    color-mix(in srgb, var(--primary)  7%, #ffffff);
+  --color-border:       color-mix(in srgb, var(--primary) 25%, #ffffff);
   --color-border-focus: var(--primary);
 
   /* Estado */
@@ -155,12 +168,17 @@
   --color-focus-ring:            var(--primary);
   --color-brand-tint:            var(--background);
   --color-nav-indicator:         rgba(255, 255, 255, 0.6);
-  /* Variantes dark — escritas por applyPaletteToRoot, usadas em [data-theme="dark"] */
-  --color-interactive-dark:         var(--dark-primary-color);
-  --color-interactive-hover-dark:   var(--dark-primary-color);
-  --color-interactive-active-dark:  var(--dark-secondary-color);
-  --color-on-interactive-dark:      #000000;
-  --color-nav-indicator-dark:       rgba(255, 255, 255, 0.7);
+  /* Variantes dark — escritas por applyDarkOverrideToRoot, usadas em
+     [data-theme="dark"]. Os valores aqui são apenas o fallback de antes do
+     ThemeService rodar. */
+  --color-interactive-dark:          var(--dark-primary-color);
+  --color-interactive-hover-dark:    var(--dark-primary-color);
+  --color-interactive-active-dark:   var(--dark-secondary-color);
+  --color-interactive-disabled-dark: color-mix(in srgb, var(--dark-primary-color) 30%, var(--dark-background-color));
+  --color-on-interactive-dark:       #000000;
+  --color-nav-indicator-dark:        rgba(255, 255, 255, 0.7);
+  --color-focus-ring-dark:           var(--dark-primary-color);
+  --color-brand-tint-dark:           color-mix(in srgb, var(--dark-primary-color) 14%, var(--dark-background-color));
 
   /* ═══════════════════════════════════════════════════════════════════════════
      CAMADA 2 — TOKENS DE COMPONENTE
@@ -252,17 +270,21 @@
   --content-max-w:       1400px;
 
   /* ── Sidebar — cores derivadas do primary ────────────────────────────────
-     color-mix gera versões escuras do primary sem depender do ThemeService.
-     Funciona para verde, azul ou qualquer cor customizada pela instituição.
+     Ancorada num quase-preto NEUTRO (#0a0f14), não em #000000 puro: misturar
+     com preto puro só escurece e dessatura, e o resultado ficava mais fundo e
+     mais apagado que a sidebar verde-escura desenhada à mão que estes tokens
+     substituem. Com a âncora neutra, uma marca verde cai na mesma faixa de
+     antes (~#0f4a33) e qualquer outro matiz recebe o equivalente dele.
      ─────────────────────────────────────────────────────────────────────── */
-  --sidebar-bg:             color-mix(in srgb, var(--primary) 18%, #000000);
-  --sidebar-bg-hover:       color-mix(in srgb, var(--primary) 30%, #000000);
-  --sidebar-active-bg:      color-mix(in srgb, var(--primary) 45%, #000000);
+  --sidebar-bg:             color-mix(in srgb, var(--primary) 42%, #0a0f14);
+  --sidebar-bg-hover:       color-mix(in srgb, var(--primary) 55%, #0a0f14);
+  --sidebar-active-bg:      color-mix(in srgb, var(--primary) 70%, #0a0f14);
   --sidebar-text:           rgba(255, 255, 255, 0.82);
   --sidebar-text-active:    #ffffff;
   --sidebar-text-hover:     #ffffff;
   --sidebar-border:         rgba(255, 255, 255, 0.10);
-  --sidebar-indicator:      var(--primary);
+  /* Clareado com branco para brilhar contra a própria sidebar escura */
+  --sidebar-indicator:      color-mix(in srgb, var(--primary) 70%, #ffffff);
   --sidebar-icon-opacity:   0.75;
 
   /* ── Topbar embutida (quando sidebar está ativa) ─────────────────────── */
@@ -286,38 +308,83 @@
   --background:       var(--dark-background-color);
   --background-color: var(--dark-background-color);
 
-  --color-text:         #e2e8f0;
-  --color-text-muted:   #94a3b8;
-  --color-text-inverse: #0f172a;
-  --color-surface:      #1e293b;
-  --color-surface-2:    #0f172a;
-  --color-border:       #334155;
-  --color-border-focus: var(--dark-primary-color);
+  /* ── Base neutra do modo escuro ───────────────────────────────────────────
+     TODOS os neutros derivam de --dark-background-color (escrito inline pelo
+     ThemeService), e não de hex de ardósia fixo. Antes, um tenant com fundo
+     escuro vermelho ou verde recebia cards, bordas e texto azul-ardósia —
+     a tela inteira brigava com a marca.
+     ─────────────────────────────────────────────────────────────────────── */
+  --dark-base: var(--dark-background-color, #0d1a14);
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.30), 0 1px 2px rgba(0,0,0,.20);
-  --shadow:    0 4px 6px -1px rgba(0,0,0,.35), 0 2px 4px -1px rgba(0,0,0,.20);
-  --shadow-md: 0 10px 15px -3px rgba(0,0,0,.40), 0 4px 6px -2px rgba(0,0,0,.20);
-  --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.50), 0 10px 10px -5px rgba(0,0,0,.20);
+  /* Elevação no escuro sobe CLAREANDO — o inverso do modo claro, onde
+     surface-2 é mais escuro que surface. Antes surface-2 era idêntico ao
+     fundo padrão da página, então toda superfície sutil sumia. */
+  --color-surface:      color-mix(in srgb, var(--dark-base) 90%, #ffffff);
+  --color-surface-2:    color-mix(in srgb, var(--dark-base) 95%, #ffffff);
+  --color-border:       color-mix(in srgb, var(--dark-base) 80%, #ffffff);
+  --color-text:         color-mix(in srgb, var(--dark-base) 10%, #ffffff);
+  --color-text-muted:   color-mix(in srgb, var(--dark-base) 42%, #ffffff);
+  --color-text-inverse: var(--dark-base);
+  --color-border-focus: var(--color-interactive-dark);
 
-  --color-success-bg: #052e16;
-  --color-warning-bg: #451a03;
-  --color-danger-bg:  #450a0a;
-  --color-info-bg:    #082f49;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.40), 0 1px 2px rgba(0,0,0,.30);
+  --shadow:    0 4px 6px -1px rgba(0,0,0,.45), 0 2px 4px -1px rgba(0,0,0,.30);
+  --shadow-md: 0 10px 15px -3px rgba(0,0,0,.50), 0 4px 6px -2px rgba(0,0,0,.30);
+  --shadow-lg: 0 20px 25px -5px rgba(0,0,0,.60), 0 10px 10px -5px rgba(0,0,0,.30);
+
+  /* Estado: as cores do modo claro (ex.: #16a34a) ficam abaixo de 3:1 sobre
+     fundo escuro. Aqui usam os stops 400, legíveis no escuro. */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger:  #f87171;
+  --color-info:    #38bdf8;
+
+  --color-success-bg: color-mix(in srgb, var(--color-success) 16%, var(--dark-base));
+  --color-warning-bg: color-mix(in srgb, var(--color-warning) 16%, var(--dark-base));
+  --color-danger-bg:  color-mix(in srgb, var(--color-danger)  16%, var(--dark-base));
+  --color-info-bg:    color-mix(in srgb, var(--color-info)    16%, var(--dark-base));
 
   color-scheme: dark;
 
   /* ── Reaponta interativos para variantes dark ──────────────────────────────
-     applyPaletteToRoot() escreve --color-interactive-*-dark antes do dark
-     mode ser ativado, então estas vars estão sempre definidas neste contexto.
+     applyDarkOverrideToRoot() escreve --color-*-dark. Estas regras são o
+     fallback: o valor efetivo é gravado inline por applyEffectiveInteractive()
+     — estilo inline vence folha de estilo, então sem ele o CSS abaixo nunca
+     ganharia de applyPaletteToRoot().
      ─────────────────────────────────────────────────────────────────────── */
   --color-interactive:          var(--color-interactive-dark);
   --color-interactive-hover:    var(--color-interactive-hover-dark);
   --color-interactive-active:   var(--color-interactive-active-dark);
+  --color-interactive-disabled: var(--color-interactive-disabled-dark);
   --color-on-interactive:       var(--color-on-interactive-dark);
   --color-nav-indicator:        var(--color-nav-indicator-dark);
+  --color-focus-ring:           var(--color-focus-ring-dark);
+  --color-brand-tint:           var(--color-brand-tint-dark);
   /* Focus rings com opacidade ajustada para dark */
   --input-focus-ring-color:     color-mix(in srgb, var(--color-interactive) 25%, transparent);
   --btn-focus-ring-color:       var(--color-interactive);
+
+  /* ── Botões: no escuro, hover CLAREIA ────────────────────────────────────
+     As fórmulas do modo claro misturam com preto — num fundo escuro isso faz
+     o botão sumir ao passar o mouse, em vez de reagir. */
+  --btn-secondary-bg-hover:  color-mix(in srgb, var(--secondary) 80%, #ffffff);
+  --btn-secondary-bg-active: color-mix(in srgb, var(--secondary) 70%, #ffffff);
+  --btn-ghost-bg-hover:      color-mix(in srgb, var(--color-surface) 88%, #ffffff);
+  --btn-danger-bg-hover:     color-mix(in srgb, var(--color-danger) 82%, #ffffff);
+
+  /* ── Sidebar: derivada do fundo escuro, não do primary ───────────────────
+     No escuro a sidebar é a camada mais funda, não uma faixa de marca. */
+  --sidebar-bg:          color-mix(in srgb, var(--dark-base) 94%, #000000);
+  --sidebar-bg-hover:    color-mix(in srgb, var(--dark-base) 88%, #ffffff);
+  --sidebar-active-bg:   color-mix(in srgb, var(--color-interactive) 20%, var(--dark-base));
+  --sidebar-text:        color-mix(in srgb, var(--dark-base) 30%, #ffffff);
+  --sidebar-text-active: #ffffff;
+  --sidebar-text-hover:  #ffffff;
+  --sidebar-border:      color-mix(in srgb, var(--dark-base) 82%, #ffffff);
+  --sidebar-indicator:   var(--color-interactive);
+
+  --inner-topbar-bg:     var(--color-surface);
+  --inner-topbar-border: var(--color-border);
 }
 
 /* ── 2b. Densidade de UI ─────────────────────────────────────────
@@ -442,75 +509,17 @@ body[data-transition="spring"] {
   --motion-easing-exit:   cubic-bezier(0.55, 0.0,  0.45, 1.0);
 }
 
-/* ── 2e. Tema EduVerde — branco + verde ─────────────────────────
-   Ativado por: document.documentElement.setAttribute('data-app-theme','verde')
-   Paleta: sidebar escura verde-profundo, botões e links em Green-600.
+/* ── 2e. (removido) Temas EduVerde / EduBlue ─────────────────────
+   Havia aqui dois blocos `:root[data-app-theme="verde"|"azul"]` com paletas
+   fixas. O ThemeService classificava o matiz do primary em apenas esses dois
+   baldes — com "verde" de fallback — então TODA instituição fora da faixa de
+   hue 180°–270° recebia superfície esverdeada, texto verde-escuro e sidebar
+   verde-floresta, por mais vermelha ou roxa que fosse a marca dela.
+
+   Os mesmos tokens agora são derivados de --primary em :root (superfície,
+   borda, texto, sidebar), então cada instituição recebe o equivalente do
+   próprio matiz e o atributo data-app-theme deixou de existir.
    ─────────────────────────────────────────────────────────────── */
-:root[data-app-theme="verde"] {
-  --primary:          #16a34a;   /* Green 600  */
-  --primary-color:    #16a34a;
-  --secondary:        #15803d;   /* Green 700  */
-  --secondary-color:  #15803d;
-  --background:       #ffffff;
-  --background-color: #ffffff;
-
-  --dark-primary-color:    #4ade80;   /* Green 400 dark */
-  --dark-secondary-color:  #22c55e;   /* Green 500 dark */
-  --dark-background-color: #0a1a0f;   /* Verde-noturno profundo */
-
-  --color-surface:    #ffffff;
-  --color-surface-2:  #f0fdf4;   /* Green 50  */
-  --color-border:     #bbf7d0;   /* Green 200 */
-  --color-text:       #14532d;   /* Green 950 */
-  --color-text-muted: #4b7a5c;
-
-  /* Sidebar escura Verde-Floresta */
-  --sidebar-bg:            #14532d;   /* Green 950  */
-  --sidebar-bg-hover:      #166534;   /* Green 800  */
-  --sidebar-active-bg:     #15803d;   /* Green 700  */
-  --sidebar-indicator:     #4ade80;   /* Green 400 — brilha no escuro */
-
-  --inner-topbar-bg:     #ffffff;
-  --inner-topbar-border: #bbf7d0;
-
-  /* Botão arredondado */
-  --radius:    8px;
-}
-
-/* ── 2f. Tema EduBlue — branco + azul ─────────────────────────
-   Ativado por: document.documentElement.setAttribute('data-app-theme','azul')
-   Paleta: sidebar escura azul-navy, botões e links em Blue-600.
-   ─────────────────────────────────────────────────────────────── */
-:root[data-app-theme="azul"] {
-  --primary:          #2563eb;   /* Blue 600  */
-  --primary-color:    #2563eb;
-  --secondary:        #1d4ed8;   /* Blue 700  */
-  --secondary-color:  #1d4ed8;
-  --background:       #ffffff;
-  --background-color: #ffffff;
-
-  --dark-primary-color:    #60a5fa;   /* Blue 400 dark */
-  --dark-secondary-color:  #3b82f6;   /* Blue 500 dark */
-  --dark-background-color: #070d1a;   /* Azul-noturno profundo */
-
-  --color-surface:    #ffffff;
-  --color-surface-2:  #eff6ff;   /* Blue 50  */
-  --color-border:     #bfdbfe;   /* Blue 200 */
-  --color-text:       #1e3a8a;   /* Blue 950 */
-  --color-text-muted: #4a6da0;
-
-  /* Sidebar escura Azul-Navy */
-  --sidebar-bg:            #1e3a8a;   /* Blue 900  */
-  --sidebar-bg-hover:      #1e40af;   /* Blue 800  */
-  --sidebar-active-bg:     #1d4ed8;   /* Blue 700  */
-  --sidebar-indicator:     #93c5fd;   /* Blue 300 — brilha no escuro */
-
-  --inner-topbar-bg:     #ffffff;
-  --inner-topbar-border: #bfdbfe;
-
-  /* Botão levemente mais quadrado → sensação corporativa */
-  --radius:    6px;
-}
 
 /* ── 3. Reset & base ──────────────────────────────────────────  */
 *, *::before, *::after {
@@ -1229,7 +1238,7 @@ app-root {
 /* ── 17. Empty state ─────────────────────────────────────────
    Uso:
    <div class="empty-state">
-     <div class="empty-icon">📭</div>
+     <div class="empty-icon"><app-icon name="inbox" [size]="32" /></div>
      <h3 class="empty-title">Nenhum resultado</h3>
      <p class="empty-body">Tente ajustar os filtros.</p>
      <button class="btn btn-primary">Criar agora</button>
