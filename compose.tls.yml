@@ -13,9 +13,12 @@
 
 services:
   nginx:
-    ports:
-      - "80:80"
-      - "443:443"
+    # Sem portas no host: as 80/443 da VPS pertencem ao Caddy de borda do
+    # SuperLandings, que entra na rede cursaas_default e repassa bktec.dev.br e
+    # www para este nginx (HTTPS em :443 e o desafio ACME em :80). O !reset
+    # descarta tambem o "80:80" do compose.yml, que continua valendo no dev.
+    # Rollback: devolver as duas portas aqui e parar o Caddy.
+    ports: !reset []
     volumes:
       - ./docker/nginx/default.tls.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_conf:/etc/letsencrypt:ro
