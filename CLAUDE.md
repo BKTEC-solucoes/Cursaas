@@ -211,6 +211,8 @@ Para recriar o banco do zero em desenvolvimento, use `backend/seed_ambiente_test
 
 Produção é **bktec.dev.br**, uma VPS Ubuntu 24.04 com **1 vCPU / 3.9 GB**, stack em `/opt/cursaas`, rodando com o overlay de TLS (`compose.yml` + `compose.tls.yml`). O certificado Let's Encrypt já foi emitido e o serviço `certbot` renova sozinho.
 
+**Borda compartilhada com o SuperLandings.** As portas 80/443 da VPS pertencem ao Caddy do SuperLandings (outro repositório, outro projeto Compose), não a este nginx: o `compose.tls.yml` zera as portas do serviço `nginx` com `ports: !reset []`. O Caddy entra na rede `cursaas_default` e repassa `bktec.dev.br`/`www` para o `cursaas-nginx-1` — HTTPS em `:443` (verificando o certificado deste nginx) e `/.well-known/acme-challenge/` em `:80`, para o `certbot renew` continuar funcionando. O nginx confia no `X-Forwarded-For` só vindo de redes privadas (`set_real_ip_from`), então `$remote_addr` segue sendo o IP do visitante. Rollback: devolver `80:80`/`443:443` no `compose.tls.yml`, parar o Caddy e subir de novo. Consequência prática: se o Caddy estiver parado, o site está fora do ar mesmo com este stack saudável.
+
 `scripts/deploy.sh` é o **único** caminho de deploy: `.github/workflows/deploy.yml` só faz SSH e o executa, então rodar à mão no servidor é idêntico ao pipeline. Push na `main` → `ci.yml` (pytest + build do Angular + `docker compose build`) → deploy. O CI é chamado por `workflow_call`; não tem gatilho `push` próprio, senão rodaria duas vezes por push.
 
 Três coisas que a forma do script codifica:
